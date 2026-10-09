@@ -1,0 +1,62 @@
+.stage { position: fixed; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; user-select: none; }
+.row { display: flex; align-items: flex-start; padding: 0 8px; }
+.seat { display: flex; flex-direction: column; align-items: center; }
+.plates { display: flex; flex-direction: column; align-items: center; }
+.view { position: relative; }
+.hit { position: absolute; cursor: pointer; }
+.pick { outline: 2px solid var(--chip-fg); outline-offset: 3px; border-radius: var(--radius-l); box-shadow: 0 0 0 6px var(--chip-bg); }
+.rider { position: absolute; }
+/* 몸 대신 세운 그림 (CHR-07). 클릭은 그 위의 클릭 영역이 받는다 */
+.cover { position: absolute; object-fit: contain; object-position: 50% 100%; pointer-events: none; }
+.nameplate {
+  display: flex; align-items: center; gap: 5px; height: 24px; margin-top: 6px; padding: 0 10px; max-width: 156px; box-sizing: border-box; white-space: nowrap;
+  border-radius: 12px; background: var(--chip-bg); color: var(--chip-fg); font-size: 12px; font-weight: 500; letter-spacing: -0.01em;
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: inset 0 0 0 1px var(--chip-edge), var(--shadow-md);
+  /* 이름표는 메뉴를 여는 단추다 */
+  border: 0; font-family: inherit; cursor: pointer;
+}
+.name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 84px; }
+.chip {
+  height: 20px; padding: 0 8px; border: 0; border-radius: 10px; cursor: pointer; font-size: 10px;
+  background: var(--chip-bg); color: var(--chip-fg); box-shadow: inset 0 0 0 1px var(--chip-edge);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+}
+/* 머리 위에 올라탄 캐릭터가 열린 메뉴를 덮지 않게 한다. 작업 영역에 넘치는 항목은 메뉴 안에서 스크롤한다 */
+.menu {
+  position: relative; z-index: 2; align-self: flex-start; margin: 0 0 8px 8px; display: flex; flex-direction: column; box-sizing: border-box; min-width: 172px; padding: 5px; overflow-y: auto;
+  background: var(--glass-solid); color: var(--fg); border-radius: var(--radius-l); font-size: 13px;
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-lg), inset 0 0 0 1px var(--glass-edge), 0 0 0 0.5px rgb(0 0 0 / 12%);
+}
+.menu button { text-align: left; border: 0; background: transparent; color: inherit; padding: 6px 10px; border-radius: 7px; font: inherit; cursor: pointer; }
+.menu button:hover { background: var(--fill-hover); }
+.menuNote { padding: 6px 10px; font-size: 12px; color: var(--fg-muted); }
+.menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 6px; }
+.toasts { position: absolute; top: 4px; left: 8px; right: 8px; display: flex; flex-direction: column; gap: 4px; pointer-events: none; z-index: 2; }
+.toast {
+  padding: 8px 12px; border-radius: var(--radius-l); font-size: 12px; line-height: 1.4;
+  background: var(--glass-solid); color: var(--fg); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-md), inset 0 0 0 1px var(--glass-edge), 0 0 0 0.5px rgb(0 0 0 / 10%);
+}
+.state { width: 7px; height: 7px; border-radius: 50%; background: var(--state-online); flex: none; box-shadow: 0 0 0 2px rgb(255 255 255 / 14%); }
+.state[data-state='away'] { background: var(--state-away); }
+.state[data-state='busy'] { background: var(--state-busy); }
+.chipBox { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px; margin-top: 4px; max-width: 160px; }
+/* 상태칩을 캐릭터 옆에 세로로 세운다 (SET-15). 폭은 Stage.tsx의 CHIP_COL_W와 같다 */
+.seat[data-side] { display: grid; align-items: center; }
+.seat[data-side='right'] { grid-template-areas: 'view chips' 'plates chips'; }
+.seat[data-side='left'] { grid-template-areas: 'chips view' 'chips plates'; }
+.seat[data-side] > .view { grid-area: view; }
+.seat[data-side] > .plates { grid-area: plates; }
+.chipCol { grid-area: chips; flex-direction: column; flex-wrap: nowrap; align-items: flex-start; width: 104px; max-width: none; margin-top: 0; }
+.seat[data-side='left'] > .chipCol { align-items: flex-end; }
+.bubble {
+  position: absolute; transform-origin: 50% 100%; max-width: 150px; padding: 5px 10px; border-radius: 12px;
+  background: var(--glass-solid); color: var(--fg); font-size: 11px; font-weight: 500; line-height: 1.3; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; pointer-events: none; z-index: 1;
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-md), inset 0 0 0 1px var(--glass-edge), 0 0 0 0.5px rgb(0 0 0 / 10%);
+}
+.update { display: flex; align-items: center; justify-content: space-between; gap: 8px; pointer-events: auto; }
+.update button { border: 0; border-radius: 7px; padding: 4px 10px; background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 600; cursor: pointer; }
+.bubbleImage { display: block; height: 40px; max-width: 120px; object-fit: contain; }

@@ -1,0 +1,2 @@
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.bar label { margin: 0; }

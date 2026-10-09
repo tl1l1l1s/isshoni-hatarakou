@@ -1,0 +1,9 @@
+[
+  { "id": "wardrobe.desk.wood", "path": null, "license": "자체 제작 (코드로 그림)", "source": "src/modules/wardrobe/desks.ts" },
+  { "id": "wardrobe.desk.white", "path": null, "license": "자체 제작 (코드로 그림)", "source": "src/modules/wardrobe/desks.ts" },
+  { "id": "wardrobe.desk.table", "path": null, "license": "자체 제작 (코드로 그림)", "source": "src/modules/wardrobe/desks.ts" },
+  { "id": "wardrobe.desk.bench2", "path": null, "license": "자체 제작 (코드로 그림)", "source": "src/modules/wardrobe/desks.ts" },
+  { "id": "wardrobe.desk.bench3", "path": null, "license": "자체 제작 (코드로 그림)", "source": "src/modules/wardrobe/desks.ts" },
+  { "id": "wardrobe.body.human", "path": null, "license": "자체 제작 (코드로 그림)", "source": "src/modules/wardrobe/bodies.ts" },
+  { "id": "wardrobe.body.animal", "path": null, "license": "자체 제작 (코드로 그림)", "source": "src/modules/wardrobe/bodies.ts" }
+]

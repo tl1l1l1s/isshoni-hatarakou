@@ -1,0 +1,16 @@
+node_modules/
+out/
+dist/
+coverage/
+*.log
+.env*
+!.env.example
+firebase-debug.log
+database-debug.log
+service-account*.json
+test-results/
+playwright-report/
+*-firebase-adminsdk-*.json
+.firebase/
+.claude/settings.local.json
+.claude/worktrees/

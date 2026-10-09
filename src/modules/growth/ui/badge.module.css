@@ -1,0 +1,21 @@
+/* 이름표(높이 24px, 글자 12px) 안에 들어가는 레벨과 그 아래 얇은 경험치 바 */
+.badge { display: inline-flex; flex-direction: column; gap: 2px; min-width: 28px; font-size: 11px; line-height: 1; }
+.num { align-self: flex-start; }
+.bar { height: 2px; border-radius: 1px; background: color-mix(in srgb, var(--plate-fg) 25%, transparent); overflow: hidden; }
+.fill { display: block; height: 100%; background: var(--state-online); }
+
+/* 레벨 티어 (GRW-07). 무채색 디자인이라 색 대신 바 굵기, 테두리, 반전, 빛, 광택으로 단계를 나눈다 */
+.badge:not([data-tier='0']) .bar { height: 3px; }
+.badge[data-tier='2'] .num { padding: 1px 3px; margin: -1px -3px; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--plate-fg); }
+.badge:is([data-tier='3'], [data-tier='4'], [data-tier='5'], [data-tier='6']) .num {
+  padding: 1px 3px; margin: -1px -3px; border-radius: 4px; background: var(--plate-fg); color: var(--gray-900); font-weight: 650;
+}
+.badge:is([data-tier='4'], [data-tier='5'], [data-tier='6']) .num { box-shadow: 0 0 6px rgb(255 255 255 / 70%); }
+.badge:is([data-tier='5'], [data-tier='6']) .num {
+  background: linear-gradient(110deg, var(--plate-fg) 40%, var(--gray-300) 50%, var(--plate-fg) 60%) 0 0 / 300% 100%;
+  animation: shine 5s linear infinite;
+}
+.badge[data-tier='6'] .fill { box-shadow: 0 0 4px var(--plate-fg); background: var(--plate-fg); }
+@keyframes shine { from { background-position: 100% 0; } 60%, to { background-position: 0 0; } }
+.badge[data-still='true'] .num { animation: none; }
+@media (prefers-reduced-motion: reduce) { .num { animation: none !important; } }

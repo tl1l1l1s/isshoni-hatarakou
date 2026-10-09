@@ -1,0 +1,41 @@
+# 출시 (10.10.3). 버전 태그를 올리면 Windows 설치 파일을 만들어 이 저장소의 GitHub Releases에 올린다.
+# 켜져 있는 앱은 이 릴리스를 6시간 안에 받아 두고 다시 시작 버튼으로 설치한다.
+name: release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+      - name: 태그와 package.json 버전이 같은지 확인
+        shell: bash
+        run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
+      - run: npm run typecheck
+      - run: npm test
+      # 저장소 변수가 비어 있으면 메모리 서버로 도는 앱이 나간다
+      - name: Firebase 주소가 있는지 확인
+        shell: bash
+        run: test -n "$VITE_FIREBASE_DATABASE_URL"
+        env:
+          VITE_FIREBASE_DATABASE_URL: ${{ vars.VITE_FIREBASE_DATABASE_URL }}
+      - run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_DATABASE_URL: ${{ vars.VITE_FIREBASE_DATABASE_URL }}
+          VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+      # electron-builder가 파일마다 따로 올리면 같은 태그의 릴리스가 둘 생긴다. 만들기만 하고 한 번에 올린다
+      - run: npx electron-builder --win --x64 --publish never
+      - name: GitHub Releases에 올리기
+        shell: bash
+        run: gh release create "$GITHUB_REF_NAME" dist/*.exe dist/*.blockmap dist/latest.yml --verify-tag --title "$GITHUB_REF_NAME" --notes ""
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

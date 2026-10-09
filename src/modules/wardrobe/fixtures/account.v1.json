@@ -1,0 +1,12 @@
+{
+  "v": 1,
+  "data": {
+    "appearance": {
+      "v": 1,
+      "body": "human",
+      "poses": { "idle": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "typing": null, "sleep": null },
+      "slots": { "desk": [{ "item": "wardrobe.desk.wood", "file": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }] }
+    },
+    "desks": { "wardrobe.desk.wood": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+  }
+}

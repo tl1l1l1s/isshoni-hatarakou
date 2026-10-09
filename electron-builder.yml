@@ -1,0 +1,35 @@
+# 아이콘은 임시 (9.1 결정 7)
+appId: app.isshoni-hatarakou.gift
+productName: Isshoni Hatarakou
+directories:
+  output: dist
+files:
+  - out/**
+  - package.json
+asarUnpack:
+  - node_modules/get-windows/**
+win:
+  # 표시 이름을 바꿔도 실행 파일 이름은 그대로 둔다. 시작 앱 등록 같은 실행 파일 경로가 바뀌지 않는다
+  executableName: isshoni-hatarakou
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  # appId에서 electron-builder가 만든 값(v0.1.1 설치 파일과 같음)을 고정한다. appId를 바꿔도 같은 앱으로 덮어 설치된다 (ADR 0024)
+  guid: 75a0e9d7-a3e3-5c7d-830a-621e2290b363
+  oneClick: true
+  perMachine: false
+  # 업데이트 주소에 공백이 들어가지 않게 한다
+  artifactName: isshoni-hatarakou-Setup-${version}.${ext}
+mac:
+  # Intel과 Apple 실리콘 Mac에서 모두 켜지는 dmg 하나
+  target:
+    - target: dmg
+      arch: [universal]
+# Windows 자동 업데이트 (NFR-19, 10.10.3). 공개 저장소의 GitHub Releases에 둔다.
+# 설치 파일 안의 app-update.yml이 이 설정을 담고 앱은 토큰 없이 받는다. 출시 절차는 README의 출시와 업데이트
+publish:
+  provider: github
+  owner: tl1l1l1s
+  repo: isshoni-hatarakou
+  releaseType: release

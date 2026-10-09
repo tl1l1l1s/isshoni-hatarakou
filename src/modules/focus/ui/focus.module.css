@@ -1,0 +1,8 @@
+.head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.big { font-size: 28px; font-variant-numeric: tabular-nums; }
+.table { width: 100%; margin-top: var(--sp-3); font-variant-numeric: tabular-nums; }
+.drawer { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3); }
+.drawer:empty { display: none; }
+/* 미니 창은 패널 바깥 여백을 줄이고 표 두 줄과 단추 하나만 둔다 */
+.mini { margin: calc(var(--sp-2) - var(--sp-5)); display: flex; flex-direction: column; gap: var(--sp-1); }
+.mini .table { margin: 0; }

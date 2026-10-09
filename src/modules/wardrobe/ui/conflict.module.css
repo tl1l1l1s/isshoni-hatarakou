@@ -1,0 +1,5 @@
+.hint { font-size: 12px; color: var(--fg-muted); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); justify-items: center; margin-top: var(--sp-2); }
+.pair figure { margin: 0; text-align: center; }
+.pair figcaption { font-size: 12px; color: var(--fg-muted); }
+.pair button { width: 100%; }

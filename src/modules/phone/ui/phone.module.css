@@ -1,0 +1,6 @@
+.state { padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-m); background: var(--fill); transition: background-color 0.2s ease; }
+.state[data-got='true'] { background: var(--success); color: #fff; }
+.qr { display: block; width: 168px; height: 168px; margin: var(--sp-3) auto var(--sp-1); border-radius: var(--radius-s); }
+.muted { color: var(--fg-muted); font-size: 12px; text-align: center; }
+.steps { font-size: 12px; }
+.row { display: flex; flex-wrap: wrap; gap: var(--sp-2); }

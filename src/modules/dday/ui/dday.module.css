@@ -1,0 +1,24 @@
+.wrap { display: flex; flex-direction: column; gap: 12px; }
+.grow { flex: 1; }
+.row { display: flex; align-items: center; gap: 6px; }
+.hint { font-size: 12px; color: var(--fg-muted); }
+
+/* 카드 색은 사용자가 고른 내용 색이고 글자색은 카드 색에 맞춰 고른다 */
+.cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.card {
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 2px; height: 104px; box-sizing: border-box;
+  padding: 10px 12px; border-radius: var(--radius-l); box-shadow: var(--shadow-sm); text-align: left; font-weight: 500;
+}
+.card:hover { filter: brightness(1.05); }
+.name { font-size: 13px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.label { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+.card small { font-size: 11px; }
+.add { height: 104px; border-radius: var(--radius-l); box-shadow: inset 0 0 0 1px var(--line-strong); }
+
+.form { display: flex; flex-direction: column; gap: 6px; max-width: 360px; }
+.form label, .form p { margin: 0; }
+.colors { display: flex; gap: 6px; }
+.swatch { position: relative; width: 20px; min-height: 20px; height: 20px; padding: 0; border-radius: 50%; }
+/* 누르는 자리를 다른 단추처럼 높이 30px로 넓히고 옆 칸과는 겹치지 않게 둔다 */
+.swatch::after { content: ''; position: absolute; inset: -5px -3px; border-radius: 50%; }
+.swatch[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--surface-strong), 0 0 0 4px var(--fg); }

@@ -1,0 +1,133 @@
+/* 디자인 토큰 (10.11 UI). 팔레트 층이 의미 층에 값을 준다. 모노톤과 유리 재질을 쓴다 */
+:root {
+  /* 팔레트: 무채색 */
+  --gray-0: #ffffff; --gray-50: #f6f6f8; --gray-100: #eeeef1; --gray-200: #e1e1e6; --gray-300: #cbcbd1;
+  --gray-500: #8e8e93; --gray-600: #6e6e73; --gray-800: #2c2c2e; --gray-900: #1d1d1f;
+
+  /* 의미 층 */
+  --bg: var(--gray-50);                       /* 패널 창 바탕 */
+  --surface: rgb(255 255 255 / 78%);          /* 카드와 묶음 */
+  --surface-strong: var(--gray-0);            /* 선택된 탭, 떠 있는 판 */
+  --fg: var(--gray-900);
+  --fg-muted: var(--gray-600);
+  --fg-subtle: var(--gray-500);
+  --line: rgb(0 0 0 / 8%);                    /* 머리카락 선 */
+  --line-strong: rgb(0 0 0 / 14%);
+  --fill: rgb(0 0 0 / 5%);                    /* 컨트롤 바탕 */
+  --fill-hover: rgb(0 0 0 / 8%);
+  --fill-press: rgb(0 0 0 / 12%);
+  --field: rgb(255 255 255 / 88%);            /* 입력칸 */
+  --accent: var(--gray-900);                  /* 강조도 무채색 */
+  --on-accent: var(--gray-0);
+  --ring: rgb(0 0 0 / 22%);
+  --danger: #d1453b;
+  --success: #2f9e5b;
+
+  /* 유리: 바탕화면 위에 뜨는 스테이지 요소와 떠 있는 판 */
+  --glass: rgb(255 255 255 / 72%);
+  --glass-edge: rgb(255 255 255 / 60%);
+  --glass-blur: blur(20px) saturate(180%);
+  /* 바탕화면 위 스테이지 요소: 뒤가 흐려지지 않으니 조금 더 불투명하게 */
+  --glass-solid: rgb(255 255 255 / 88%);
+  /* 상태칩과 이름표: 어떤 바탕화면 위에서도 읽히는 어두운 유리 */
+  --chip-bg: rgb(28 28 30 / 62%);
+  --chip-fg: #ffffff;
+  --chip-edge: rgb(255 255 255 / 16%);
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 6%), 0 1px 1px rgb(0 0 0 / 4%);
+  --shadow-md: 0 4px 14px rgb(0 0 0 / 10%), 0 1px 3px rgb(0 0 0 / 6%);
+  --shadow-lg: 0 12px 32px rgb(0 0 0 / 16%), 0 2px 6px rgb(0 0 0 / 8%);
+  --radius-s: 6px; --radius-m: 9px; --radius-l: 12px; --radius-xl: 16px;
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px;
+
+  /* 예전 이름 (모듈 CSS가 쓴다) */
+  --panel-bg: var(--surface-strong); --panel-fg: var(--fg); --hover-bg: var(--fill);
+  --plate-bg: var(--chip-bg); --plate-fg: var(--chip-fg);
+  --state-online: #34c759; --state-away: #a1a1a6; --state-busy: #ff453a;
+
+  /* 한국어 글꼴 다음에 OS별 컬러 이모지 글꼴을 둔다 (NFR-22) */
+  font-family: system-ui, 'Segoe UI Variable Text', 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR',
+    'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1c1e; --surface: rgb(44 44 46 / 72%); --surface-strong: #3a3a3c;
+    --fg: #f5f5f7; --fg-muted: #a1a1a6; --fg-subtle: #8e8e93;
+    --line: rgb(255 255 255 / 10%); --line-strong: rgb(255 255 255 / 18%);
+    --fill: rgb(255 255 255 / 8%); --fill-hover: rgb(255 255 255 / 12%); --fill-press: rgb(255 255 255 / 18%);
+    --field: rgb(255 255 255 / 7%); --accent: #f5f5f7; --on-accent: #1d1d1f; --ring: rgb(255 255 255 / 30%);
+    --glass: rgb(40 40 42 / 70%); --glass-edge: rgb(255 255 255 / 12%); --glass-solid: rgb(44 44 46 / 90%);
+    --shadow-md: 0 4px 14px rgb(0 0 0 / 35%), 0 1px 3px rgb(0 0 0 / 30%);
+    --shadow-lg: 0 12px 32px rgb(0 0 0 / 45%), 0 2px 6px rgb(0 0 0 / 30%);
+  }
+}
+
+html, body { margin: 0; background: transparent; overflow: hidden; }
+::selection { background: var(--fill-press); }
+
+/* ---- 패널 창 공통 ---- */
+/* body 규칙은 위 html, body 규칙보다 구체적이어야 하므로 :where로 감싸지 않는다 */
+body.panel {
+  background: var(--bg); color: var(--fg); overflow: auto; padding: var(--sp-5);
+  font-size: 13px; line-height: 1.5; letter-spacing: -0.005em;
+}
+/* OS 반투명 재질(Windows 11 Acrylic, macOS vibrancy)을 켠 창은 바탕을 비워 재질이 보이게 한다 */
+body.panel.material { background: color-mix(in srgb, var(--bg) 40%, transparent); }
+:where(body.panel) h3 { margin: 0 0 var(--sp-3); font-size: 17px; font-weight: 650; letter-spacing: -0.015em; }
+:where(body.panel) h4 { margin: var(--sp-4) 0 var(--sp-2); font-size: 13px; font-weight: 600; color: var(--fg-muted); }
+:where(body.panel) p { margin: var(--sp-1) 0 var(--sp-2); }
+:where(body.panel) hr { border: 0; border-top: 1px solid var(--line); margin: var(--sp-4) 0; }
+:where(body.panel) a { color: inherit; text-underline-offset: 2px; }
+:where(body.panel) ol { padding-left: var(--sp-6); }
+:where(body.panel) ol > li + li { margin-top: 6px; }
+:where(body.panel) label { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin: var(--sp-2) 0; }
+:where(body.panel) label > select { max-width: 62%; }
+:where(body.panel) fieldset {
+  margin: var(--sp-3) 0; padding: var(--sp-3) var(--sp-4); border: 0; border-radius: var(--radius-l);
+  background: var(--surface); box-shadow: var(--shadow-sm), inset 0 0 0 1px var(--line);
+}
+:where(body.panel) legend { padding: 0; font-weight: 600; float: left; width: 100%; margin-bottom: var(--sp-1); }
+:where(body.panel) legend + * { clear: both; }
+
+/* 단추: 옅은 채움, 누르면 진해진다. 선택된 단추는 무채색 강조 */
+:where(body.panel) button {
+  appearance: none; display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1);
+  min-height: 30px; padding: 0 var(--sp-3); border: 0; border-radius: var(--radius-m);
+  background: var(--fill); color: var(--fg); font: inherit; font-weight: 500; cursor: pointer;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+:where(body.panel) button:hover { background: var(--fill-hover); }
+:where(body.panel) button:active { background: var(--fill-press); }
+:where(body.panel) button:disabled { opacity: 0.4; cursor: default; background: var(--fill); }
+:where(body.panel) button[aria-pressed='true'] { background: var(--accent); color: var(--on-accent); }
+:where(body.panel) button[type='submit'] { background: var(--accent); color: var(--on-accent); }
+:where(body.panel) button[type='submit']:hover { opacity: 0.88; }
+:where(body.panel) :focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+
+/* 탭: 둥근 판 안의 분할 단추 (nav 안의 단추) */
+:where(body.panel) nav {
+  display: inline-flex; flex-wrap: wrap; gap: 2px; width: fit-content; max-width: 100%; box-sizing: border-box; padding: 3px; margin-bottom: var(--sp-3);
+  border-radius: calc(var(--radius-m) + 3px); background: var(--fill);
+}
+:where(body.panel) nav button { min-height: 26px; padding: 0 var(--sp-3); background: transparent; color: var(--fg-muted); }
+:where(body.panel) nav button:hover { background: var(--fill); color: var(--fg); }
+:where(body.panel) nav button[aria-pressed='true'] { background: var(--surface-strong); color: var(--fg); box-shadow: var(--shadow-sm); }
+
+/* 입력칸 */
+:where(body.panel) input:not([type='range']):not([type='checkbox']):not([type='radio']):not([type='color']):not([type='file']),
+:where(body.panel) select, :where(body.panel) textarea {
+  box-sizing: border-box; min-height: 30px; padding: 0 var(--sp-3); border: 0; border-radius: var(--radius-m);
+  background: var(--field); color: var(--fg); font: inherit; box-shadow: inset 0 0 0 1px var(--line-strong);
+  transition: box-shadow 0.15s ease;
+}
+:where(body.panel) textarea { padding: var(--sp-2) var(--sp-3); line-height: 1.5; }
+:where(body.panel) input::placeholder, :where(body.panel) textarea::placeholder { color: var(--fg-subtle); }
+:where(body.panel) input:focus, :where(body.panel) select:focus, :where(body.panel) textarea:focus { outline: none; box-shadow: inset 0 0 0 1px var(--fg-muted), 0 0 0 3px var(--ring); }
+:where(body.panel) input[type='checkbox'], :where(body.panel) input[type='radio'], :where(body.panel) input[type='range'] { accent-color: var(--accent); }
+:where(body.panel) input[type='color'] { width: 32px; height: 26px; padding: 0; border: 0; border-radius: var(--radius-s); background: none; cursor: pointer; }
+
+/* 스크롤바: 얇고 둥글게 */
+:where(body.panel) ::-webkit-scrollbar { width: 10px; height: 10px; }
+:where(body.panel) ::-webkit-scrollbar-thumb { border: 3px solid transparent; border-radius: 10px; background: var(--fill-press) padding-box; }
+:where(body.panel) ::-webkit-scrollbar-track { background: transparent; }

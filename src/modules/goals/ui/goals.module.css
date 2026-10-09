@@ -1,0 +1,14 @@
+.top { display: flex; justify-content: space-between; align-items: baseline; }
+.week { list-style: none; padding: 0; margin: var(--sp-3) 0; display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--sp-1); text-align: center; }
+.week li { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 0; font-size: 12px; }
+:where(body.panel) .week > li + li { margin-top: 0; }
+.week small { color: var(--fg-subtle); font-size: 10px; }
+.cell {
+  width: 32px; height: 32px; display: grid; place-items: center; border-radius: var(--radius-m);
+  background: var(--fill); font-size: 15px; font-weight: 650;
+}
+.week li[data-mark='done'] .cell { background: var(--accent); color: var(--on-accent); }
+.week li[data-mark='miss'] .cell { color: var(--fg-subtle); }
+.week li[data-mark='today'] .cell { box-shadow: inset 0 0 0 2px var(--fg); }
+.num { font-variant-numeric: tabular-nums; }
+.progress { width: 100%; accent-color: var(--accent); }
