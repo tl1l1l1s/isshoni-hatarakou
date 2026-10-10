@@ -3,7 +3,8 @@
 .seat { display: flex; flex-direction: column; align-items: center; }
 .plates { display: flex; flex-direction: column; align-items: center; }
 .view { position: relative; }
-.hit { position: absolute; cursor: pointer; }
+/* 캐릭터 몸을 펜으로 끌어도 스크롤 몸짓으로 빼앗기지 않고 pointermove가 온다 */
+.hit { position: absolute; cursor: pointer; touch-action: none; }
 .pick { outline: 2px solid var(--chip-fg); outline-offset: 3px; border-radius: var(--radius-l); box-shadow: 0 0 0 6px var(--chip-bg); }
 .rider { position: absolute; }
 /* 몸 대신 세운 그림 (CHR-07). 클릭은 그 위의 클릭 영역이 받는다 */
@@ -37,6 +38,10 @@
   text-align: left; border: 0; background: transparent; color: inherit; padding: 6px 10px; border-radius: 7px; font: inherit; cursor: pointer;
 }
 .menu button:hover { background: var(--fill-hover); }
+/* 작업 영역이 낮아 메뉴가 스크롤할 때 Mac에서도 늘 보이는 스크롤 막대 */
+.menu::-webkit-scrollbar { width: 6px; }
+.menu::-webkit-scrollbar-track { margin: 10px 0; }
+.menu::-webkit-scrollbar-thumb { border-radius: 3px; background: var(--line-strong); }
 /* 방 밖에서 쓸 수 없는 항목. 누르면 이유를 알린다 */
 .menu .off { color: var(--fg-subtle); }
 .menu .off > span { font-size: 11px; }

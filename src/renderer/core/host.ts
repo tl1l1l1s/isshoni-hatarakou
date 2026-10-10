@@ -61,7 +61,12 @@ export class ModuleHost {
   readonly loaded = new Map<string, Loaded>();
   readonly status: ModuleStatus[] = [];
 
-  constructor(private makeCtx: (m: ModuleManifest, scope: Scope) => Ctx, private log: (msg: string) => void = console.warn) {}
+  /** onScopeError는 모듈을 내릴 때 정리 함수가 던진 오류를 받는다 */
+  constructor(
+    private makeCtx: (m: ModuleManifest, scope: Scope) => Ctx,
+    private log: (msg: string) => void = console.warn,
+    private onScopeError?: (id: string, e: unknown) => void,
+  ) {}
 
   async start(ms: ModuleManifest[]): Promise<void> {
     for (const e of validateManifests(ms)) this.log(`[host] ${e}`);
@@ -71,7 +76,8 @@ export class ModuleHost {
         this.off(m.id, `필요한 모듈 ${missing}이 꺼져 있습니다`);
         continue;
       }
-      const scope = new Scope();
+      const onError = this.onScopeError;
+      const scope = new Scope(onError && ((e) => onError(m.id, e)));
       try {
         const api = await m.setup(this.makeCtx(m, scope));
         this.loaded.set(m.id, { manifest: m, api, scope });

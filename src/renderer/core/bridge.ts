@@ -11,6 +11,7 @@ export function memoryBridge(): Bridge {
   const handlers: { [K in keyof CoreInvokeMap]: (a: CoreInvokeMap[K]['args']) => CoreInvokeMap[K]['result'] } = {
     'store.read': ({ path }) => structuredClone(files.get(path) ?? null),
     'store.write': ({ path, data }) => void files.set(path, structuredClone(data)),
+    'store.quarantine': ({ path }) => void files.delete(path),
     'stage.setSize': () => undefined,
     'stage.setInteractive': () => undefined,
     'win.prepare': () => undefined,
@@ -28,6 +29,8 @@ export function memoryBridge(): Bridge {
     'clipboard.write': ({ text }) => void navigator.clipboard?.writeText(text).catch(() => undefined),
     'shell.openExternal': ({ url }) => void window.open(url, '_blank', 'noopener'),
     'net.post': () => ({ ok: true, status: 204 }),
+    // 브라우저에서는 바깥 주소를 읽지 않는다
+    'net.get': () => ({ ok: false, status: 0, json: null }),
     'log.write': ({ level, scope, message }) => console[level](`[${scope}] ${message}`),
     'shell.openLogFolder': () => undefined,
     'app.quit': () => undefined,
@@ -43,6 +46,7 @@ export function memoryBridge(): Bridge {
     'update.state': () => ({ version: null }),
     'update.install': () => undefined,
     'stage.setVisible': () => undefined,
+    'stage.coverHide': () => undefined,
     'stage.reload': () => location.reload(),
     'effects.prepare': () => ({ x: 0, y: 0, width: screen.width, height: screen.height }),
     'effects.bounds': () => ({ x: 0, y: 0, width: screen.width, height: screen.height }),

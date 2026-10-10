@@ -12,10 +12,15 @@ const CHECK_MS = 6 * 3_600_000;
 let updater: NsisUpdater | null = null;
 let ready: string | null = null;
 
-export const updateState = () => ({ version: ready });
+export const updateState = () => ({ version: ready, status: mainStatus['업데이트'] ?? '' });
 export const installUpdate = () => updater?.quitAndInstall();
 
-export function startUpdater(onReady: (version: string) => void): void {
+/** onStatus는 업데이트 상태 줄이 바뀔 때마다 받는다. 렌더러가 이 기기의 버전 기록에 남긴다 (OPS-7) */
+export function startUpdater(onReady: (version: string) => void, onStatus: (status: string) => void): void {
+  const status = (s: string) => {
+    mainStatus['업데이트'] = s;
+    onStatus(s);
+  };
   if (osName !== 'win' || !app.isPackaged) {
     mainStatus['업데이트'] = '꺼짐';
     return;
@@ -26,13 +31,14 @@ export function startUpdater(onReady: (version: string) => void): void {
   u.autoInstallOnAppQuit = false;
   mainStatus['업데이트'] = '확인 전';
   // error 이벤트에 듣는 쪽이 없으면 예외가 된다. 내용은 logger가 이미 적는다
-  u.on('error', (e: Error) => (mainStatus['업데이트'] = `오류 ${e.message}`));
+  u.on('error', (e: Error) => status(`오류 ${e.message.split('\n')[0]?.slice(0, 200)}`));
   u.on('update-downloaded', ({ version }) => {
     ready = version;
-    mainStatus['업데이트'] = `${version} 받음`;
+    status(`${version} 받음`);
     onReady(version);
   });
-  const check = () => void u.checkForUpdates().catch(() => undefined);
+  // 받기 실패(체크섬, 끊긴 연결)는 error 이벤트로 이미 남는다. 돌려준 downloadPromise를 받아 두지 않으면 처리하지 않은 거절이 되어 오류 보고 자리를 차지한다
+  const check = () => void u.checkForUpdates().then((r) => r?.downloadPromise?.catch(() => undefined)).catch(() => undefined);
   check();
   setInterval(check, CHECK_MS);
 }

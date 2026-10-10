@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import type { Bridge } from '../../preload/api';
-import { JsonFile, changedOnly, readLocal, readSettings } from './persist';
+import { JsonFile, changedOnly, emptySettings, isSettingsFile, readLocal, readSettings } from './persist';
 import { activeTunable } from './tunables';
 
 describe('JsonFile', () => {
@@ -14,6 +14,20 @@ describe('JsonFile', () => {
     expect(writes).toEqual([]);
     await new Promise((r) => setTimeout(r, 0));
     expect(writes).toEqual([{ path: 'settings.json', data: { n: 2 } }]);
+  });
+
+  it('모양이 맞지 않는 파일은 .bak으로 옮기고 처음 값, 맞으면 그대로. readOnly는 쓰지 않는다 (RES-5, OPS-10)', async () => {
+    const calls: Array<[string, unknown]> = [];
+    const files: Record<string, unknown> = { 'settings.json': {}, 'accounts/u/settings.json': { schemaVersion: 1, modules: null }, 'device/x.json': { schemaVersion: 1, modules: { core: { v: 1, values: {} } } } };
+    const bridge = { invoke: async (ch: string, args: { path: string }) => (calls.push([ch, args.path]), ch === 'store.read' ? files[args.path] : undefined) } as unknown as Bridge;
+    expect((await JsonFile.load(bridge, 'settings.json', emptySettings, isSettingsFile)).value).toEqual(emptySettings());
+    expect((await JsonFile.load(bridge, 'accounts/u/settings.json', emptySettings, isSettingsFile)).value).toEqual(emptySettings());
+    expect((await JsonFile.load(bridge, 'device/x.json', emptySettings, isSettingsFile)).value).toEqual(files['device/x.json']);
+    expect(calls.filter(([ch]) => ch === 'store.quarantine').map(([, p]) => p)).toEqual(['settings.json', 'accounts/u/settings.json']);
+    const ro = new JsonFile(bridge, 'device/modules/sound.json', { v: 2, data: 1 }, true);
+    ro.set({ v: 2, data: 2 });
+    await ro.flush();
+    expect(calls.some(([ch]) => ch === 'store.write')).toBe(false);
   });
 });
 
@@ -36,9 +50,11 @@ describe('local', () => {
   it('v1을 v2로 바꾼다', () => {
     expect(readLocal(decl, { v: 1, data: 7 })).toEqual({ data: { n: 7 }, error: null });
   });
-  it('앱보다 새 형식이나 깨진 값은 처음 상태와 이유', () => {
+  it('앱보다 새 형식이나 깨진 값은 처음 상태와 이유. 새 형식만 tooNew라 호출한 쪽이 파일을 덮지 않는다', () => {
+    expect(readLocal(decl, { v: 3, data: {} })).toMatchObject({ data: { n: 0 }, tooNew: true });
     expect(readLocal(decl, { v: 3, data: {} }).error).toMatch(/새 형식/);
-    expect(readLocal(decl, { v: 2, data: { n: 'x' } }).data).toEqual({ n: 0 });
+    expect(readLocal(decl, { v: 2, data: { n: 'x' } })).toMatchObject({ data: { n: 0 }, error: expect.any(String) });
+    expect(readLocal(decl, { v: 2, data: { n: 'x' } }).tooNew).toBeUndefined();
   });
 });
 

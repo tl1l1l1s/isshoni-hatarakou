@@ -1,8 +1,8 @@
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { createStore, readJson, safeRel, writeJsonAtomic } from './store';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createStore, readJson, safeRel, storeDelay, writeJsonAtomic } from './store';
 
 let root = '';
 afterEach(() => rmSync(root, { recursive: true, force: true }));
@@ -40,10 +40,12 @@ describe('readJson, writeJsonAtomic', () => {
 });
 
 describe('createStore', () => {
+  afterEach(() => vi.useRealTimers());
+
   it('파일마다 마지막 값만 flush 때 쓰고 그 전에도 읽기는 새 값을 준다', () => {
     tmp();
     const errors: unknown[] = [];
-    const s = createStore(root, (e) => errors.push(e), 60_000);
+    const s = createStore(root, (e) => errors.push(e), () => 60_000);
     s.write('settings.json', { v: 1 });
     s.write('settings.json', { v: 2 });
     expect(readdirSync(root)).toEqual([]);
@@ -52,5 +54,30 @@ describe('createStore', () => {
     expect(readJson(root, 'settings.json')).toEqual({ v: 2 });
     expect(() => s.write('../x.json', 1)).toThrow();
     expect(errors).toEqual([]);
+  });
+
+  it('설정은 0.2초 안에 쓰고 1초마다 바뀌는 집중 시간은 15초 모아 쓴다', () => {
+    tmp();
+    vi.useFakeTimers();
+    const s = createStore(root, () => {});
+    s.write('settings.json', { theme: 'dark' });
+    s.write('accounts/u1/modules/focus.json', { sec: 1 });
+    vi.advanceTimersByTime(200);
+    expect(readJson(root, 'settings.json')).toEqual({ theme: 'dark' });
+    expect(readJson(root, 'accounts/u1/modules/focus.json')).toBeNull();
+    s.write('accounts/u1/modules/focus.json', { sec: 2 });
+    vi.advanceTimersByTime(14_800);
+    expect(readJson(root, 'accounts/u1/modules/focus.json')).toEqual({ sec: 2 });
+    expect(storeDelay('accounts/u1/settings.json')).toBe(200);
+  });
+
+  it('모양이 맞지 않는 파일은 .bak으로 옮기고 다음 읽기는 null', () => {
+    tmp();
+    writeFileSync(join(root, 'settings.json'), '{}');
+    const s = createStore(root, () => {});
+    s.quarantine('settings.json');
+    expect(s.read('settings.json')).toBeNull();
+    expect(readFileSync(join(root, 'settings.json.bak'), 'utf8')).toBe('{}');
+    expect(() => s.quarantine('device/none.json')).not.toThrow();
   });
 });

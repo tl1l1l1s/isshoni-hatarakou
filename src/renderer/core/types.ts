@@ -357,8 +357,13 @@ export interface Ctx {
     /** http와 https 주소만 기본 브라우저로 연다. 다른 형식은 예외 (NFR-18) */
     openExternal(url: string): Promise<void>;
   };
-  /** 바깥 서비스로 보내기. 메인이 허락한 호스트의 웹훅 주소에만 JSON을 POST한다 (지금은 디스코드) */
-  net: { post(url: string, json: unknown): Promise<{ ok: boolean; status: number }> };
+  /** 바깥 서비스. post는 메인이 허락한 호스트의 웹훅 주소에만 JSON을 보낸다 (지금은 디스코드).
+   *  get은 메인이 허락한 주소에서만 JSON을 읽는다. 지금은 유튜브 oEmbed(https://www.youtube.com/oembed?url=<영상 주소>&format=json)뿐이다.
+   *  ok가 아니면(없는 영상, 비공개 영상) json은 null이고 허락하지 않은 주소, 10초 넘김, 64KB 넘김, 끊긴 연결은 예외 */
+  net: {
+    post(url: string, json: unknown): Promise<{ ok: boolean; status: number }>;
+    get(url: string): Promise<{ ok: boolean; status: number; json: unknown }>;
+  };
   /** 다른 사용자 정보 */
   users: {
     /** 공개 프로필 users/{uid}/public. 없으면 null */

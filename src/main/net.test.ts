@@ -1,7 +1,21 @@
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('electron', () => ({ net: { fetch: vi.fn() } }));
-const { allowedPost } = await import('./net');
+const { allowedGet, allowedPost } = await import('./net');
+
+describe('allowedGet', () => {
+  it('유튜브 oEmbed JSON 주소만 받는다', () => {
+    const video = encodeURIComponent('https://youtu.be/dQw4w9WgXcQ');
+    expect(allowedGet(`https://www.youtube.com/oembed?url=${video}&format=json`)).toBe(true);
+    expect(allowedGet(`http://www.youtube.com/oembed?url=${video}&format=json`)).toBe(false);
+    expect(allowedGet(`https://www.youtube.com/oembed?url=${video}`)).toBe(false);
+    expect(allowedGet('https://www.youtube.com/oembed?format=json')).toBe(false);
+    expect(allowedGet(`https://www.youtube.com/watch?v=dQw4w9WgXcQ&format=json&url=x`)).toBe(false);
+    expect(allowedGet(`https://youtube.com.evil.example/oembed?url=${video}&format=json`)).toBe(false);
+    expect(allowedGet(`https://www.youtube.com:8443/oembed?url=${video}&format=json`)).toBe(false);
+    expect(allowedGet(`https://user@www.youtube.com/oembed?url=${video}&format=json`)).toBe(false);
+  });
+});
 
 describe('allowedPost', () => {
   it('디스코드 웹훅 주소만 받는다', () => {

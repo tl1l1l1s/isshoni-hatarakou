@@ -7,7 +7,7 @@ import type { CharacterView, RenderBackend } from '@render/port';
 import { emptyAppearance } from '@shared/schemas';
 import type { Bridge } from '../../preload/api';
 import { coreSettings } from './coreSettings';
-import { JsonFile, emptySettings, type SettingsFile } from './persist';
+import { JsonFile, emptySettings, isSettingsFile, type SettingsFile } from './persist';
 import { CoreRuntime } from './runtime';
 import { defineModule, type ModuleManifest } from './types';
 import type { OpenWindow } from './ui/windows';
@@ -70,7 +70,9 @@ async function boot(manifests: ModuleManifest[], opts: { hub?: MemoryHub; device
     settings,
     new JsonFile(bridge, `accounts/${uid}/settings.json`, emptySettings()),
   );
-  await core.start([defineModule({ id: 'core', settings: coreSettings, setup: () => undefined }), ...manifests]);
+  const all = [defineModule({ id: 'core', settings: coreSettings, setup: () => undefined }), ...manifests];
+  await core.preloadLocal(all);
+  await core.start(all);
   return { core, invoked, listeners, hub, settings };
 }
 
@@ -340,4 +342,79 @@ it('외형 파일이 JSON이 아니면 외형 없음(null)', async () => {
   const { core } = await boot([]);
   const hash = await core.deps.server.files.put(new TextEncoder().encode('not json'));
   expect(await core.appearanceOf(hash)).toBeNull();
+});
+
+it('설정 파일이 JSON이지만 모양이 다르면({}, modules null) .bak으로 옮기고 처음 값으로 켜서 모든 모듈이 켜진다 (RES-5)', async () => {
+  const files: Record<string, unknown> = { 'settings.json': {} };
+  const invoked: Array<[string, unknown]> = [];
+  const bridge = {
+    version: 0,
+    invoke: async (ch: string, args: { path?: string }) => (invoked.push([ch, args]), ch === 'store.read' ? (files[args.path ?? ''] ?? null) : undefined),
+    on: () => () => {},
+    invokeModule: async () => null,
+  } as unknown as Bridge;
+  const server = createMemoryServer(new MemoryHub());
+  const uid = await server.identity.signIn('dev-alice');
+  files[`accounts/${uid}/settings.json`] = { schemaVersion: 1, modules: null };
+  const core = new CoreRuntime(
+    { bridge, server, backend: {} as RenderBackend, uid, deviceId: 'pc', appVersion: 'test', selfAppKey: null, profile: null },
+    await JsonFile.load(bridge, 'settings.json', emptySettings, isSettingsFile),
+    await JsonFile.load(bridge, `accounts/${uid}/settings.json`, emptySettings, isSettingsFile),
+  );
+  const demo = defineModule({ id: 'demo', settings: { version: 1, scope: 'account', schema: z.object({ n: z.number().default(1) }) }, setup: (ctx) => void ctx.settings.get() });
+  await core.start([defineModule({ id: 'core', settings: coreSettings, setup: () => undefined }), demo]);
+  expect(core.host.status.every((s) => s.on)).toBe(true);
+  expect(invoked.filter(([ch]) => ch === 'store.quarantine').map(([, a]) => (a as { path: string }).path)).toEqual(['settings.json', `accounts/${uid}/settings.json`]);
+});
+
+it('잠근 채 절전했다 깨어나도 잠금을 풀 때까지 자리비움이고 잠그지 않은 절전은 깨어나면 돌아온다', async () => {
+  const { core, listeners } = await boot([]);
+  const life = listeners.get('lifecycle')!;
+  life({ type: 'lock' });
+  life({ type: 'suspend' });
+  life({ type: 'resume' });
+  expect(core.self.get().state).toBe('away');
+  life({ type: 'unlock' });
+  expect(core.self.get().state).toBe('online');
+  life({ type: 'suspend' });
+  expect(core.self.get().state).toBe('away');
+  life({ type: 'resume' });
+  expect(core.self.get().state).toBe('online');
+});
+
+it('로컬 파일: 새 버전 앱이 쓴 파일은 덮지 않고 알리며 검사 오류는 짧게 알리고 자세한 이유는 로그에만 남긴다 (OPS-10, RES-6)', async () => {
+  const local = { version: 1, schema: z.object({ n: z.number() }), initial: () => ({ n: 0 }) };
+  const demo = defineModule({ id: 'demo', title: '데모', local: { device: local }, setup: () => undefined });
+  const newer = await boot([demo], { answers: { 'store.read': { v: 2, data: { n: 5, more: 1 } } } });
+  newer.core.ctxs.get('demo')!.ctx.local.update<{ n: number }>('device', () => ({ n: 7 }));
+  await newer.core.flush();
+  expect(newer.invoked.filter(([ch, a]) => ch === 'store.write' && (a as { path: string }).path.startsWith('device/modules/demo'))).toEqual([]);
+  expect(newer.core.toasts.get().map((t) => t.text)).toEqual(['데모 데이터는 새 버전 앱이 저장한 거라 읽지 못했어요. 업데이트할 때까지 바꾼 내용은 저장하지 않아요.']);
+
+  const broken = await boot([demo], { answers: { 'store.read': { v: 1, data: { n: 'x' } } } });
+  expect(broken.core.toasts.get().map((t) => t.text)).toEqual(['데모 데이터를 읽지 못해 처음 상태로 시작해요.']);
+  const logs = broken.invoked.filter(([ch]) => ch === 'log.write').map(([, a]) => (a as { message: string }).message);
+  expect(logs.some((m) => m.startsWith('local device:') && m.includes('invalid_type'))).toBe(true);
+  expect(broken.invoked).toContainEqual(['store.write', { path: 'device/modules/demo.bak.json', data: { v: 1, data: { n: 'x' } } }]);
+});
+
+it('모듈 이벤트 처리 오류와 모듈을 내릴 때의 정리 오류는 모듈 이름과 함께 메인에 보고한다 (OPS-4)', async () => {
+  const demo = defineModule({
+    id: 'demo',
+    setup: (ctx) =>
+      void ctx.bus.on('demo.x' as never, () => {
+        throw new Error('처리 실패');
+      }),
+  });
+  const { core, invoked } = await boot([demo]);
+  core.bus.emit('demo.x', {});
+  core.host.loaded.get('demo')!.scope.add(() => {
+    throw new Error('정리 실패');
+  });
+  core.host.stop('demo');
+  const reports = invoked.filter(([ch]) => ch === 'crash.report').map(([, a]) => a as { type: string; message: string });
+  expect(reports).toEqual([
+    expect.objectContaining({ type: 'renderer.event', message: 'demo.x: 처리 실패' }),
+    expect.objectContaining({ type: 'renderer.dispose', message: 'demo: 정리 실패' }),
+  ]);
 });

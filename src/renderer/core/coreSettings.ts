@@ -26,6 +26,8 @@ export const coreSettings = {
     pixel: z.boolean().default(false),
     /** 상태칩 자리 (SET-15) */
     chips: z.enum(['below', 'right', 'left']).default('below'),
+    /** 그림 앱이 아닌 앱이 캐릭터 모니터를 꽉 채우는 동안 캐릭터를 숨긴다 (NFR-04) */
+    coverHide: z.boolean().default(true),
   }),
   fields: {
     autoStart: { label: '컴퓨터 켤 때 자동 실행' },
@@ -36,6 +38,7 @@ export const coreSettings = {
     theme: { label: '테마', options: [{ value: 'system', label: '시스템 설정 따르기' }, { value: 'light', label: '밝게' }, { value: 'dark', label: '어둡게' }] },
     pixel: { label: '도트 그림으로 보기' },
     chips: { label: '상태칩 자리', options: [{ value: 'below', label: '이름표 아래' }, { value: 'right', label: '캐릭터 오른쪽' }, { value: 'left', label: '캐릭터 왼쪽' }] },
+    coverHide: { label: '전체 화면 앱 위에서 숨기기' },
   },
 } satisfies SettingsDecl;
 

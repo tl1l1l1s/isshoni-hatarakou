@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { anchorOf, pickDisplay, placeAt, remember } from './display';
+import { anchorOf, pickDisplay, placeAt, placeKey, remember } from './display';
 
 describe('placeAt', () => {
   const area = { x: 100, y: 0, width: 1000, height: 800 };
@@ -43,5 +43,20 @@ describe('pickDisplay', () => {
   });
   it('고른 모니터가 빠지면 주 모니터', () => {
     expect(pickDisplay([main], main, remember(side))).toBe(main);
+  });
+});
+
+describe('placeKey', () => {
+  it('고른 모니터를 다른 id로 다시 꽂아도 끌어 둔 자리를 고를 때의 id로 찾는다', () => {
+    const chosen = remember(side);
+    expect(placeKey(side, chosen)).toBe('2');
+    const again = d(22, 1920, 2560, 1440);
+    const now = pickDisplay([main, again], main, chosen);
+    expect(now).toBe(again);
+    expect(placeKey(now, chosen)).toBe('2');
+  });
+  it('고른 모니터가 없거나 다른 모니터면 그 모니터 id', () => {
+    expect(placeKey(main, null)).toBe('1');
+    expect(placeKey(main, remember(side))).toBe('1');
   });
 });

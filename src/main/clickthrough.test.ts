@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { shouldIgnore } from './clickthrough';
+import { CURSOR_POLL_MS, CURSOR_POLL_NEAR_MS } from '@shared/constants';
+import { pollDelay, shouldIgnore } from './clickthrough';
 
 const win = { x: 100, y: 500, width: 300, height: 200 };
 const rects = [{ x: 50, y: 50, width: 100, height: 100 }];
@@ -22,5 +23,14 @@ describe('shouldIgnore', () => {
   });
   it('영역이 없으면 통과', () => {
     expect(shouldIgnore({ x: 150, y: 550 }, win, [], 40)).toBe(true);
+  });
+});
+
+describe('pollDelay', () => {
+  it('스테이지 안이나 40px 안이면 자주 보고 멀면 드물게 본다', () => {
+    expect(pollDelay({ x: 250, y: 600 }, win)).toBe(CURSOR_POLL_NEAR_MS);
+    expect(pollDelay({ x: 70, y: 480 }, win)).toBe(CURSOR_POLL_NEAR_MS);
+    expect(pollDelay({ x: 0, y: 0 }, win)).toBe(CURSOR_POLL_MS);
+    expect(pollDelay({ x: 250, y: 760 }, win)).toBe(CURSOR_POLL_MS);
   });
 });

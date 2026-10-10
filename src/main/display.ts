@@ -31,14 +31,23 @@ export function anchorOf(area: Rect, b: Rect): Anchor {
   return { x: (b.x + b.width / 2 - area.x) / area.width, y: (b.y + b.height - area.y) / area.height };
 }
 
-/** 저장한 id, 해상도와 위치와 회전과 배율 지문, 같은 해상도, 주 모니터 순서로 찾는다 */
-export function pickDisplay<T extends DisplayLike>(all: T[], primary: T, saved: SavedDisplay | null): T {
-  if (!saved) return primary;
+/** 저장한 모니터를 id, 해상도와 위치와 회전과 배율 지문, 같은 해상도 순서로 찾는다 */
+function findSaved<T extends DisplayLike>(all: T[], saved: SavedDisplay | null): T | undefined {
+  if (!saved) return undefined;
   const info = all.map((d) => [d, remember(d)] as const);
   return (
     info.find(([, r]) => r.id === saved.id)?.[0] ??
     info.find(([, r]) => r.fp === saved.fp)?.[0] ??
-    info.find(([, r]) => r.w === saved.w && r.h === saved.h)?.[0] ??
-    primary
+    info.find(([, r]) => r.w === saved.w && r.h === saved.h)?.[0]
   );
+}
+
+/** 저장한 모니터, 없으면 주 모니터 */
+export function pickDisplay<T extends DisplayLike>(all: T[], primary: T, saved: SavedDisplay | null): T {
+  return findSaved(all, saved) ?? primary;
+}
+
+/** 끌어 둔 자리를 기억하는 키. 고른 모니터는 OS가 id를 바꿔도(다시 꽂기, 포트 바꾸기) 고를 때의 id로 찾는다 */
+export function placeKey(d: DisplayLike, saved: SavedDisplay | null): string {
+  return String(saved && findSaved([d], saved) ? saved.id : d.id);
 }

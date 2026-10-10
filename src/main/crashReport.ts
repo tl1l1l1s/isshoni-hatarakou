@@ -11,6 +11,8 @@ export interface CrashInput {
   minutes: number;
   /** 로그 파일의 마지막 줄들 (이미 가린 것) */
   log: string[];
+  /** 한도 때문에 보내지 않았던 보고 수 한 줄. 없으면 빈 글 */
+  skipped?: string;
 }
 
 export const HEAD = '[자동 오류 보고]';
@@ -36,7 +38,7 @@ export function sanitizer(home: string, userData: string): (text: string) => str
   return (t) => t.replace(data, '<data>').replace(homeRe, '~').replace(/(?:[A-Za-z]:[\\/]+Users|\/Users)[\\/]+[^\\/\s'"]+/g, '~');
 }
 
-const head = (r: CrashInput) => [`${HEAD} ${r.type}: ${firstLine(r.message)}`, `v${r.version}, ${r.os}, 켠 지 ${r.minutes}분`];
+const head = (r: CrashInput) => [`${HEAD} ${r.type}: ${firstLine(r.message)}`, `v${r.version}, ${r.os}, 켠 지 ${r.minutes}분`, ...(r.skipped ? [r.skipped] : [])];
 
 /** 서버 기록에 남길 본문. 로그 줄은 모두 넣고 자르기는 기록하는 쪽이 한다 */
 export function recordText(r: CrashInput): string {

@@ -21,6 +21,7 @@ import { WindowClient, type OpenWindow } from './ui/windows';
 import { RoomSession } from './room/session';
 import { activeTunable } from './tunables';
 import { prepareImage } from './files/image';
+import { reportError } from './bridge';
 
 type LifecycleEvent = Parameters<Parameters<Ctx['lifecycle']['on']>[0]>[0];
 
@@ -59,7 +60,8 @@ const TOAST_MOVE_MS = 1_000;
 
 /** 렌더러 코어 서비스 묶음과 모듈별 ctx 생성 (10.5 코어가 모듈에 주는 것) */
 export class CoreRuntime {
-  readonly bus = new Bus();
+  /** 모듈 이벤트 처리 오류는 메인 로그와 자동 오류 보고로 보낸다 (NFR-21) */
+  readonly bus = new Bus((n, e) => reportError(this.deps.bridge, 'renderer.event', e, `${n}: `));
   readonly registry = new Registry();
   readonly host: ModuleHost;
   readonly windows: WindowClient;
@@ -128,7 +130,11 @@ export class CoreRuntime {
       if (!visible) this.setDisplayMode('hidden', false);
       else if (this.displayMode.get() === 'hidden') this.setDisplayMode(this.savedMode(), false);
     });
-    this.host = new ModuleHost((m, scope) => this.makeCtx(m, scope), (msg) => this.log('warn', 'host', msg));
+    this.host = new ModuleHost(
+      (m, scope) => this.makeCtx(m, scope),
+      (msg) => this.log('warn', 'host', msg),
+      (id, e) => reportError(deps.bridge, 'renderer.dispose', e, `${id}: `),
+    );
     this.session = new RoomSession({
       server: deps.server,
       deviceId: deps.deviceId,
@@ -551,12 +557,13 @@ export class CoreRuntime {
   private onLifecycle(e: LifecycleEvent) {
     if (e.type === 'shutdown') return void this.quit();
     this.lifecycleSubs.forEach((fn) => fn(e));
+    // 잠금과 절전은 출처를 나눈다. 잠근 채 절전했다 깨어나도 잠금을 풀 때까지 자리비움이다
     if (e.type === 'suspend' || e.type === 'lock') {
-      this.setStatus('core.sleep', 'away', 100);
+      this.setStatus(e.type === 'lock' ? 'core.lock' : 'core.sleep', 'away', 100);
       if (e.type === 'suspend') this.session.pause();
       void this.flush();
     } else if (e.type === 'resume' || e.type === 'unlock') {
-      this.setStatus('core.sleep', null, 100);
+      this.setStatus(e.type === 'unlock' ? 'core.lock' : 'core.sleep', null, 100);
       if (e.type === 'resume') void this.session.resume().then((r) => this.toastFailed(r));
     }
   }
@@ -806,7 +813,10 @@ export class CoreRuntime {
           );
         },
       },
-      net: { post: (url, json) => this.deps.bridge.invoke('net.post', { url, json: JSON.stringify(json) }) },
+      net: {
+        post: (url, json) => this.deps.bridge.invoke('net.post', { url, json: JSON.stringify(json) }),
+        get: (url) => this.deps.bridge.invoke('net.get', { url }),
+      },
       shell: {
         copy: (text) => this.deps.bridge.invoke('clipboard.write', { text }),
         openExternal: async (url) => {
@@ -1026,10 +1036,15 @@ export class CoreRuntime {
       if (!decl) continue;
       // setup 전에 읽어 둔 값이 있어야 해서 preload에서 채운다
       const pre = this.preloaded.get(`${id}:${s}`);
-      const { data, error } = readLocal(decl, pre);
-      if (error) this.toast(`${m.title ?? id} 데이터를 읽지 못해 처음 상태로 시작해요. ${error}`);
-      const file = new JsonFile<{ v: number; data: unknown }>(this.deps.bridge, localPath(s), { v: decl.version, data });
-      if (error && pre != null) void this.deps.bridge.invoke('store.write', { path: localPath(s).replace(/\.json$/, '.bak.json'), data: pre });
+      const { data, error, tooNew } = readLocal(decl, pre);
+      // 자세한 이유(검사 오류)는 로그에만 남긴다. 새 버전 앱이 쓴 파일은 덮지 않고 이번 실행에서 바꾼 것은 저장하지 않는다
+      if (error) {
+        const title = m.title ?? id;
+        this.toast(tooNew ? `${title} 데이터는 새 버전 앱이 저장한 거라 읽지 못했어요. 업데이트할 때까지 바꾼 내용은 저장하지 않아요.` : `${title} 데이터를 읽지 못해 처음 상태로 시작해요.`);
+        this.log('warn', id, `local ${s}: ${error}`);
+      }
+      const file = new JsonFile<{ v: number; data: unknown }>(this.deps.bridge, localPath(s), { v: decl.version, data }, tooNew);
+      if (error && !tooNew && pre != null) void this.deps.bridge.invoke('store.write', { path: localPath(s).replace(/\.json$/, '.bak.json'), data: pre });
       local[s] = file;
       this.localFiles.push(file as JsonFile<unknown>);
     }

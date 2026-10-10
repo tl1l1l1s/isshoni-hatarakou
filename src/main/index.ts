@@ -2,6 +2,7 @@
 import { app, globalShortcut, Menu, powerMonitor, screen, session } from 'electron';
 import log from 'electron-log/main';
 import { existsSync } from 'node:fs';
+import { release } from 'node:os';
 import { join } from 'node:path';
 import { APP_ID } from '@shared/constants';
 import type { CoreEventMap } from '../preload/api';
@@ -15,9 +16,11 @@ import { registerScheme, serveApp } from './protocol';
 import { createStore } from './store';
 import { createTray } from './tray';
 import { startUpdater } from './updater';
-import { createStage, dragging, getRects, getStage, place, send, setVisible, toggle, useStore } from './windows/manager';
+import { checkCover, createStage, dragging, getRects, getStage, place, send, setVisible, toggle, useStore } from './windows/manager';
 
 registerScheme();
+// 앱 글은 한국어뿐이다. OS 언어가 영어여도 날짜 칸이 연 월 일 순서로 보이고 숫자와 날짜 형식이 한국어를 따른다 (ADR 0030)
+app.commandLine.appendSwitch('lang', 'ko');
 
 // 데이터 폴더를 지금 이름에 고정한다. productName을 바꿔도 설정, 저장 파일, 로그인이 그대로 남는다 (ADR 0024).
 // 시험은 --user-data-dir로 따로 준다. 단일 실행 잠금도 이 폴더에 생기므로 잠금보다 먼저 한다
@@ -55,6 +58,7 @@ function boot(): void {
     setTimeout(() => app.quit(), 1500);
   });
   app.on('will-quit', () => {
+    log.info('끝냄');
     store.flush();
     globalShortcut.unregisterAll();
   });
@@ -78,6 +82,8 @@ function boot(): void {
   });
 
   void app.whenReady().then(() => {
+    // 로그는 상태가 바뀔 때만 한 줄씩 남겨 비정상 종료 보고에 붙는 로그 끝이 비지 않게 한다 (OPS-1)
+    log.info(`켬 v${app.getVersion()} ${process.platform} ${release()}`);
     // 앱이 쓰는 웹 권한이 없다. 알림과 클립보드는 메인이 직접 한다
     session.defaultSession.setPermissionRequestHandler((_w, _p, cb) => cb(false));
     if (osName === 'mac') {
@@ -91,9 +97,9 @@ function boot(): void {
     crashReady();
     createStage();
     createTray();
-    startActivity(platform, (s) => send('activity', s));
+    startActivity(platform, (s) => send('activity', s), checkCover);
     startClickThrough(getStage, getRects, platform.cursorPoint, dragging);
-    startUpdater((version) => send('update.ready', { version }));
+    startUpdater((version) => send('update.ready', { version }), (status) => send('update.status', { status }));
     // 렌더러가 멈춰도 동작하도록 메인이 처리한다. Mac의 Cmd+Option+H는 다른 앱 가리기라서 두 OS 모두 Control을 쓴다
     if (!globalShortcut.register('Control+Alt+H', toggle)) {
       log.warn('hide shortcut register failed');

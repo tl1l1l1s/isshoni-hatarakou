@@ -29,12 +29,17 @@ export function initLog(): void {
 /** 진단 요약에 넣을 메인 쪽 상태. 이름과 값 (NFR-21) */
 export const mainStatus: Record<string, string> = {};
 
+/** 프로세스마다 메모리(working set)와 켠 뒤 쓴 CPU 시간 한 줄씩 (NFR-10) */
+export const metricLines = () =>
+  app.getAppMetrics().map((m) => `프로세스 ${m.type} 메모리 ${Math.round(m.memory.workingSetSize / 1024)}MB CPU ${Math.round(m.cpu.cumulativeCPUUsage ?? 0)}초`);
+
 /** logs/diagnose.txt를 새로 쓴다. 부팅 때와 진단 기록 폴더를 열 때 렌더러가 부른다 (NFR-21) */
 export function writeDiagnose(lines: string[]): void {
   const head = [
     `진단 요약 ${new Date().toISOString()}`,
     `Isshoni Hatarakou ${app.getVersion()}${app.isPackaged ? '' : ' 개발판'}, Electron ${process.versions.electron}, ${version()} ${release()} ${process.arch}`,
     ...Object.entries(mainStatus).map(([k, v]) => `${k}: ${v}`),
+    ...metricLines(),
   ];
   mkdirSync(logDir(), { recursive: true });
   writeFileSync(join(logDir(), 'diagnose.txt'), `${[...head, ...lines].join('\n')}\n`);
