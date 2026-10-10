@@ -89,6 +89,9 @@ export interface CoreEventMap {
   'pick.cancel': Record<string, never>;
   /** 캐릭터가 있는 모니터의 작업 영역 크기가 바뀌었다 (모니터 바꾸기, 배율과 해상도 변경) */
   'stage.workArea': { width: number; height: number };
+  /** keepAlive 패널을 닫아 숨겼거나(visible false) 다시 띄웠다. name은 window.open의 창 이름.
+   *  about:blank 패널은 스테이지의 backgroundThrottling: false를 물려받아 숨겨도 문서가 visible로 남으므로 코어가 이 이벤트로 문서에 반영한다 */
+  'win.visibility': { name: string; visible: boolean };
 }
 
 export type Dispose = () => void;

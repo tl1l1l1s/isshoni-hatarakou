@@ -3,6 +3,7 @@ import { dayIndex, dayKey, nextQuota } from './time';
 import { isRoomCode, normalizeCode, randomCode } from './codes';
 import { winAppKey, macAppKey } from './appkey';
 import { CODE_ALPHABET } from './constants';
+import { lruGet, lruTrim } from './lru';
 import { Appearance, emptyAppearance, readState } from './schemas';
 
 describe('dayKey', () => {
@@ -52,6 +53,18 @@ describe('appkey', () => {
   it('실행 파일 이름만 소문자로 쓴다', () => {
     expect(winAppKey('C:\\Program Files\\CELSYS\\CLIPStudioPaint.exe')).toBe('win:clipstudiopaint.exe');
     expect(macAppKey('com.Adobe.Photoshop')).toBe('mac:com.adobe.photoshop');
+  });
+});
+
+describe('lru', () => {
+  it('가져오면 뒤로 옮기고 넘치면 앞에서부터 뺀다', () => {
+    const m = new Map([['a', 1], ['b', 2], ['c', 3]]);
+    expect(lruGet(m, 'a')).toBe(1);
+    expect(lruGet(m, 'x')).toBeUndefined();
+    const gone: string[] = [];
+    lruTrim(m, 2, (k) => gone.push(k));
+    expect(gone).toEqual(['b']);
+    expect([...m.keys()]).toEqual(['c', 'a']);
   });
 });
 

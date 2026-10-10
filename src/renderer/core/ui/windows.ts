@@ -22,7 +22,12 @@ export class WindowClient {
   /** 여는 중인 창 id. 빠르게 두 번 열면 같은 창에 keydown이 두 번 붙는다 */
   private opening = new Set<string>();
 
-  constructor(private bridge: Bridge, private onKey: (w: OpenWindow, e: KeyboardEvent) => void, private material = false) {}
+  constructor(private bridge: Bridge, private onKey: (w: OpenWindow, e: KeyboardEvent) => void, private material = false) {
+    bridge.on('win.visibility', ({ name, visible }) => {
+      const w = this.open.get().find((x) => nameOf(x.id) === name);
+      if (w && !w.win.closed) setVisibility(w.win.document, visible);
+    });
+  }
 
   async show(decl: WindowDecl, ctx: Ctx): Promise<void> {
     if (this.opening.has(decl.id)) return;
@@ -89,6 +94,16 @@ export class WindowClient {
     });
     this.styleObserver.observe(document.head, { childList: true });
   }
+}
+
+/** 닫아 숨긴 keepAlive 패널의 문서에 Page Visibility를 반영한다. about:blank 패널은 스테이지의 backgroundThrottling: false를 물려받아
+ *  Chromium이 창을 숨겨도 문서를 visible로 두므로 값을 덮고 visibilitychange를 낸다. 모듈은 표준 API 그대로 듣는다 (플레이어 멈춤) */
+function setVisibility(doc: Document, visible: boolean): void {
+  const state: DocumentVisibilityState = visible ? 'visible' : 'hidden';
+  if (doc.visibilityState === state) return;
+  Object.defineProperty(doc, 'visibilityState', { configurable: true, get: () => state });
+  Object.defineProperty(doc, 'hidden', { configurable: true, get: () => !visible });
+  doc.dispatchEvent(new Event('visibilitychange'));
 }
 
 const isStyle = (n: Node): n is HTMLElement =>

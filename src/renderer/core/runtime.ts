@@ -4,6 +4,7 @@ import type { Anchors, Box, CharacterView, RenderBackend } from '@render/port';
 import type { ActivitySample, Appearance, CoreState, Sha256 } from '@shared/schemas';
 import { Appearance as AppearanceSchema, bodyOnly, emptyAppearance, readState } from '@shared/schemas';
 import { FILE_MAX_RAW_BYTES, SERVER_TIME } from '@shared/constants';
+import { lruGet, lruTrim } from '@shared/lru';
 import { PROTO } from '@shared/proto';
 import { dayKey } from '@shared/time';
 import type { BubbleContent, Ctx, DisplayMode, Dispose, DocHandle, EffectDecl, GateDecl, GateInfo, JoinResult, ModuleManifest, SeatImageDecl, SeatView } from './types';
@@ -49,6 +50,8 @@ export interface LocalSeat { key: string; appearance: Appearance; name: string }
 export const LOCAL_SEATS_MAX = 4;
 /** gate를 다시 확인하는 간격. 공개 API 함수 몇 개를 부르는 정도라 가볍다 */
 const GATE_CHECK_MS = 5_000;
+/** 파일 바이트 캐시 상한. 한 파일이 48KB 이하라 넉넉히 12MB다 */
+const FILE_CACHE_MAX = 256;
 
 /** 렌더러 코어 서비스 묶음과 모듈별 ctx 생성 (10.5 코어가 모듈에 주는 것) */
 export class CoreRuntime {
@@ -514,9 +517,13 @@ export class CoreRuntime {
     return r.success ? r.data : null;
   }
 
+  /** 자주 쓴 순서로 FILE_CACHE_MAX개까지 둔다. 빠진 파일은 다시 받는다 */
   getFile(hash: string): Promise<Uint8Array | null> {
-    let p = this.files.get(hash);
-    if (!p) this.files.set(hash, (p = this.deps.server.files.get(hash)));
+    let p = lruGet(this.files, hash);
+    if (!p) {
+      this.files.set(hash, (p = this.deps.server.files.get(hash)));
+      lruTrim(this.files, FILE_CACHE_MAX);
+    }
     return p;
   }
 

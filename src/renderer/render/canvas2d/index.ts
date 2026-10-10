@@ -1,6 +1,7 @@
 // canvas2d backend: 라이브러리 없이 Canvas 2D로 그린다 (10.8.2).
 import { SEAT_SLOTS, type Appearance } from '@shared/schemas';
 import { FPS_AWAKE } from '@shared/constants';
+import { lruGet, lruTrim } from '@shared/lru';
 import type { Box, CharacterView, ImageSource, PoseId, RenderBackend, SceneSpec, ViewOptions } from '../port';
 import { DEFAULT_SIZE, anchorsFromBounds, colorFilter, containFit, cssBox, dither, frameDue, opaqueBounds, poseFor } from './logic';
 import type { Fit, Size } from './logic';
@@ -14,19 +15,34 @@ const ALPHA_MIN = 16;
 /** renderScene 구도: 불투명 영역 위에서부터 남길 높이 비율 */
 const FRAMING = { face: 0.35, bust: 0.6, full: 1 };
 
-// 해시는 내용 주소라서 모든 뷰와 renderScene이 그림 캐시를 같이 쓴다
-// ponytail: 지우지 않는 캐시. 좌석 10개에 그림 몇 장씩이면 충분하고 늘어나면 LRU로 바꾼다
+// 해시는 내용 주소라서 모든 뷰와 renderScene이 그림 캐시를 같이 쓴다.
+// 자주 그린 순서로 BITMAP_MAX장까지만 두고 넘치면 가장 오래 안 그린 그림을 닫는다 (320x400 한 장이 약 0.5MB).
+// 닫은 그림이 다시 필요하면 draw가 다시 받는다
+const BITMAP_MAX = 64;
 const loading = new Map<string, Promise<ImageBitmap | null>>();
 const bitmaps = new Map<string, ImageBitmap>();
+/** 캐시에서 뺀 해시. 다시 받으면 지운다 */
+const evicted = new Set<string>();
 const boundsCache = new WeakMap<ImageBitmap, Box | null>();
+const bitmap = (h: string) => lruGet(bitmaps, h);
 
 function load(src: ImageSource, h: string) {
   let p = loading.get(h);
   if (!p) {
     p = src(h).catch(() => null).then((b) => {
       // 실패는 캐시하지 않고 다음 setAppearance 때 다시 받는다
-      if (b) bitmaps.set(h, b);
-      else loading.delete(h);
+      if (!b) {
+        loading.delete(h);
+        evicted.delete(h);
+        return null;
+      }
+      bitmaps.set(h, b);
+      evicted.delete(h);
+      lruTrim(bitmaps, BITMAP_MAX, (k, old) => {
+        loading.delete(k);
+        evicted.add(k);
+        old.close();
+      });
       return b;
     });
     loading.set(h, p);
@@ -97,7 +113,7 @@ function paint(g: Ctx, look: Appearance | null, body: ImageBitmap | undefined, s
       continue;
     }
     for (const e of look?.slots[layer] ?? []) {
-      const img = e.file && bitmaps.get(e.file);
+      const img = e.file && bitmap(e.file);
       if (img) place(g, tinted(img, e.file, e.color), e, size, dpr);
     }
   }
@@ -121,7 +137,7 @@ function createView(container: HTMLElement, opts: ViewOptions): CharacterView {
 
   const bodyFor = (p: PoseId) => {
     const h = look?.poses[p];
-    return (h && bitmaps.get(h)) || ph.get(p);
+    return (h && bitmap(h)) || ph.get(p);
   };
   // anchor와 클릭 영역은 기본 자세 그림의 불투명 영역으로 정해서 자세가 바뀌어도 이름표가 움직이지 않는다
   const geo = (): [Box | null, Box, Fit, 1 | -1] => {
@@ -130,6 +146,9 @@ function createView(container: HTMLElement, opts: ViewOptions): CharacterView {
   };
 
   const draw = () => {
+    // 캐시에서 빠진 그림은 다시 받고 그 사이 외형이 바뀌지 않았으면 다시 그린다
+    const a = look;
+    if (a) for (const h of hashesOf(a)) if (evicted.has(h)) void load(opts.images, h).then(() => look === a && dirty());
     const dpr = win.devicePixelRatio;
     const k = opts.pixel ? 1 / opts.pixel : dpr;
     const w = Math.max(1, Math.round(size.width * k)), h = Math.max(1, Math.round(size.height * k));
@@ -238,7 +257,7 @@ async function renderScene(spec: SceneSpec, out: Size, opts: ViewOptions): Promi
   const size = opts.size ?? DEFAULT_SIZE, a = spec.appearance;
   await Promise.all(hashesOf(a).map((h) => load(opts.images, h)));
   const h = a.poses[spec.pose];
-  const body = (h && bitmaps.get(h)) || (await (opts.placeholder ?? placeholder)(spec.pose));
+  const body = (h && bitmap(h)) || (await (opts.placeholder ?? placeholder)(spec.pose));
   // 불투명 영역의 위쪽을 구도 비율만큼 남기고 out 가운데에 contain으로 맞춘다
   const b = cssBox(boundsOf(body), { x: 0, y: 0, ...size }, containFit(body, size));
   const ch = b.height * FRAMING[spec.framing];
