@@ -99,6 +99,15 @@ describe('슬롯', () => {
     }
     expect(fresh('sticker', BOARD_ITEM, h('a')).y).toBeLessThan(fresh('sticker', 'R1/a', h('a')).y!);
   });
+
+  it('같은 자리에 붙은 것이 있으면 비켜서 겹치지 않는다', () => {
+    const placed: Equip[] = [];
+    for (let i = 0; i < CAP; i++) placed.push(fresh('sticker', 'R1/a', h('a'), sq, placed));
+    expect(new Set(placed.map((e) => `${e.x} ${e.y}`)).size).toBe(CAP);
+    // 다 비켜도 view 안에 남는다
+    for (const e of placed) expect(placeOf(sq, e, view).cx).toBeLessThan(view.width);
+    expect(fresh('sticker', 'R1/a', h('a'), sq, [{ item: 'x', file: null, x: 0.5, y: 0 }])).toMatchObject({ x: 0, y: -0.3 });
+  });
 });
 
 describe('직접 그리기 (AVT-09)', () => {

@@ -16,7 +16,7 @@
 .hint { font-size: 12px; font-weight: normal; color: var(--fg-muted); margin: 8px 0; }
 .tabs { display: flex; gap: 4px; }
 .right h4 { margin: 12px 0 6px; }
-.list { list-style: none; margin: 0; padding: 0; max-height: 200px; overflow: auto; }
+.list { list-style: none; margin: 0; padding: 0; max-height: 300px; overflow: auto; }
 .list li { display: flex; align-items: center; gap: 6px; padding: 2px 4px; border-radius: 6px; }
 .list li[data-on='true'] { background: var(--hover-bg); }
 .pick { flex: 1; min-width: 0; justify-content: flex-start; gap: 6px; padding: 0; background: transparent; }
@@ -42,4 +42,6 @@
 /* 누르는 자리를 다른 단추처럼 높이 30px로 넓히고 옆 칸과는 겹치지 않게 둔다 */
 .swatch::after { content: ''; position: absolute; inset: -4px -3px; border-radius: 50%; }
 .draw textarea { display: block; width: 100%; resize: none; }
+/* 칠판 글씨 라벨은 입력칸 위 한 줄에 둔다 (전역 label은 가로 줄이라 라벨이 좁아져 꺾인다) */
+.draw label:has(textarea) { display: block; }
 .pad { display: block; width: 300px; height: 300px; margin: 0 auto; border-radius: var(--radius-l); background: var(--fill); touch-action: none; cursor: crosshair; }

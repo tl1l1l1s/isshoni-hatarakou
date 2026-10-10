@@ -63,7 +63,7 @@ export default function WeekWindow({ ctx }: { ctx: Ctx }) {
       ) : (
         <fieldset>
           <legend>하루 집중 목표</legend>
-          <p>목표를 정하면 날마다 채웠는지 이번 주 표에 표시해요.</p>
+          <p>날마다 채웠는지 위 표에 표시해요.</p>
           <label>
             하루
             <select value={pick} onChange={(e) => setPick(Number(e.target.value))}>

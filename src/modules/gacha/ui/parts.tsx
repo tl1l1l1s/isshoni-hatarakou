@@ -22,7 +22,16 @@ export function AddItem({ ctx }: { ctx: Ctx }) {
   const [until, setUntil] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
-  const ok = name.trim().length > 0 && Number.isInteger(w) && w >= 1 && w <= 100 && !(from && until && until < from);
+  // 넣기 단추가 꺼진 까닭. 없으면 빈 글
+  const why = !name.trim() ? '이름을 적어 주세요.'
+    : !(Number.isInteger(w) && w >= 1 && w <= 100) ? '가중치는 1부터 100까지예요.'
+    : from && until && until < from ? '끝 날짜가 시작 날짜보다 빨라요.'
+    : '';
+  // 다음 아이템을 적기 시작하면 지난 안내를 지운다
+  const change = <T,>(set: (v: T) => void, v: T) => {
+    set(v);
+    setMsg('');
+  };
   const add = async () => {
     setBusy(true);
     setMsg('');
@@ -31,7 +40,10 @@ export function AddItem({ ctx }: { ctx: Ctx }) {
       const period = { ...(from && { from: dayStart(from) }), ...(until && { until: dayStart(until) + 86_400_000 }) };
       if (await addItem(ctx, name.trim(), w, period)) {
         setName('');
-        setMsg('아이템을 넣었습니다.');
+        setW(10);
+        setFrom('');
+        setUntil('');
+        setMsg('아이템을 넣었어요.');
       }
     } catch (e) {
       setMsg(message(e));
@@ -44,25 +56,25 @@ export function AddItem({ ctx }: { ctx: Ctx }) {
       <legend>아이템 넣기</legend>
       <label>
         이름
-        <input value={name} maxLength={ITEM_NAME_MAX} onChange={(e) => setName(e.target.value)} />
+        <input value={name} maxLength={ITEM_NAME_MAX} onChange={(e) => change(setName, e.target.value)} />
       </label>
       <label>
         가중치 (1부터 100)
-        <input type="number" min={1} max={100} value={w} onChange={(e) => setW(Number(e.target.value))} />
+        <input type="number" min={1} max={100} value={w} onChange={(e) => change(setW, Number(e.target.value))} />
       </label>
       <label>
-        기간 한정 시작 (선택)
-        <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+        기간 시작 (선택)
+        <input type="date" value={from} onChange={(e) => change(setFrom, e.target.value)} />
       </label>
       <label>
-        기간 한정 끝 (선택)
-        <input type="date" value={until} onChange={(e) => setUntil(e.target.value)} />
+        기간 끝 (선택)
+        <input type="date" value={until} onChange={(e) => change(setUntil, e.target.value)} />
       </label>
-      <p className={css.muted}>배경이 투명한 PNG를 권장합니다. 큰 그림은 앱이 줄여서 저장합니다. 기간을 정하면 그 기간에만 뽑힙니다.</p>
-      <button disabled={busy || !ok} onClick={() => void add()}>
+      <p className={css.muted}>배경이 투명한 PNG가 좋아요. 기간을 정하면 그 기간에만 뽑혀요.</p>
+      <button disabled={busy || !!why} onClick={() => void add()}>
         그림 고르고 넣기
       </button>
-      {msg && <p role="status" className={css.muted}>{msg}</p>}
+      {(msg || why) && <p role="status" className={css.muted}>{msg || why}</p>}
     </fieldset>
   );
 }

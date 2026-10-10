@@ -10,12 +10,13 @@ import FacePanel, { PoseThumb } from './FacePanel';
 import css from './wardrobe.module.css';
 
 const POSES: Array<[PoseId, string]> = [['idle', '기본'], ['typing', '타이핑'], ['sleep', '잠듦']];
+const WIN = 'wardrobe.create';
 
 /** 얼굴 그리기를 쓰는 자세가 있으면 얼굴 그리기로 연다. 편집 데이터가 없는 옛 캐릭터는 그림이 하나도 없을 때만 */
 const startMode = (a: Appearance): 'face' | 'file' =>
   (a.bodyExt?.face ? Object.values(faceOf(a).use).some(Boolean) : Object.values(a.poses).every((p) => !p)) ? 'face' : 'file';
 
-/** 캐릭터 만들기 창. 슬롯과 종류를 고르고 1단계 얼굴 그리기나 자세 그림 넣기, 2단계 책상, 3단계 이전 모습
+/** 캐릭터 만들기 창. 슬롯과 종류를 고르고 캐릭터(얼굴 그리기나 자세 그림 넣기)와 책상을 정한다. 아래 줄에서 이전 모습을 불러온다
  *  (AVT-01, AVT-03, AVT-04, AVT-15, AVT-17, AVT-18, OUR-03) */
 export default function WardrobeWindow({ ctx }: { ctx: Ctx }) {
   const w = wardrobeOf(ctx);
@@ -50,6 +51,10 @@ export default function WardrobeWindow({ ctx }: { ctx: Ctx }) {
 
   // 창을 열 때 동물 해금 조건을 확인한다 (GRW-03)
   useEffect(() => void w.unlocked(), [w]);
+  // 저장하지 않은 그림이나 고른 값이 있으면 ESC, 창 닫기 단추, 슬롯 바꾸기 전에 묻는다
+  const unsaved = useRef<() => boolean>(() => false);
+  unsaved.current = () => edit.open.dirty() || edit.closed.dirty() || JSON.stringify(draft) !== JSON.stringify(w.appearance());
+  useEffect(() => ctx.ui.guard(WIN, () => (unsaved.current() ? '캐릭터를 저장하지 않았어요. 닫을까요?' : null)), [ctx]);
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -75,17 +80,23 @@ export default function WardrobeWindow({ ctx }: { ctx: Ctx }) {
       if (!cached) ctx.local.update<typeof local>('account', (d) => ({ ...d, desks: { ...d.desks, [id]: file } }));
       setDraft((a) => withDesk(a, { item: id, file }));
     });
-  const pickSlot = (i: number) =>
-    run(async () => {
-      const done = w.setActive(i);
-      load(w.appearance());
-      await done;
+  // 슬롯 단추는 지금 쓰는 캐릭터를 바로 바꾼다 (AVT-15)
+  const pickSlot = (i: number) => {
+    if (i === local.active) return;
+    void ctx.ui.confirmLeave(WIN).then(async (ok) => {
+      if (!ok) return;
+      await run(async () => {
+        const done = w.setActive(i);
+        load(w.appearance());
+        await done;
+      });
     });
+  };
   const save = () =>
     run(async () => {
       await w.write(local.active, await bakeFace(ctx, draft, edit), true);
-      ctx.ui.toast('캐릭터를 저장했습니다');
-      ctx.ui.close('wardrobe.create');
+      ctx.ui.toast('캐릭터를 저장했어요.');
+      ctx.ui.close(WIN);
     });
   // 패널 창 문서 안에서 내려받기 링크를 눌러 저장 창을 띄운다
   const exportFile = () =>
@@ -100,24 +111,24 @@ export default function WardrobeWindow({ ctx }: { ctx: Ctx }) {
     });
   const importFile = (f: File) =>
     run(async () => {
-      if (f.size > EXPORT_MAX_CHARS) throw new Error('파일이 너무 큽니다.');
+      if (f.size > EXPORT_MAX_CHARS) throw new Error('파일이 너무 커요.');
       load(await w.importText(await f.text()));
-      setNote('캐릭터 파일을 불러왔습니다. 저장하면 지금 캐릭터에 들어갑니다.');
+      setNote('캐릭터 파일을 불러왔어요. 저장하면 지금 캐릭터에 들어가요.');
     });
   const restore = (a: Appearance) => {
     load(a);
-    setNote('이전 모습을 불러왔습니다. 저장하면 지금 캐릭터에 들어갑니다.');
+    setNote('이전 모습을 불러왔어요. 저장하면 지금 캐릭터에 들어가요.');
   };
 
   return (
     <div ref={root}>
       <nav className={css.steps} aria-label="캐릭터 슬롯">
         {Array.from({ length: SLOT_COUNT }, (_, i) => (
-          <button key={i} aria-pressed={local.active === i} disabled={busy} onClick={() => void pickSlot(i)}>캐릭터 {i + 1}</button>
+          <button key={i} aria-pressed={local.active === i} disabled={busy} onClick={() => pickSlot(i)}>캐릭터 {i + 1}</button>
         ))}
       </nav>
-      {/* 얼굴 그리기에는 자세 미리보기가 따로 있어서 위 미리보기를 접는다 */}
-      {!(step === 1 && mode === 'face') && (
+      {/* 얼굴 그리기와 자세 그림 넣기에는 자세 미리보기가 따로 있어서 위 미리보기를 접는다 */}
+      {step !== 1 && (
         <div className={css.preview}>
           <ctx.ui.CharacterPreview appearance={draft} width={128} height={160} />
         </div>
@@ -128,9 +139,8 @@ export default function WardrobeWindow({ ctx }: { ctx: Ctx }) {
       </nav>
       {!unlocked && <p className={css.hint}>{lockedText(w.need())}</p>}
       <nav className={css.steps}>
-        <button aria-pressed={step === 1} onClick={() => setStep(1)}>1 캐릭터</button>
-        <button aria-pressed={step === 2} onClick={() => setStep(2)}>2 책상</button>
-        <button aria-pressed={step === 3} onClick={() => setStep(3)}>이전 모습</button>
+        <button aria-pressed={step === 1} onClick={() => setStep(1)}>캐릭터</button>
+        <button aria-pressed={step === 2} onClick={() => setStep(2)}>책상</button>
       </nav>
       {step === 1 && (
         <nav className={css.steps} aria-label="만드는 방법">
@@ -141,7 +151,7 @@ export default function WardrobeWindow({ ctx }: { ctx: Ctx }) {
       {step === 1 && mode === 'face' && <FacePanel ctx={ctx} edit={edit} face={face} body={draft.body} onFace={setFace} onError={setMsg} />}
       {step === 1 && mode === 'file' && (
         <>
-          <p className={css.hint}>배경이 투명한 PNG를 권장합니다. 큰 그림은 앱이 64KB 안으로 줄여서 저장합니다.</p>
+          <p className={css.hint}>320x400px에 배경이 투명한 PNG가 좋아요. 큰 그림은 앱이 줄여서 저장해요.</p>
           <div className={css.cards}>
             {POSES.map(([pose, label]) => (
               <div key={pose} className={css.card}>
@@ -153,7 +163,9 @@ export default function WardrobeWindow({ ctx }: { ctx: Ctx }) {
                   const h = await upload();
                   if (h) setDraft((a) => withPoseFile(a, pose, h));
                 })}>그림 넣기</button>
-                <button disabled={busy || face.use[pose]} onClick={() => setFace({ ...face, use: { ...face.use, [pose]: true } })}>얼굴 그림으로</button>
+                {face.use[pose]
+                  ? <small className={css.hint}>지금은 얼굴 그림을 써요</small>
+                  : <button disabled={busy} onClick={() => setFace({ ...face, use: { ...face.use, [pose]: true } })}>얼굴 그림으로</button>}
               </div>
             ))}
           </div>
@@ -161,7 +173,7 @@ export default function WardrobeWindow({ ctx }: { ctx: Ctx }) {
       )}
       {step === 2 && (
         <>
-          <p className={css.hint}>내 책상 그림은 자세 그림과 같은 크기의 캔버스 아래쪽에 그리면 자리가 맞습니다.</p>
+          <p className={css.hint}>내 책상 그림은 자세 그림과 같은 320x400px 캔버스 아래쪽에 그리면 자리가 맞아요.</p>
           <div className={css.cards}>
             <button className={css.card} aria-pressed={!desk} disabled={busy} onClick={() => setDraft((a) => withDesk(a, null))}>
               <Pic id={null} load={ctx.files.get} empty="" />
@@ -189,6 +201,7 @@ export default function WardrobeWindow({ ctx }: { ctx: Ctx }) {
       <div className={css.foot}>
         <button disabled={busy} onClick={() => void exportFile()}>파일로 내보내기</button>
         <button disabled={busy} onClick={() => file.current?.click()}>파일에서 불러오기</button>
+        <button disabled={busy} onClick={() => setStep(3)}>이전 모습 불러오기</button>
         <input ref={file} type="file" accept=".json,application/json" hidden onChange={(e) => {
           const f = e.target.files?.[0];
           e.target.value = '';
@@ -212,10 +225,10 @@ function TrashList({ w, onPick }: { w: Wardrobe; onPick: (a: Appearance) => void
   const when = (at: number) => new Date(at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   return (
     <>
-      <p className={css.hint}>저장하거나 다른 PC와 맞출 때 덮어쓴 모습을 10일 동안 남깁니다.</p>
+      <p className={css.hint}>저장하거나 다른 PC와 맞출 때 덮어쓴 모습을 10일 동안 남겨요.</p>
       {err && <p role="alert" className={css.error}>{err}</p>}
-      {!err && !items && <p className={css.hint}>불러오는 중입니다.</p>}
-      {items?.length === 0 && <p className={css.hint}>남아 있는 이전 모습이 없습니다.</p>}
+      {!err && !items && <p className={css.hint}>불러오는 중이에요.</p>}
+      {items?.length === 0 && <p className={css.hint}>남아 있는 이전 모습이 없어요.</p>}
       <ul className={css.trash}>
         {items?.map((t) => (
           <li key={trashKey(t)}>

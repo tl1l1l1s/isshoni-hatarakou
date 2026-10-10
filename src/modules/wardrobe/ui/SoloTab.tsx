@@ -24,7 +24,8 @@ export default function SoloTab({ ctx }: SlotProps) {
   const rest = Array.from({ length: SLOT_COUNT }, (_, i) => i).filter((i) => !full.includes(i));
   return (
     <div>
-      <p>방에 들어가지 않았을 때 내 다른 캐릭터를 옆자리에 함께 앉혀요. 방에 들어가면 숨었다가 방에서 나오면 다시 앉아요.</p>
+      <p>혼자일 때 내 다른 캐릭터를 옆자리에 앉혀요.</p>
+      <p>방에서는 숨었다가 나오면 다시 앉아요.</p>
       {room && <p className={css.hint}>지금은 방에 있어서 숨겨 두었어요.</p>}
       <h4>앉은 순서</h4>
       <ol className={css.trash}>

@@ -40,10 +40,12 @@ function drawBoard(g: G, text: string) {
  * under가 있으면 그 그림 위에 그리고(파츠에 직접 그리기) board면 칠판 위에 글씨와 낙서를 한다.
  * 완료하면 그린 부분만 잘라 PNG로 넘긴다
  */
-export default function DrawPanel({ ctx, board, under, onDone, onCancel }: {
+export default function DrawPanel({ ctx, board, under, dirty, onDone, onCancel }: {
   ctx: Ctx;
   board: boolean;
   under: ImageBitmap | null;
+  /** 꾸미기 창이 떠나기 전에 물을지 정할 때 부른다. 그린 것이 있으면 true */
+  dirty: { current: () => boolean };
   onDone: (png: Uint8Array) => Promise<void>;
   onCancel: () => void;
 }) {
@@ -57,7 +59,27 @@ export default function DrawPanel({ ctx, board, under, onDone, onCancel }: {
   const [msg, setMsg] = useState('');
   const pad = useRef<HTMLCanvasElement>(null);
   const stroke = useRef<Op | null>(null);
+  const asking = useRef(false);
   const underAt = under && fitIn(under.width, under.height, FULL);
+  dirty.current = () => p.dirty() || text.trim() !== '';
+
+  // ESC는 꾸미기 창이 아니라 그림판만 닫는다. 그린 것이 있으면 창 안에서 먼저 묻고 묻는 동안의 ESC는 코어가 계속하기로 받는다
+  useEffect(() => {
+    const doc = pad.current?.ownerDocument;
+    if (!doc) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.isComposing || asking.current) return;
+      e.preventDefault();
+      if (!dirty.current()) return onCancel();
+      asking.current = true;
+      void ctx.ui.confirmLeave('stickers.edit').then((ok) => {
+        asking.current = false;
+        if (ok) onCancel();
+      });
+    };
+    doc.addEventListener('keydown', onKey);
+    return () => doc.removeEventListener('keydown', onKey);
+  }, [ctx, dirty, onCancel]);
 
   // 칠판, 고친 그림, 획 순서로 겹친다. 획은 칠판 밖으로 나가지 않는다
   const paint = (g: G, live: boolean) => {
@@ -84,9 +106,12 @@ export default function DrawPanel({ ctx, board, under, onDone, onCancel }: {
     return [((e.clientX - r.left) * SIZE) / r.width, ((e.clientY - r.top) * SIZE) / r.height];
   };
   const down = (e: PointerEvent<HTMLCanvasElement>) => {
-    if (e.button !== 0) return;
+    // 펜 뒤쪽 지우개(button 5)는 지우개 단추를 누르지 않아도 지운다
+    const tip = e.pointerType === 'pen' && e.button === 5;
+    if (e.button !== 0 && !tip) return;
+    const rub = erase || tip;
     e.currentTarget.setPointerCapture(e.pointerId);
-    stroke.current = { t: 'line', color: erase ? '#000000' : color, size, erase, sym: false, pts: [at(e)] };
+    stroke.current = { t: 'line', color: rub ? '#000000' : color, size, erase: rub, sym: false, pts: [at(e)] };
     redraw();
   };
   const move = (e: PointerEvent<HTMLCanvasElement>) => {
@@ -169,7 +194,7 @@ export default function DrawPanel({ ctx, board, under, onDone, onCancel }: {
       </div>
       <canvas ref={pad} width={SIZE} height={SIZE} className={css.pad} aria-label="스티커 그림판"
         onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} />
-      <p className={css.hint}>{under ? '그린 선은 원래 그림 위에 겹쳐집니다.' : '그린 부분만 잘라 스티커로 만듭니다.'} 큰 그림은 256px로 줄여 저장합니다.</p>
+      <p className={css.hint}>{under ? '그린 선은 원래 그림 위에 겹쳐져요.' : '그린 부분만 잘라 스티커로 만들어요.'} 큰 그림은 256px로 줄여 저장해요.</p>
       <div className={css.foot}>
         {msg && <p role="alert" className={css.error}>{msg}</p>}
         <button disabled={busy} onClick={onCancel}>취소</button>

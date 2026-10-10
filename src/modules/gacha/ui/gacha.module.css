@@ -2,9 +2,18 @@
 .error { color: var(--danger); }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
 .list { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.list li { display: flex; align-items: center; gap: 8px; }
-.list li > .pic + span { flex: 1; }
-.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 8px 0 16px; }
+.list li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.list li > .pic + span { flex: 1; min-width: 0; }
+.list li > button { flex: none; white-space: nowrap; }
+/* 긴 아이템 이름은 한 줄로 줄이고 가중치와 확률은 그 아래 줄에 둔다 */
+.name { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list li > .pic + span > .muted { display: block; margin: 0; }
+/* 지우기를 물을 때 단추와 안내는 아이템 아래 새 줄에 둔다 */
+.ask { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 8px; }
+.ask > button { white-space: nowrap; }
+.ask > .muted { flex-basis: 100%; }
+/* 칸 너비를 고정해 긴 이름이 칸을 넓히지 않고 줄임표로 줄어들게 한다 */
+.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 8px 0 16px; }
 .card { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 12px; text-align: center; }
 .pic {
   width: 40px; height: 40px; flex: none; display: grid; place-items: center; border-radius: var(--radius-m); overflow: hidden;

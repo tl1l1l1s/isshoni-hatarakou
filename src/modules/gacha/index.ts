@@ -1,10 +1,10 @@
 import { createElement, lazy, Suspense } from 'react';
 import { z } from 'zod';
-import { defineModule, type Dispose, type SlotProps } from '@core/types';
+import { defineModule, NOT_IN_ROOM, type Dispose, type SlotProps } from '@core/types';
 import type {} from '@modules/focus/api';
 import type { GachaApi, InventoryItem } from './api';
 import { Cfg, entries, Got, HUE_UNLOCK_DEFAULT, Item, readCfg, readRec, Tomb } from './logic';
-import { addSec, drawOnce, drawReason, flush, markRoomRemoved, NOT_IN_ROOM, onInventory, patch, setRoomRec, start, sync, view } from './state';
+import { addSec, drawOnce, drawReason, flush, markRoomRemoved, onInventory, patch, setRoomRec, start, sync, view } from './state';
 import { OwnerSection } from './ui/OwnerSection';
 
 // 내 정보의 보관함 탭은 처음 열 때 불러온다. 보관함 창과 같은 파일을 나눠 쓴다

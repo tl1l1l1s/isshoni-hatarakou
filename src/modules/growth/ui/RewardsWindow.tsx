@@ -1,6 +1,6 @@
 import { useEffect, useReducer } from 'react';
 import type { Ctx } from '@core/types';
-import { isReward, levelOf, levelText, roundOf, xpOf } from '../logic';
+import { isReward, levelOf, levelText, MAX_LEVEL, roundOf, xpOf } from '../logic';
 import css from './rewards.module.css';
 
 const per = (sec: number) => (sec % 3600 === 0 ? `${sec / 3600}시간` : `${Math.round(sec / 60)}분`);
@@ -24,9 +24,8 @@ export default function RewardsWindow({ ctx }: { ctx: Ctx }) {
         {levelText(round, level)}
         {round >= 2 && <span className={css.muted}> {round}회차</span>}
       </h3>
-      <p className={css.muted}>
-        다음 레벨까지 {100 - Math.floor(xpOf(total, spl) * 100)}% 남았어요. 집중 {per(spl)}마다 1레벨씩 올라요.
-      </p>
+      <p className={css.muted}>다음 레벨까지 {100 - Math.floor(xpOf(total, spl) * 100)}% 남았어요.</p>
+      <p className={css.muted}>집중 {per(spl)}마다 1레벨씩 올라요.</p>
       {rows.length ? (
         <table className={css.table}>
           <thead>
@@ -45,7 +44,7 @@ export default function RewardsWindow({ ctx }: { ctx: Ctx }) {
       ) : (
         <p>아직 레벨로 여는 보상이 없어요.</p>
       )}
-      <p className={css.muted}>Lv.999 다음에는 회차가 넘어가 별이 붙고 레벨이 1부터 다시 올라요. 열린 보상은 그대로 남아요.</p>
+      <p className={css.muted}>{levelText(round, MAX_LEVEL)} 다음은 {round + 1}회차예요. 열린 보상은 그대로 남아요.</p>
     </div>
   );
 }

@@ -85,7 +85,7 @@ describe('gacha 시뮬레이터', () => {
     const res = await Promise.allSettled([drawOnce(b1.ctx, 0), drawOnce(b2.ctx, 0)]);
     expect(res.map((r) => r.status).sort()).toEqual(['fulfilled', 'rejected']);
     expect(hub.read(`mod/gacha/u/bob/r/${code}`)).toMatchObject({ spent: 1, got: { hat: { n: 1, name: 'hat', file: H } } });
-    expect(b1.core.registry.reason('gacha.draw')).toBe('남은 뽑기가 없습니다.');
+    expect(b1.core.registry.reason('gacha.draw')).toBe('남은 뽑기가 없어요.');
     // 두 PC 모두 내 기록 구독으로 보관함이 같아진다
     expect(b1.api.inventory().map((i) => i.key)).toEqual([`${code}/hat`]);
     expect(b2.api.inventory().map((i) => i.key)).toEqual([`${code}/hat`]);

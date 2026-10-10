@@ -10,7 +10,7 @@
 - `tower`는 이미 탑이 있는 사람을 고르면 맨 위에 올라타 층이 쌓이는 것이다 (HOM-17).
 - `tower-drop`은 맨 아래 사람이 방을 나가면 탑이 한 칸 내려오는 것이다 (COM-16, HOM-17).
 - `ride-resume`은 절전에 들어갔다 깨어나 같은 방에 다시 들어가도 올라탄 상태와 벤치가 그대로인 것이다. 다른 방에 들어갈 때만 푼다.
-- `bench-desk-pick`은 캐릭터 만들기 2 책상 탭에서 `2인 벤치`나 `3인 벤치`를 고르는 것이다 (AVT-21).
+- `bench-desk-pick`은 캐릭터 만들기 `책상` 단계에서 `2인 벤치`나 `3인 벤치`를 고르는 것이다 (AVT-21).
 - `bench-friend-joins`는 다른 사람이 내 벤치에 앉으면 두 좌석이 겹쳐 앉고 내 벤치 그림이 이어지는 것이다.
 - `bench-sit`은 벤치 책상을 쓰는 사람의 메뉴에서 `벤치에 같이 앉기`를 눌러 옆에 앉고 `일어나기`로 돌아오는 것이다.
 
@@ -18,7 +18,7 @@
 
 - 방에 들어간 뒤 실행 화면의 다른 사용자 이름표(끝에 ▾)를 누르거나 캐릭터를 오른쪽 클릭하면 메뉴에 `머리 위에 올라타기`(내가 동물일 때)와 `벤치에 같이 앉기`(그 사람 책상이 벤치일 때)가 있다.
 - 올라타 있거나 벤치에 앉아 있으면 내 상태칩 줄에 `내려오기`나 `일어나기`가 생긴다.
-- 벤치 책상은 ▼ 메뉴 `캐릭터 만들기`의 `2 책상` 탭에서 고른다.
+- 벤치 책상은 ▼ 메뉴 `캐릭터 만들기`의 `책상` 단계에서 고른다.
 
 ## Driving it with drive.ts
 
@@ -29,7 +29,7 @@ Preconditions:
 - 가짜 친구의 상태는 메모리 서버에 직접 쓴다. 개발판과 시험판은 `globalThis.devHub`에 메모리 서버를 둔다. 예를 들어 `await s.stage.evaluate(() => devHub.write('rooms/DEVDEV/members/devfriend_dev/m/seating', { bench: '<내 uid>' }))`로 친구를 내 벤치에 앉힌다. 내 uid는 `window.core.deps.uid`이다.
 
 - **사람일 때 숨김.** `await s.stage.getByRole('button', { name: '가짜 친구 메뉴' }).click()`을 실행한다. `menu "가짜 친구"`에 `menuitem "친구 신청"`은 있고 `머리 위에 올라타기`와 `벤치에 같이 앉기`는 없다.
-- **동물과 벤치 고르기.** 해금 시각을 넣고 `const w = await menu(s, '캐릭터 만들기', '캐릭터 만들기')`, `w.getByRole('button', { name: '동물' }).click()`, `w.getByRole('button', { name: '2 책상' }).click()`, `w.getByRole('button', { name: /2인 벤치/ }).click()`, `w.getByRole('button', { name: '저장' }).click()`을 차례로 실행한다. 실행 화면에 `캐릭터를 저장했습니다`가 뜨고 내 멤버 기록 `devHub.read('rooms/DEVDEV/members/<내 key>').m.seating.cap`이 2가 된다.
+- **동물과 벤치 고르기.** 해금 시각을 넣고 `const w = await menu(s, '캐릭터 만들기', '캐릭터 만들기')`, `w.getByRole('button', { name: '동물' }).click()`, `w.getByRole('button', { name: '책상', exact: true }).click()`, `w.getByRole('button', { name: /2인 벤치/ }).click()`, `w.getByRole('button', { name: '저장' }).click()`을 차례로 실행한다. 실행 화면에 `캐릭터를 저장했어요.`가 뜨고 내 멤버 기록 `devHub.read('rooms/DEVDEV/members/<내 key>').m.seating.cap`이 2가 된다.
 - **메뉴 순서.** 동물이 된 뒤 친구 seating에 `{ cap: 3 }`을 쓰고 `가짜 친구 메뉴`를 연다. `menuitem` 이름이 `친구 신청`, `쓰다듬기`, `때리기`, `머리 위에 올라타기`, `벤치에 같이 앉기` 순서다. `devHub.write('mod/friends/u/<내 uid>/list/devfriend', { since: devHub.now(), v: 1 })`로 친구가 되면 첫 항목이 `마이홈 보기`로 바뀌고 나머지 순서는 같다. 메뉴를 닫고 친구 seating을 `{}`로 되돌린다.
 - **친구가 내 벤치에 앉기.** 친구 seating에 `{ bench: '<내 uid>' }`를 쓴다. 실행 화면 너비 `window.innerWidth`가 줄고 두 캐릭터가 한 벤치 판 위에 겹쳐 앉는다. `{}`를 쓰면 너비가 돌아온다.
 - **친구 벤치에 같이 앉기.** 친구 `look`을 내 멤버 기록의 `look`으로 바꾸고 seating에 `{ cap: 3 }`을 쓴다. `가짜 친구 메뉴`를 열고 `menuitem "벤치에 같이 앉기"`를 누른다. 상태칩 줄에 `button "일어나기"`가 생기고 내 seating.bench가 `devfriend`가 된다. 친구가 왼쪽 맨 앞에 앉는다. `일어나기`를 누르면 단추가 사라지고 너비가 돌아온다.

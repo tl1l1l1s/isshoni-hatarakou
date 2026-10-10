@@ -120,12 +120,12 @@ describe('캐릭터 파일 (AVT-17)', () => {
     expect(r.slots.sticker![0]).toEqual({ item: 'ROOM01/cat', file: h('d'), x: 0.2 });
   });
   it('캐릭터 파일이 아니거나 그림이 너무 크면 거부한다', () => {
-    expect(() => fromExport('not json')).toThrow('캐릭터 파일이 아닙니다.');
+    expect(() => fromExport('not json')).toThrow('캐릭터 파일이 아니에요.');
     expect(() => fromExport(JSON.stringify({ kind: 'x' }))).toThrow();
     const big = JSON.parse(toExport(a, bytes)) as { files: Record<string, string> };
     big.files[h('a')] = 'A'.repeat(64 * 1024 + 4);
-    expect(() => fromExport(JSON.stringify(big))).toThrow('그림이 너무 큽니다');
-    expect(() => fromExport(' '.repeat(3 * 1024 * 1024 + 1))).toThrow('파일이 너무 큽니다.');
+    expect(() => fromExport(JSON.stringify(big))).toThrow('그림이 너무 커요');
+    expect(() => fromExport(' '.repeat(3 * 1024 * 1024 + 1))).toThrow('파일이 너무 커요.');
   });
 });
 

@@ -14,7 +14,7 @@ export default function Badge({ ctx, seat }: SlotProps) {
   const pct = typeof xp === 'number' ? xp : 0;
   const round = typeof rd === 'number' ? rd : 1;
   const tier = tierOf(round >= 2 ? MAX_LEVEL : lv, ctx.tunables.get<number[]>('tierLevels'));
-  const next = `다음 레벨까지 ${100 - pct}%`;
+  const next = `다음 레벨까지 ${100 - pct}% 남음`;
   // 잠들었거나 자리를 비웠거나 화면을 숨기면 광택을 멈춰 그리기를 쉰다
   const still = hidden || seat?.state === 'away' || seat?.m.focus?.awake === false;
   return (

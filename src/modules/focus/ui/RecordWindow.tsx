@@ -23,6 +23,7 @@ export default function RecordWindow({ ctx }: { ctx: Ctx }) {
         <button onClick={shrink}>작게 보기</button>
       </div>
       <div className={css.big}>{hms(live.streakSec)}</div>
+      {apps.length > 0 && !live.shown && <p>등록한 앱을 쓰면 깨어나고 시간이 쌓여요.</p>}
       <table className={css.table}>
         <tbody>
           <tr><th align="left">오늘</th><td align="right">{hms(api.todaySec())}</td></tr>

@@ -4,6 +4,8 @@ import { useBlobUrl } from '@shared/blobUrl';
 import { MAX_SIDE, SIZES, type Local } from '../logic';
 import css from './awaypic.module.css';
 
+const SIZE_WORD: Record<Local['size'], string> = { 60: '작게', 80: '보통', 100: '크게' };
+
 /** 설정 창의 자리비움 그림 탭 (CHR-07) */
 export default function Tab({ ctx }: SlotProps) {
   const [pic, setPic] = useState(() => ctx.local.get<Local>('account'));
@@ -18,7 +20,7 @@ export default function Tab({ ctx }: SlotProps) {
       if (!f) return;
       const file = await ctx.files.upload(await ctx.files.prepareImage(f.bytes, { maxSide: MAX_SIDE }));
       await save({ ...pic, file });
-      setMsg('그림을 등록했습니다.');
+      setMsg('그림을 등록했어요.');
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
     } finally {
@@ -27,17 +29,17 @@ export default function Tab({ ctx }: SlotProps) {
   };
   return (
     <div>
-      <p>자리비움이면 캐릭터 대신 이 그림이 서요. 방 사람들에게도 보여요.</p>
-      <div className={css.preview}>{pic.file ? <Preview ctx={ctx} file={pic.file} /> : <span className={css.hint}>그림 없음</span>}</div>
+      <p>자리비움이면 캐릭터 대신 이 그림이 서요.</p>
+      <div className={css.preview}>{pic.file ? <Preview ctx={ctx} file={pic.file} size={pic.size} /> : <span className={css.hint}>그림 없음</span>}</div>
       <div className={css.row}>
         <button disabled={busy} onClick={() => void pick()}>그림 등록</button>
-        <button disabled={busy || !pic.file} onClick={() => void save({ ...pic, file: null })}>기본으로</button>
+        <button disabled={busy || !pic.file} onClick={() => void save({ ...pic, file: null }).then(() => setMsg('그림을 뺐어요. 자리비움이어도 캐릭터가 그대로 서요.'))}>그림 빼기</button>
       </div>
       <label>
         크기
         <select value={pic.size} onChange={(e) => void save({ ...pic, size: Number(e.target.value) as Local['size'] })}>
           {SIZES.map((s) => (
-            <option key={s} value={s}>{s}px</option>
+            <option key={s} value={s}>{SIZE_WORD[s]} ({s}px)</option>
           ))}
         </select>
       </label>
@@ -47,7 +49,8 @@ export default function Tab({ ctx }: SlotProps) {
   );
 }
 
-function Preview({ ctx, file }: { ctx: Ctx; file: string }) {
+/** 고른 크기로 그려 크기마다 달라 보이게 한다. 상자(120px)는 가장 큰 크기보다 크다 */
+function Preview({ ctx, file, size }: { ctx: Ctx; file: string; size: number }) {
   const url = useBlobUrl(file, ctx.files.get);
-  return url ? <img src={url} alt="등록한 자리비움 그림" /> : null;
+  return url ? <img src={url} alt="등록한 자리비움 그림" style={{ width: size, height: size }} /> : null;
 }
