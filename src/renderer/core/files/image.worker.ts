@@ -18,8 +18,8 @@ self.onmessage = async (e: MessageEvent<Req>) => {
         if (out.byteLength <= maxBytes) return postMessage({ id, bytes: out }, { transfer: [out.buffer] });
       }
     }
-    postMessage({ id, error: '그림이 너무 복잡해서 64KB 안으로 줄이지 못했습니다. 더 작거나 단순한 그림을 넣어 주세요.' });
+    postMessage({ id, error: '그림이 너무 복잡해서 64KB 안으로 줄이지 못했어요. 더 작거나 단순한 그림을 넣어 주세요.' });
   } catch {
-    postMessage({ id, error: '그림 파일을 읽지 못했습니다. PNG, WebP, GIF, JPG 파일인지 확인해 주세요.' });
+    postMessage({ id, error: '그림 파일을 읽지 못했어요. PNG, WebP, GIF, JPG 파일인지 확인해 주세요.' });
   }
 };

@@ -1,7 +1,5 @@
-/* 상태칩 줄 안의 상태 알약. 칩 모양은 코어가 준다 */
-.pill {
-  display: inline-flex; align-items: center; max-width: 96px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
+/* 상태칩 줄 안의 상태 알약. 칩 모양은 코어가 주고 긴 글은 줄임표로 줄인다 */
+.pill { max-width: 96px; overflow: hidden; text-overflow: ellipsis; }
 .list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
 .list button { justify-content: flex-start; }
 .row { display: flex; gap: 8px; }

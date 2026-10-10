@@ -41,7 +41,7 @@ Preconditions:
   `await expect(w.getByRole('button', { name: '되돌리기' })).toBeEnabled()`로 획이 들어간 것을 확인한다. 그림판과 오른쪽 기본, 타이핑 미리보기에 파란 선이 보인다.
 - **ESC (wardrobe-esc).** 그림 고르기 대화상자를 시험용 PNG로 바꾸고 `이미지`를 누르면 `찍기`가 보인다. `w.keyboard.press('Escape')`를 실행하면 `찍기`가 사라지고 창은 열려 있다. 한 획을 그은 뒤 ESC를 누르면 `alert`에 `저장하지 않은 그림이 있어요. 창을 닫을까요?`와 `닫기`, `계속 그리기`가 보인다. `계속 그리기`를 누르면 알림이 사라진다. 다시 ESC로 알림을 띄우고 한 번 더 ESC를 누르면 `w.isClosed()`가 true가 된다.
 - **책상 고르기.** `await w.getByRole('button', { name: '2 책상' }).click()`과 `await w.getByRole('button', { name: /나무 책상/ }).click()`을 실행한다. `button "나무 책상" [pressed]`가 된다.
-- **저장.** `await w.getByRole('button', { name: '저장' }).click()`을 실행한다. 실행 화면에 `캐릭터를 저장했습니다`가 보이고 창이 닫힌다. `await expect.poll(() => w.isClosed()).toBe(true)`로 확인한다.
+- **저장.** `await w.getByRole('button', { name: '저장' }).click()`을 실행한다. 실행 화면에 `캐릭터를 저장했습니다`가 보이고 창이 닫힌다. 런처에서 연 창이면 같은 알림이 런처 창 위쪽에 뜬다. `await expect.poll(() => w.isClosed()).toBe(true)`로 확인한다.
 - **유지 확인.** 창을 다시 연다. 그림판과 기본, 타이핑 미리보기에 파란 선이 남아 있다. `2 책상` 탭을 누르면 `button "나무 책상" [pressed]`이다.
 - **증거.** 획을 그은 창, 책상을 고른 창, 저장 안내가 뜬 실행 화면, 다시 연 창을 `s.shot`으로 남긴다.
 

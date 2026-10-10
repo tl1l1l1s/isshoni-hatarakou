@@ -152,6 +152,8 @@ export class CoreRuntime {
     deps.bridge.on('notify.click', ({ id }) => {
       const fn = this.notifyClicks.get(id);
       this.notifyClicks.delete(id);
+      // OS 알림을 누른 사용자는 열려 있던 창을 보고 있지 않으므로 뒤따르는 알림은 실행 화면에 띄운다
+      this.windows.touch('');
       try {
         fn?.();
       } catch (e) {
@@ -835,7 +837,7 @@ export class CoreRuntime {
           this.layout.set((l) => {
             const next = { key, appearance: AppearanceSchema.parse(appearance), name };
             const has = l.local.some((x) => x.key === key);
-            if (!has && l.local.length >= LOCAL_SEATS_MAX) throw new Error(`로컬 좌석은 ${LOCAL_SEATS_MAX}개까지입니다`);
+            if (!has && l.local.length >= LOCAL_SEATS_MAX) throw new Error(`로컬 좌석은 ${LOCAL_SEATS_MAX}개까지예요`);
             return { ...l, local: has ? l.local.map((x) => (x.key === key ? next : x)) : [...l.local, next] };
           }),
         removeLocal: (key) => this.layout.set((l) => ({ ...l, local: l.local.filter((x) => x.key !== key) })),
@@ -1025,7 +1027,7 @@ export class CoreRuntime {
       // setup 전에 읽어 둔 값이 있어야 해서 preload에서 채운다
       const pre = this.preloaded.get(`${id}:${s}`);
       const { data, error } = readLocal(decl, pre);
-      if (error) this.toast(`${m.title ?? id} 데이터를 읽지 못해 처음 상태로 시작합니다. ${error}`);
+      if (error) this.toast(`${m.title ?? id} 데이터를 읽지 못해 처음 상태로 시작해요. ${error}`);
       const file = new JsonFile<{ v: number; data: unknown }>(this.deps.bridge, localPath(s), { v: decl.version, data });
       if (error && pre != null) void this.deps.bridge.invoke('store.write', { path: localPath(s).replace(/\.json$/, '.bak.json'), data: pre });
       local[s] = file;

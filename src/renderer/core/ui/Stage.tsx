@@ -103,10 +103,10 @@ export function Stage({ core }: { core: CoreRuntime }) {
   const { scale, seatSize, benchStep, left, deskOf, stageW, closedH } = m;
   // ▼ 메뉴는 항목과 설정에 묶음 사이 구분선, 다른 사용자 메뉴는 이름 줄과 항목(없으면 안내 한 줄).
   // 작업 영역에 남는 높이까지만 커지고 나머지는 메뉴 안에서 스크롤한다
-  const breaks = target?.self ? menuBreaks(core.registry.slot('menu.main')) : 1;
+  const breaks = target?.self ? menuBreaks(core.registry.slot('menu.main')) : 0;
   const rows = !target ? 0 : target.self ? count('menu.main') + 1 : Math.max(1, count('seat.menu')) + 1;
   const menuRoom = area ? area.height - closedH + MENU_CLOSED_H : Infinity;
-  const menuH = target ? Math.max(MENU_CLOSED_H, Math.min(rows * MENU_ITEM_H + 28 + (breaks - 1) * MENU_HR_H, menuRoom)) : MENU_CLOSED_H;
+  const menuH = target ? Math.max(MENU_CLOSED_H, Math.min(rows * MENU_ITEM_H + 28 + breaks * MENU_HR_H, menuRoom)) : MENU_CLOSED_H;
   const seatOf = (key: string) => seats.find((s) => s.key === key)!;
   const seatProps = (s: SeatView): SeatProps => ({
     core, seat: s, size: seatSize, scale, showHead, paused: display === 'hidden',
@@ -397,7 +397,7 @@ function Body({ core, seat, scale, showBubble, onToggle, onAct, actLabel, onShak
     <>
       {showBubble && bubble && (
         <div className={css.bubble} style={{ left: anchors.bubble.x, top: anchors.bubble.y, transform: `translate(-50%, -100%) scale(${scale})` }}>
-          {typeof bubble === 'string' ? bubble : <FileImage core={core} hash={bubble.image} />}
+          {typeof bubble === 'string' ? <span className={css.bubbleText}>{bubble}</span> : <FileImage core={core} hash={bubble.image} />}
         </div>
       )}
       <div
@@ -548,8 +548,8 @@ function useDrag(core: CoreRuntime, onClick?: () => void) {
 
 /** 메뉴 묶음은 order의 십의 자리로 나눈다 (10대 내 자리, 20대 함께, 40대 꾸미기 같은 식) */
 const groupOf = (c: { decl: ContributionDecl }) => Math.floor((c.decl.order ?? 0) / 10);
-/** 묶음 수 */
-const menuBreaks = (items: Array<{ decl: ContributionDecl }>) => items.filter((c, i) => i > 0 && groupOf(c) !== groupOf(items[i - 1]!)).length + 1;
+/** 묶음 사이 구분선 수 */
+const menuBreaks = (items: Array<{ decl: ContributionDecl }>) => items.filter((c, i) => i > 0 && groupOf(c) !== groupOf(items[i - 1]!)).length;
 
 /** ▼ 메뉴. 묶음 사이에 구분선을 넣고 방이 필요한 항목은 방 밖에서 흐리게 둔다. maxHeight는 작업 영역에 남는 높이이고 넘치는 항목은 스크롤한다 */
 function Menu({ core, maxHeight, onClose }: { core: CoreRuntime; maxHeight: number; onClose: () => void }) {
