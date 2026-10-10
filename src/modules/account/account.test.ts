@@ -74,12 +74,23 @@ describe('오프라인 부팅의 이름', () => {
 
   it('프로필을 읽기 전에 사용자가 정한 이름은 늦게 온 서버 이름보다 앞선다', async () => {
     const a = await boot('옛 이름', undefined);
-    a.ctx.self.setName('지금 정함');
-    await Promise.resolve();
+    await a.ctx.self.setName('지금 정함');
     a.core.setProfile({ name: '서버 이름' });
     expect(a.core.self.get().name).toBe('지금 정함');
     expect(a.serverName()).toBe('지금 정함');
     expect(await a.localName()).toBe('지금 정함');
+  });
+
+  it('닉네임 저장은 서버가 받은 뒤에만 이 PC의 이름을 바꾸고 끊겼거나 거부되면 그대로 둔다', async () => {
+    const a = await boot('옛 이름', { name: '옛 이름' });
+    a.server.goOffline({ abrupt: true });
+    await expect(a.ctx.self.setName('끊긴 채로')).rejects.toThrow('연결이 끊겨서');
+    a.server.goOnline();
+    await a.server.identity.signOut();
+    await expect(a.ctx.self.setName('거부됨')).rejects.toThrow();
+    expect(a.core.self.get().name).toBe('옛 이름');
+    expect(a.serverName()).toBe(undefined);
+    expect(await a.localName()).toBe('옛 이름');
   });
 
   it('서버에 이름이 없는 계정은 이 PC의 이름을 한 번 올린다', async () => {

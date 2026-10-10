@@ -2,7 +2,7 @@
 // Firebase 구현과 같은 경로 배치(firebase/layout.ts)에 JSON 트리 하나를 두고 여러 클라이언트가 함께 쓴다.
 import { PRESENCE_STALE_MS } from '@shared/constants';
 import type { MemberRecord, RoomMeta } from '@shared/schemas';
-import { decodeFile, encodeFile, isInc, nsPath, pushKeyTime, toPresence } from '../firebase/layout';
+import { decodeFile, encodeFile, isInc, nsPath, pushKeyTime, toPresence, WRITE_DENIED } from '../firebase/layout';
 import {
   ROOM_EVENT_MAX_CHARS, ROOM_EVENT_TTL_MS, ROOM_EVENT_TYPE_MAX, ROOM_EVENT_WINDOW, SERVER_TIME,
   type DocHandle, type Namespace, type RoomEvent, type RoomTransport, type ServerPort,
@@ -155,11 +155,12 @@ export function createMemoryServer(hub: MemoryHub): MemoryServer {
 
   const live = () => online;
   const me = (): string => {
-    if (!uid) throw new Error('로그인이 필요합니다');
+    if (!uid) throw new Error('로그인이 필요해요');
     return uid;
   };
+  // Firebase 구현이 바꾸는 글과 같은 글을 던진다. 어느 경로였는지는 path에 남긴다
   const deny = (path: string): never => {
-    throw new Error(`PERMISSION_DENIED: ${path}`);
+    throw Object.assign(new Error(WRITE_DENIED), { code: 'PERMISSION_DENIED', path });
   };
   const read = (path: string) => {
     me();
@@ -267,6 +268,12 @@ export function createMemoryServer(hub: MemoryHub): MemoryServer {
         if (u !== me() || !meta || meta.deletedAt !== undefined) deny(path);
         hub.write(path, at);
       }),
+    removeRoster: (code, u) =>
+      run(() => {
+        const path = `rooms/${code}/roster/${u}`;
+        if (u !== me()) deny(path);
+        hub.write(path, null);
+      }),
     join: (code, key, record) =>
       run(() => {
         checkMember(code, key, record);
@@ -350,7 +357,7 @@ export function createMemoryServer(hub: MemoryHub): MemoryServer {
       // 개발 코드 'dev-alice'는 uid 'alice'가 된다. 같은 코드는 늘 같은 uid
       signIn: async (code) => {
         const id = code.trim().replace(/^dev-/, '').replace(/[^A-Za-z0-9]/g, '');
-        if (!id) throw new Error('설정 코드가 올바르지 않습니다.');
+        if (!id) throw new Error('설정 코드가 올바르지 않아요.');
         uid = id;
         return id;
       },

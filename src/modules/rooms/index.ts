@@ -89,12 +89,19 @@ export default defineModule<RoomsApi>({
       check();
     });
 
-    // 자동 재입장 (ROM-04). 모든 모듈의 beforeJoin이 등록된 뒤(ready)에 들어간다
+    // 자동 재입장 (ROM-04). 모든 모듈의 beforeJoin이 등록된 뒤(ready)에 들어간다.
+    // 들어가지 못하면(서버가 잠깐 거부하거나 연결이 끊김) 다음에 연결될 때 한 번 더 들어간다
+    let retry = false;
     ctx.lifecycle.on((e) => {
-      if (e.type !== 'ready') return;
+      if (e.type !== 'ready' && !(e.type === 'online' && retry)) return;
+      retry = false;
       const { lastRoom } = ctx.local.get<Local>('account');
       if (!lastRoom || ctx.room.current() || !ctx.settings.get<{ autoRejoin: boolean }>().autoRejoin) return;
-      void joinRoom(ctx, lastRoom).then((err) => err && ctx.ui.toast(err));
+      void joinRoom(ctx, lastRoom).then((err) => {
+        if (!err) return;
+        ctx.ui.toast(err);
+        retry = true;
+      });
     });
 
     return { current: () => info(ctx).code, isOwner: () => info(ctx).owner };

@@ -53,8 +53,8 @@ describe('방 이벤트와 계정 접속 상태 시뮬레이터', () => {
 
     expect(a.ctx.room.emit('wave', { n: 1 })).toBe(true);
     await vi.advanceTimersByTimeAsync(0);
-    expect(b.waves).toEqual([{ uid: 'alice', at: expect.any(Number), payload: { n: 1 }, self: false }]);
-    expect(a.waves).toEqual([{ uid: 'alice', at: expect.any(Number), payload: { n: 1 }, self: true }]);
+    expect(b.waves).toEqual([{ key: expect.any(String), uid: 'alice', at: expect.any(Number), payload: { n: 1 }, self: false }]);
+    expect(a.waves).toEqual([{ key: b.waves[0]!.key, uid: 'alice', at: expect.any(Number), payload: { n: 1 }, self: true }]);
 
     expect(() => a.ctx.room.emit('wave', { n: 'x' })).toThrow('schema');
     expect(() => a.ctx.room.emit('nope', {})).toThrow('선언하지 않은');

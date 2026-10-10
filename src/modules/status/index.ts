@@ -37,7 +37,8 @@ export default defineModule({
     ],
     contributions: [
       { slot: 'menu.main', id: 'status.menu', label: '상태 고르기', command: 'status.open', order: 10 },
-      { slot: 'chip.buttons', id: 'status.chip', label: '상태', component: Chip },
+      // 내 상태칩은 늘 메뉴 칩 바로 옆에 둔다. 방에 들어가 칩이 늘어도 자리가 바뀌지 않는다
+      { slot: 'chip.buttons', id: 'status.chip', label: '상태', component: Chip, order: -1 },
     ],
   },
   commands: [

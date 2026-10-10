@@ -56,6 +56,8 @@ const FILE_CACHE_MAX = 256;
 const TOAST_RECENT_MS = 30_000;
 /** 알림을 띄우자마자 그 패널이 닫히면(저장하고 닫는 창) 다른 곳으로 옮겨 띄운다. 이보다 오래 보인 뒤에 닫혔으면 함께 사라진다 */
 const TOAST_MOVE_MS = 1_000;
+/** 연결이 이만큼 끊겨 있어야 끊김을 보인다. 잠깐 끊겼다 이어지는 일로 깜빡이지 않게 한다 */
+const OFFLINE_SHOW_MS = 5_000;
 
 /** 렌더러 코어 서비스 묶음과 모듈별 ctx 생성 (10.5 코어가 모듈에 주는 것) */
 export class CoreRuntime {
@@ -82,6 +84,10 @@ export class CoreRuntime {
   /** 효과로 자리를 떠난 좌석. 한 좌석에 detach 효과가 여럿이면 모두 끝나야 돌아온다 */
   readonly away = createStore<ReadonlySet<string>>(new Set());
   private awayCount = new Map<string, number>();
+  /** 좌석마다 지금 도는 detach 효과를 끝내는 함수. 새 detach 효과가 오면 앞의 것을 끝내 같은 캐릭터가 둘로 보이지 않게 한다 */
+  private detached = new Map<string, () => void>();
+  /** 서버 연결이 끊긴 지 OFFLINE_SHOW_MS가 지났는지 (0031). 실행 화면 칩과 창 위쪽 띠가 본다 */
+  readonly offline = createStore(false);
   /** 좌석 계층이 만든 뷰와 그 칸. 효과 좌표를 여기서 구한다. 올라탄 좌석은 올라탄 자리의 뷰다 */
   readonly seatViews = new Map<string, { view: CharacterView; el: HTMLElement }>();
   /** 대상 고르기(ctx.ui.pickTarget) 중이면 끝내는 함수 */
@@ -115,6 +121,7 @@ export class CoreRuntime {
   constructor(readonly deps: CoreDeps, private deviceSettings: JsonFile<SettingsFile>, private accountSettings: JsonFile<SettingsFile>) {
     this.windows = new WindowClient(deps.bridge, (w, e) => this.onPanelKey(w, e), deps.material ?? false);
     this.displayMode = createStore<DisplayMode>(this.savedMode());
+    this.watchConnection();
     this.effectWindow = new EffectWindow(deps.bridge);
     this.registry.hidden = (c) => (c.quiet === 'hide' && this.displayMode.get() === 'quiet') || (c.gate !== undefined && !this.gateOpen(c.gate));
     this.registry.blocked = (c) => {
@@ -234,14 +241,14 @@ export class CoreRuntime {
     const cur = this.self.get().name;
     if (p?.name) {
       if (p.name !== cur) this.setSelfName(p.name);
-    } else if (cur) this.writeName(cur, 'core');
+    } else if (cur) void this.writeName(cur, 'core').catch(() => {});
   }
 
   /** ctx.self.fillName. 프로필을 이미 읽었는데 이름이 비어 있으면 올린다 */
   fillName(name: string, owner = 'core'): void {
     if (!name || this.self.get().name) return;
     this.setSelfName(name);
-    if (this.deps.profile !== undefined) this.writeName(name, owner);
+    if (this.deps.profile !== undefined) void this.writeName(name, owner).catch(() => {});
   }
 
   private setSelfName(name: string) {
@@ -249,8 +256,38 @@ export class CoreRuntime {
     this.session.setCore({ name });
   }
 
-  private writeName(name: string, owner: string) {
-    void this.deps.server.profile.write(this.deps.uid, { name }).catch((e: Error) => this.log('warn', owner, `이름 저장 실패: ${e.message}`));
+  /** 실패하면 로그에 남기고 그대로 reject한다 */
+  private writeName(name: string, owner: string): Promise<void> {
+    return this.deps.server.profile.write(this.deps.uid, { name }).catch((e: Error) => {
+      this.log('warn', owner, `이름 저장 실패: ${e.message}`);
+      throw e;
+    });
+  }
+
+  /** ctx.self.setName. 사용자가 저장을 눌렀을 때만 부르므로 끊겨 있으면 쓰지 않고 바로 알린다 (0031).
+   *  서버가 받은 뒤에 이 PC의 이름을 바꿔서 실패한 이름이 이 PC에만 남지 않게 한다 */
+  private async saveName(name: string, owner: string): Promise<void> {
+    if (!this.deps.server.connection.online()) throw new Error('연결이 끊겨서 저장하지 못했어요. 연결되면 다시 해 주세요.');
+    await this.writeName(name, owner);
+    this.nameEdited = true;
+    this.setSelfName(name);
+  }
+
+  /** 끊긴 지 OFFLINE_SHOW_MS가 지나면 offline을 켜고 그 뒤에 다시 연결되면 한 번 알린다 */
+  private watchConnection() {
+    const { connection } = this.deps.server;
+    let timer: Dispose | null = null;
+    const update = (online: boolean) => {
+      timer?.();
+      timer = null;
+      if (!online) timer = this.at(OFFLINE_SHOW_MS, () => this.offline.set(true));
+      else if (this.offline.get()) {
+        this.offline.set(false);
+        this.toast('다시 연결됐어요.');
+      }
+    };
+    connection.onChange(update);
+    if (!connection.online()) update(false);
   }
 
   // ---- 표시 모드와 gate ---------------------------------------------------------
@@ -361,12 +398,20 @@ export class CoreRuntime {
     const end = () => {
       if (stopped) return;
       stopped = true;
+      if (this.detached.get(seatKey) === finish) this.detached.delete(seatKey);
       stop?.();
     };
+    let done = false;
     const finish = () => {
       end();
-      onEnd();
+      if (!done) onEnd();
+      done = true;
     };
+    // 한 좌석에는 마지막 detach 효과 하나만 돈다. 앞의 효과는 스스로 끝난 것처럼 끝낸다
+    if (decl.detach) {
+      this.detached.get(seatKey)?.();
+      this.detached.set(seatKey, finish);
+    }
     const fail = (e: unknown) => {
       this.log('warn', owner, `효과 ${effectId} 실패: ${e instanceof Error ? e.message : String(e)}`);
       finish();
@@ -703,13 +748,16 @@ export class CoreRuntime {
         current: () => this.session.current(),
         onChange: (fn) => scope.add(this.session.onChange(fn)),
         join: (code) => this.session.join(code),
-        leave: () => this.session.leave(),
+        // 모듈이 부르는 나가기는 사용자가 스스로 나가는 것이라 roster에서도 뺀다 (0031)
+        leave: () => this.session.leave(true),
         create: () => this.session.create(),
         beforeRemove: (fn) => {
           this.beforeRemove.add(fn);
           return scope.add(() => this.beforeRemove.delete(fn));
         },
         remove: async (code) => {
+          // 끊긴 채로 지우면 이 PC에서만 지워진 것처럼 보이므로 시작하지 않는다 (0031)
+          if (!server.connection.online()) throw new Error('연결이 끊겨서 방을 지우지 못했어요. 연결되면 다시 해 주세요.');
           for (const fn of this.beforeRemove) await fn(code);
           // 주인 앱이 deleteWithRoom 컬렉션을 먼저 지우고 deletedAt을 쓴다 (10.7.2 방 주인과 방 보존)
           for (const mm of this.manifests) {
@@ -762,11 +810,7 @@ export class CoreRuntime {
         deviceId: () => this.deps.deviceId,
         name: () => this.self.get().name,
         friendCode: () => this.deps.profile?.friendCode ?? null,
-        setName: (name) => {
-          this.nameEdited = true;
-          this.setSelfName(name);
-          this.writeName(name, id);
-        },
+        setName: (name) => this.saveName(name, id),
         fillName: (name) => this.fillName(name, id),
         setAppearance: async (a) => {
           const parsed = AppearanceSchema.parse(a);
@@ -846,6 +890,8 @@ export class CoreRuntime {
         setBench: (key, bench) => this.layout.set((l) => ({ ...l, bench: withKey(l.bench, key, bench) })),
       },
       notify: ({ title, body, onClick }) => {
+        // 회사원 모드에서는 OS 알림을 띄우지 않는다. 옆 사람이 알림의 이름과 글을 볼 수 있다 (D4)
+        if (this.displayMode.get() === 'quiet') return;
         const nid = `${id}:${++this.notifySeq}`;
         if (onClick) {
           this.notifyClicks.set(nid, onClick);
@@ -881,6 +927,7 @@ export class CoreRuntime {
           return scope.add(() => this.gateSubs.delete(fn));
         },
       },
+      connection: { online: () => server.connection.online(), onChange: (fn) => scope.add(server.connection.onChange(fn)) },
       render: {
         playEffect: (key, eid, opts) => {
           // 바로 끝난 효과(회사원 모드, 그려지지 않은 좌석)는 정리 목록에 넣지 않는다
@@ -909,7 +956,8 @@ export class CoreRuntime {
         close: (wid) => this.windows.close(wid),
         toast: (text) => this.toast(text),
         guard: (wid, check) => scope.add(this.windows.guard(wid, check)),
-        confirmLeave: (wid) => this.windows.confirm(wid),
+        confirmLeave: (wid, q) => this.windows.confirm(wid, q),
+        ask: (wid, q) => this.windows.ask(wid, q),
         Slot: this.Slot,
         CharacterPreview: this.CharacterPreview,
         pickTarget: (opts) => this.pickTarget(opts?.timeoutMs),

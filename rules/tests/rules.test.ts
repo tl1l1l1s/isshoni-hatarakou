@@ -90,9 +90,22 @@ describe.skipIf(!HOST)('database rules', () => {
       await assertFails(at('carol', 'rooms/NONE22/roster/carol').set(1));
       await assertSucceeds(at('carol', `rooms/${ROOM}/roster/carol`).set(1));
       await assertFails(at('carol', `rooms/${ROOM}/roster/carol`).set(2));
-      await assertFails(at('carol', `rooms/${ROOM}/roster/carol`).remove());
       await assertSucceeds(at('alice', `rooms/${ROOM}/meta/deletedAt`).set(5));
       await assertFails(at('dave', `rooms/${ROOM}/roster/dave`).set(1));
+    });
+    it('스스로 나가면 본인 칸만 지우고 그 뒤로는 방 기록을 읽지 못한다', async () => {
+      await assertFails(at('carol', `rooms/${ROOM}/roster/bob`).remove());
+      // 주인도 남의 칸은 지우지 못한다 (내보내기 없음)
+      await assertFails(at('alice', `rooms/${ROOM}/roster/bob`).remove());
+      await assertSucceeds(at('bob', `mod/hello/r/${ROOM}/items`).get());
+      await assertSucceeds(at('bob', `rooms/${ROOM}/roster/bob`).remove());
+      await assertFails(at('bob', `rooms/${ROOM}/members`).get());
+      await assertFails(at('bob', `rooms/${ROOM}/ev`).get());
+      await assertFails(at('bob', `mod/hello/r/${ROOM}/items`).get());
+      await assertFails(at('bob', `mod/hello/r/${ROOM}/msgs`).get());
+      // 코드로 다시 들어오면 칸을 다시 만들고 다시 읽는다
+      await assertSucceeds(at('bob', `rooms/${ROOM}/roster/bob`).set(2));
+      await assertSucceeds(at('bob', `mod/hello/r/${ROOM}/msgs`).get());
     });
     it('멤버는 목록을 읽고 밖의 사람은 자기 항목만 읽는다', async () => {
       await assertSucceeds(at('bob', `rooms/${ROOM}/roster`).get());

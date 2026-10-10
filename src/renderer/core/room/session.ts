@@ -5,6 +5,7 @@ import { PRESENCE_MODULE_MAX_BYTES, PRESENCE_SEEN_MS, PRESENCE_STALE_MS } from '
 import { randomCode } from '@shared/codes';
 import type { MemberRecord } from '@shared/schemas';
 import { ROOM_EVENT_MAX_CHARS, ROOM_EVENT_TTL_MS, SERVER_TIME, type Dispose, type RoomEvent, type ServerPort } from '@server/port';
+import { keyTime } from '@server/firebase/layout';
 import type { PresenceFieldDecl } from '@core/types';
 
 export type { JoinResult } from '../types';
@@ -12,8 +13,8 @@ import type { JoinResult } from '../types';
 /** 거른 멤버 기록과 기록 키. look, mods, m은 비어 있어도 채워 준다 (Firebase는 null과 빈 객체를 저장하지 않는다) */
 export type RoomMember = MemberRecord & { key: string };
 export interface CoreFields { name: string; look: string | null; state: string }
-/** 받은 방 이벤트. payload는 JSON을 푼 값이고 schema 검사는 부른 쪽이 한다 */
-export interface RoomEventIn { uid: string; at: number; payload: unknown; self: boolean }
+/** 받은 방 이벤트. payload는 JSON을 푼 값이고 schema 검사는 부른 쪽이 한다. key는 모든 PC에서 같고 보낸 순서로 정렬된다 */
+export interface RoomEventIn { key: string; uid: string; at: number; payload: unknown; self: boolean }
 
 export interface RoomSessionDeps {
   server: ServerPort;
@@ -28,6 +29,7 @@ export interface RoomSessionDeps {
 }
 
 const CANCELLED: JoinResult = { ok: false, reason: '방 입장을 취소했어요.', kind: 'cancelled' };
+const UPDATE_NEEDED = '앱을 새 버전으로 업데이트해야 방에 들어갈 수 있어요.';
 const byteLength = (v: unknown) => new TextEncoder().encode(JSON.stringify(v)).length;
 
 export class RoomSession {
@@ -65,6 +67,8 @@ export class RoomSession {
 
   constructor(deps: RoomSessionDeps) {
     this.d = deps;
+    // 끊긴 동안 미뤄 둔 150초 거름을 다시 한다. 바뀐 기록이 없으면 구독이 다시 부르지 않는다
+    deps.server.connection.onChange((online) => online && this.refresh());
   }
 
   current(): string | null {
@@ -76,7 +80,7 @@ export class RoomSession {
     return this.listen(this.changeFns, fn);
   }
 
-  /** 들어온 순서. 150초 넘은 기록은 빼고 같은 uid는 seenAt이 가장 최근인 기록 하나만 준다 */
+  /** 들어온 순서. 150초 넘은 기록은 빼고(연결이 끊긴 동안은 두고) 같은 uid는 seenAt이 가장 최근인 기록 하나만 준다 */
   members(): RoomMember[] {
     return this.view;
   }
@@ -109,14 +113,14 @@ export class RoomSession {
         if (reason) return { ok: false, reason, kind: 'blocked' };
       }
       if ((await server.config.minProtocol()) > proto) {
-        return { ok: false, reason: '앱을 새 버전으로 업데이트해야 방에 들어갈 수 있습니다.', kind: 'proto' };
+        return { ok: false, reason: UPDATE_NEEDED, kind: 'proto' };
       }
       const meta = await server.room.getMeta(code);
       if (stale()) return CANCELLED;
-      if (!meta) return { ok: false, reason: '없는 방 코드입니다. 코드를 다시 확인해 주세요.', kind: 'missing' };
-      if (meta.deletedAt !== undefined) return { ok: false, reason: '주인이 지운 방입니다.', kind: 'gone' };
+      if (!meta) return { ok: false, reason: '없는 방 코드예요. 코드를 다시 확인해 주세요.', kind: 'missing' };
+      if (meta.deletedAt !== undefined) return { ok: false, reason: '주인이 지운 방이에요.', kind: 'gone' };
       const uid = server.identity.current();
-      if (!uid) return { ok: false, reason: '로그인한 뒤에 방에 들어갈 수 있습니다.', kind: 'auth' };
+      if (!uid) return { ok: false, reason: '로그인한 뒤에 방에 들어갈 수 있어요.', kind: 'auth' };
       await this.exit();
       const now = server.time.serverNow();
       await server.room.ensureRoster(code, uid, now);
@@ -126,7 +130,7 @@ export class RoomSession {
       this.batch = {};
       await server.room.join(code, this.key, this.record());
     } catch {
-      return stale() ? CANCELLED : { ok: false, reason: '방에 들어가지 못했습니다. 연결을 확인하고 다시 시도해 주세요.', kind: 'network' };
+      return stale() ? CANCELLED : { ok: false, reason: '방에 들어가지 못했어요. 연결을 확인하고 다시 해 주세요.', kind: 'network' };
     }
     if (stale()) {
       // 기록을 쓰는 동안 취소됐으면 방금 쓴 기록을 지운다
@@ -150,31 +154,38 @@ export class RoomSession {
     this.joining = null;
   }
 
-  leave(): Promise<void> {
+  /** forget이면 roster에서도 빠져 그 방 기록(채팅, 사진 같은 것)을 더 읽지 못한다. 사용자가 스스로 나갈 때만 켠다.
+   *  앱 끝내기, 다른 기기로 넘기기, 절전은 forget 없이 나가서 다시 들어갈 수 있게 둔다 */
+  async leave(forget = false): Promise<void> {
+    const code = this.code ?? this.joining;
     this.paused = null;
     this.cancelJoin();
-    return this.exit();
+    await this.exit();
+    const uid = this.d.server.identity.current();
+    // 오프라인이면 다시 연결될 때 지워진다. 그 전에 앱을 끝내면 남는다
+    if (forget && code && uid) this.d.server.room.removeRoster(code, uid).catch(() => {});
   }
 
   /** 방을 만들고 주인이 된다. 들어가는 것은 부른 쪽이 join으로 한다 */
   async create(): Promise<string> {
     const { server } = this.d;
     const uid = server.identity.current();
-    if (!uid) throw new Error('로그인한 뒤에 방을 만들 수 있습니다.');
+    if (!uid) throw new Error('로그인한 뒤에 방을 만들 수 있어요.');
     // 코드가 10억 가지라 겹칠 일이 거의 없지만 지운 방 코드도 남으므로 몇 번 다시 뽑는다
     for (let i = 0; i < 5; i++) {
       const code = randomCode();
       if (await server.room.createMeta(code, { kind: 'work', owner: uid, createdAt: server.time.serverNow() })) return code;
     }
-    throw new Error('방을 만들지 못했습니다. 잠시 뒤 다시 시도해 주세요.');
+    throw new Error('방을 만들지 못했어요. 잠시 뒤 다시 해 주세요.');
   }
 
-  /** 주인만 지운다. 삭제 표시를 쓰고 멤버 기록을 지운 뒤 나간다 */
+  /** 주인만 지운다. 먼저 나간 뒤 삭제 표시를 쓰고 멤버 기록을 지운다. 나가기 전에 지우면 멤버 구독이 내 기록이 사라진 것을 보고
+   *  주인이 방을 지웠다는 안내를 한 번 더 띄운다 */
   async remove(code: string): Promise<void> {
     const uid = this.d.server.identity.current();
-    if (!uid || (await this.owner(code)) !== uid) throw new Error('방 주인만 방을 지울 수 있습니다.');
-    await this.d.server.room.markDeleted(code, this.d.server.time.serverNow());
+    if (!uid || (await this.owner(code)) !== uid) throw new Error('방 주인만 방을 지울 수 있어요.');
     if (this.code === code) await this.exit();
+    await this.d.server.room.markDeleted(code, this.d.server.time.serverNow());
   }
 
   async owner(code: string): Promise<string | null> {
@@ -218,11 +229,12 @@ export class RoomSession {
     }
   }
 
-  /** 방 이벤트를 보낸다. 방 밖이거나 이 이름으로 최근 1분 안에 perMinute번 보냈으면 보내지 않고 false.
+  /** 방 이벤트를 보낸다. 방 밖이거나 연결이 끊겼거나 이 이름으로 최근 1분 안에 perMinute번 보냈으면 보내지 않고 false.
+   *  끊긴 채로 보내면 이 PC에서만 재생되고 친구에게는 다시 연결된 뒤에 늦게 가므로 보내지 않는다 (0031).
    *  보낸 앱이 60초 뒤에 지운다. payload JSON이 1024자를 넘으면 예외 */
   emit(type: string, payload: unknown, perMinute: number): boolean {
     const code = this.code;
-    if (!code) return false;
+    if (!code || !this.d.server.connection.online()) return false;
     const p = JSON.stringify(payload ?? null);
     if (p.length > ROOM_EVENT_MAX_CHARS) throw new Error(`${type}: payload가 ${ROOM_EVENT_MAX_CHARS}자를 넘습니다`);
     const now = this.d.clock.now();
@@ -245,14 +257,15 @@ export class RoomSession {
     return this.listen(fns, fn);
   }
 
-  /** 들어온 뒤에 보낸 60초 안의 이벤트만 한 번씩 전한다. 처리 함수가 없는 이름은 무시한다 */
+  /** 들어온 뒤에 보낸 60초 안의 이벤트만 한 번씩 전한다. 처리 함수가 없는 이름은 무시한다.
+   *  보낸 앱이 끊긴 줄 모르고 보내 서버에 60초 넘게 늦게 닿은 이벤트(키의 시각과 서버 시각 at이 먼 것)도 버린다 */
   private onEvents(evs: RoomEvent[]): void {
     const now = this.d.server.time.serverNow();
     const me = this.d.server.identity.current();
     for (const [key, at] of this.seenEvents) if (now - at > ROOM_EVENT_TTL_MS) this.seenEvents.delete(key);
     for (const ev of evs) {
       if (typeof ev.at !== 'number' || typeof ev.p !== 'string' || this.seenEvents.has(ev.key)) continue;
-      if (ev.at < this.joinedAt || now - ev.at > ROOM_EVENT_TTL_MS) continue;
+      if (ev.at < this.joinedAt || now - ev.at > ROOM_EVENT_TTL_MS || ev.at - keyTime(ev.key) > ROOM_EVENT_TTL_MS) continue;
       this.seenEvents.set(ev.key, ev.at);
       const fns = this.eventFns.get(ev.t);
       if (!fns?.size) continue;
@@ -262,7 +275,7 @@ export class RoomSession {
       } catch {
         continue;
       }
-      for (const fn of fns) fn({ uid: ev.uid, at: ev.at, payload, self: ev.uid === me });
+      for (const fn of fns) fn({ key: ev.key, uid: ev.uid, at: ev.at, payload, self: ev.uid === me });
     }
   }
 
@@ -323,7 +336,9 @@ export class RoomSession {
     try {
       const meta = await this.d.server.room.getMeta(code);
       if (this.code !== code) return;
-      if (!meta || meta.deletedAt !== undefined) return await this.exit('주인이 방을 지웠습니다.');
+      if (!meta || meta.deletedAt !== undefined) return await this.exit('주인이 방을 지웠어요.');
+      // 최소 프로토콜이 올라가면 규칙이 내 기록 쓰기를 막아 다시 써도 소용없다. 나가서 업데이트를 알린다
+      if ((await this.d.server.config.minProtocol()) > this.d.proto) return this.code === code ? await this.exit(UPDATE_NEEDED) : undefined;
       await this.d.server.room.join(code, this.key, this.record());
     } catch {
       // 다음 seenAt 쓰기가 실패하면 다시 시도한다
@@ -332,15 +347,20 @@ export class RoomSession {
     }
   }
 
-  /** 오래된 기록을 빼고 같은 uid는 seenAt이 가장 최근인 기록만 남긴다. 내 기록은 거르지 않는다 */
+  /** 오래된 기록을 빼고 같은 uid는 seenAt이 가장 최근인 기록만 남긴다. 내 기록은 거르지 않는다.
+   *  연결이 끊긴 동안은 남의 seenAt이 오지 않으므로 오래된 기록도 빼지 않고 다시 연결된 뒤에 거른다 */
   private refresh(): void {
     const { server, timers } = this.d;
     const now = server.time.serverNow();
+    const online = server.connection.online();
     const best = new Map<string, [string, MemberRecord]>();
     let nextStale = Infinity;
     for (const [key, rec] of Object.entries(this.raw)) {
+      // 끊긴 동안 SDK 캐시에 생긴 조각 기록(seenAt만 있는 것)은 좌석이 아니다
+      if (typeof rec.uid !== 'string' || typeof rec.name !== 'string') continue;
       const age = now - (typeof rec.seenAt === 'number' ? rec.seenAt : 0);
-      if (key !== this.key && age > PRESENCE_STALE_MS) {
+      const stale = key !== this.key && age > PRESENCE_STALE_MS;
+      if (stale && online) {
         // 남의 오래된 기록은 한 번만 지워 본다. 규칙이 150초 넘은 기록만 허용한다
         if (this.code && !this.tried.has(key)) {
           this.tried.add(key);
@@ -348,8 +368,8 @@ export class RoomSession {
         }
         continue;
       }
-      this.tried.delete(key);
-      if (key !== this.key) nextStale = Math.min(nextStale, PRESENCE_STALE_MS - age);
+      if (!stale) this.tried.delete(key);
+      if (key !== this.key && !stale) nextStale = Math.min(nextStale, PRESENCE_STALE_MS - age);
       const prev = best.get(rec.uid);
       if (!prev || rec.seenAt > prev[1].seenAt) best.set(rec.uid, [key, rec]);
     }

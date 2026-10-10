@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { SlotProps } from '@core/types';
 import { NAME_MAX_LENGTH } from '@shared/constants';
-import { cleanName, PHOTO_SIDE } from '../logic';
+import { OFFLINE } from '@core/types';
+import { cleanName, pickPhoto } from '../logic';
 import Photo from './Photo';
 import css from './account.module.css';
 
@@ -19,31 +20,39 @@ export default function AccountTab({ ctx, windowId, code: showCode = true, focus
     [ctx, windowId],
   );
 
+  // 서버가 받은 뒤에만 저장했다고 알린다. 실패하면 적은 이름을 칸에 두어 떠나기 전 물음도 그대로 뜬다
   const save = () => {
     const r = cleanName(name);
     if (!r.ok) return setMsg(r.reason);
-    ctx.self.setName(r.name);
-    setName(r.name);
-    setMsg('저장했어요');
+    setBusy(true);
+    setMsg('저장하는 중이에요.');
+    ctx.self
+      .setName(r.name)
+      .then(
+        () => {
+          setName(r.name);
+          setMsg('저장했어요');
+        },
+        (e: Error) => setMsg(ctx.connection.online() ? '닉네임을 저장하지 못했어요. 잠시 뒤 다시 해 주세요.' : e.message),
+      )
+      .finally(() => setBusy(false));
   };
   const copy = () =>
     ctx.shell.copy(code ?? '').then(
-      () => setMsg('친구 코드를 복사했어요'),
-      () => setMsg('복사하지 못했어요. 코드를 직접 골라 복사해 주세요'),
+      () => setMsg('친구 코드를 복사했어요.'),
+      () => setMsg('복사하지 못했어요. 코드를 직접 알려 주세요.'),
     );
-  // 프로필 사진 (SCR-03). 64KB 파일 한도 안으로 줄여 올리고 친구만 읽는 자리에 해시를 둔다
+  // 프로필 사진 (SCR-03). 넣기는 공개 API pickPhoto와 같은 길로 올린다
   const photo = async (pick: boolean) => {
     setBusy(true);
     setMsg('');
     try {
+      if (!ctx.connection.online()) return setMsg(OFFLINE);
       if (!pick) {
         await ctx.server.user().remove('photo');
         return setMsg('사진을 뺐어요');
       }
-      const f = await ctx.files.openImage();
-      if (!f) return;
-      await ctx.server.user().set('photo', await ctx.files.upload(await ctx.files.prepareImage(f.bytes, { maxSide: PHOTO_SIDE })));
-      setMsg('사진을 바꿨어요');
+      if (await pickPhoto(ctx)) setMsg('사진을 바꿨어요');
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
     } finally {
@@ -64,18 +73,18 @@ export default function AccountTab({ ctx, windowId, code: showCode = true, focus
           닉네임
           <input className={css.nameInput} value={name} maxLength={NAME_MAX_LENGTH} autoFocus={focusName} onChange={(e) => setName(e.target.value)} />
         </label>
-        <button type="submit">저장</button>
+        <button type="submit" disabled={busy}>저장</button>
       </form>
       {!showCode ? null : code ? (
         <label>
           친구 코드
           <span>
             <input readOnly value={code} size={10} onFocus={(e) => e.target.select()} />{' '}
-            <button onClick={() => void copy()}>복사</button>
+            <button onClick={() => void copy()}>코드 복사</button>
           </span>
         </label>
       ) : (
-        <p>개발용 계정이라 친구 코드가 없어요</p>
+        <p className={css.hint}>연결되면 친구 코드가 보여요.</p>
       )}
       {msg && <p role="status">{msg}</p>}
     </div>

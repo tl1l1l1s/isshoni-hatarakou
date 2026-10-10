@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { PRESENCE_SEEN_MS } from '@shared/constants';
+import { PRESENCE_SEEN_MS, PRESENCE_STALE_MS } from '@shared/constants';
 import { PROTO } from '@shared/proto';
 import type { MemberRecord } from '@shared/schemas';
+import { pushKeyTime } from '@server/firebase/layout';
 import { createMemoryServer, MemoryHub } from '@server/memory';
 import { RoomSession } from './session';
 
@@ -135,7 +136,7 @@ describe('RoomSession', () => {
     expect(session.emit('focus.cheer', { n: 1 }, 30)).toBe(true);
     session.emit('focus.other', 1, 30); // 처리 함수가 없는 이름은 무시한다
     await vi.advanceTimersByTimeAsync(0);
-    expect(got).toEqual([{ uid: 'alice', at: expect.any(Number), payload: { n: 1 }, self: true }]);
+    expect(got).toEqual([{ key: expect.any(String), uid: 'alice', at: expect.any(Number), payload: { n: 1 }, self: true }]);
     expect(Object.values(hub.read(`rooms/${code}/ev`) as object)).toHaveLength(2);
     await vi.advanceTimersByTimeAsync(60_000);
     expect(hub.read(`rooms/${code}/ev`)).toBeNull();
@@ -167,6 +168,46 @@ describe('RoomSession', () => {
     hub.write(`rooms/${code}/ev/${key}`, { t: 'focus.cheer', uid: 'bob', at: hub.now(), p: '"ok"' });
     hub.write(`rooms/${code}/ev/${key}/p`, '"again"');
     expect(got).toEqual(['ok']);
+  });
+
+  it('끊긴 동안: 방 이벤트를 보내지 않고 남의 오래된 기록을 두며 다시 연결되면 거른다. 조각 기록과 늦게 닿은 이벤트는 버린다', async () => {
+    const { hub, server, session, join } = await setup();
+    await join();
+    const code = session.current()!;
+    const got: unknown[] = [];
+    session.onEvent('focus.cheer', (e) => got.push(e.payload));
+    const bob: MemberRecord = { uid: 'bob', name: '밥', look: null, state: 'online', proto: PROTO, mods: {}, joinedAt: hub.now(), seenAt: hub.now(), m: {} };
+    hub.writeMany({ [`rooms/${code}/roster/bob`]: hub.now(), [`rooms/${code}/members/bob_pc`]: bob, [`rooms/${code}/members/x_pc`]: { seenAt: hub.now() } });
+    expect(session.members().map((m) => m.uid)).toEqual(['alice', 'bob']);
+
+    server.goOffline({ abrupt: true });
+    expect(session.emit('focus.cheer', { n: 1 }, 30)).toBe(false);
+    await vi.advanceTimersByTimeAsync(PRESENCE_STALE_MS + 10_000);
+    expect(session.members().map((m) => m.uid)).toEqual(['alice', 'bob']);
+    server.goOnline();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(session.members().map((m) => m.uid)).toEqual(['alice']);
+
+    // 보낸 앱이 61초 전에 만든 키가 이제야 서버에 닿았다
+    hub.write(`rooms/${code}/ev/${pushKeyTime(hub.now() - 61_000)}000000000001`, { t: 'focus.cheer', uid: 'bob', at: hub.now(), p: '"late"' });
+    hub.write(`rooms/${code}/ev/${hub.pushKey()}`, { t: 'focus.cheer', uid: 'bob', at: hub.now(), p: '"fresh"' });
+    expect(got).toEqual(['fresh']);
+  });
+
+  it('스스로 나가면 roster에서도 빠지고 그냥 나가면 남는다', async () => {
+    const { hub, session, join } = await setup();
+    await join();
+    const code = session.current()!;
+    await session.leave();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(hub.read(`rooms/${code}/roster/alice`)).not.toBeNull();
+    expect(await session.join(code)).toEqual({ ok: true });
+    await session.leave(true);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(hub.read(`rooms/${code}/roster/alice`)).toBeNull();
+    // 코드로 다시 들어오면 roster를 다시 만든다
+    expect(await session.join(code)).toEqual({ ok: true });
+    expect(hub.read(`rooms/${code}/roster/alice`)).not.toBeNull();
   });
 
   it('pause는 나가고 resume은 같은 방에 다시 들어간다', async () => {

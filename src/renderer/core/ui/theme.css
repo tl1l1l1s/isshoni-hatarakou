@@ -9,8 +9,9 @@
   --surface: rgb(255 255 255 / 78%);          /* 카드와 묶음 */
   --surface-strong: var(--gray-0);            /* 선택된 탭, 떠 있는 판 */
   --fg: var(--gray-900);
-  --fg-muted: var(--gray-600);
-  --fg-subtle: var(--gray-500);
+  /* 밝은 바탕과 탭 줄(--fill) 위에서도 4.5:1이 넘게 한다 */
+  --fg-muted: #636366;
+  --fg-subtle: var(--gray-600);
   --line: rgb(0 0 0 / 8%);                    /* 머리카락 선 */
   --line-strong: rgb(0 0 0 / 14%);
   --fill: rgb(0 0 0 / 5%);                    /* 컨트롤 바탕 */
@@ -104,6 +105,8 @@ body.panel.material { background: color-mix(in srgb, var(--bg) 40%, transparent)
 :where(body.panel) button:active { background: var(--fill-press); }
 :where(body.panel) button:disabled { opacity: 0.4; cursor: default; background: var(--fill); }
 :where(body.panel) button[aria-pressed='true'] { background: var(--accent); color: var(--on-accent); }
+/* 눌림 상태가 바뀌는 단추는 바탕과 글자색을 한 번에 바꾼다. 둘이 반대로 함께 바뀌면 중간에 같은 회색이 되어 글자가 사라진다 */
+:where(body.panel) button[aria-pressed] { transition: box-shadow 0.15s ease, opacity 0.15s ease; }
 :where(body.panel) button[type='submit'] { background: var(--accent); color: var(--on-accent); }
 :where(body.panel) button[type='submit']:hover { opacity: 0.88; }
 :where(body.panel) :focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
@@ -136,6 +139,12 @@ body.panel.material { background: color-mix(in srgb, var(--bg) 40%, transparent)
   appearance: none; width: 22px; height: 22px; margin-top: -8px; border-radius: 50%; background: var(--accent); box-shadow: var(--shadow-sm);
 }
 :where(body.panel) input[type='color'] { width: 32px; height: 26px; padding: 0; border: 0; border-radius: var(--radius-s); background: none; cursor: pointer; }
+
+/* 읽지 않은 수 배지 (0031). 모듈은 <span data-unread>3</span>을 쓴다. 상태칩 단추 안에서는 코어가 단추 오른쪽 위에 붙인다 */
+[data-unread] {
+  display: inline-block; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 8px; vertical-align: middle;
+  background: var(--danger); color: #fff; font: 600 11px/16px system-ui, sans-serif; text-align: center;
+}
 
 /* 스크롤바: 얇고 둥글게 */
 :where(body.panel) ::-webkit-scrollbar { width: 10px; height: 10px; }

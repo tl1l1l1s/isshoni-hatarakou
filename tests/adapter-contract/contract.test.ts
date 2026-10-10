@@ -6,7 +6,7 @@ import { randomCode } from '@shared/codes';
 import { PROTO } from '@shared/proto';
 import type { MemberRecord } from '@shared/schemas';
 import { createFirebaseServer } from '@server/firebase';
-import { encodeFile } from '@server/firebase/layout';
+import { encodeFile, WRITE_DENIED } from '@server/firebase/layout';
 import { encodeSetupCode } from '@server/firebase/setup-code';
 import { createMemoryServer, MemoryHub } from '@server/memory';
 import { SERVER_TIME, type AccountPresence, type RoomEvent, type ServerPort } from '@server/port';
@@ -106,8 +106,8 @@ function contract(make: (name: string) => Promise<Client>, seed: Seed) {
     expect(await d.get('t')).toBe(2);
   });
 
-  it('docs: 남의 사용자 범위에는 쓰지 못한다', async () => {
-    await expect(b.server.docs({ scope: 'user', module: 'contract', uid: a.uid }).set('x', 1)).rejects.toThrow();
+  it('docs: 남의 사용자 범위에는 쓰지 못하고 거부는 사용자에게 보일 글로 온다', async () => {
+    await expect(b.server.docs({ scope: 'user', module: 'contract', uid: a.uid }).set('x', 1)).rejects.toThrow(WRITE_DENIED);
   });
 
   it('docs: removeOnDisconnect는 끊기면 지우고 거둔 예약은 지우지 않는다', async () => {
@@ -164,6 +164,36 @@ function contract(make: (name: string) => Promise<Client>, seed: Seed) {
     await until(() => expect(Object.keys(seen.at(-1) ?? {})).toEqual([key]));
     await a.server.room.leave(code, key);
     stop();
+  });
+
+  it('room: 끊긴 동안의 writeMine은 조각 기록(seenAt만 있는 것)을 만들지 않고 다시 연결되면 사본 전체를 쓴다', async () => {
+    const code = await newRoom();
+    const key = `${a.uid}_d1`;
+    await a.server.room.join(code, key, record(a));
+    const mine: Array<Record<string, MemberRecord>> = [];
+    const stop = a.server.room.watchMembers(code, (m) => mine.push(m));
+    await until(() => expect(Object.keys(mine.at(-1) ?? {})).toEqual([key]));
+    a.goOffline();
+    await until(() => expect(a.server.connection.online()).toBe(false));
+    // 메모리 서버는 다시 연결될 때까지 쓰기를 미루므로 기다리지 않는다
+    void a.server.room.writeMine(code, key, { seenAt: SERVER_TIME, state: 'away' });
+    await new Promise((r) => setTimeout(r, 300));
+    for (const m of mine) for (const rec of Object.values(m)) expect(rec.uid).toBe(a.uid);
+    a.goOnline();
+    await until(() => expect(mine.at(-1)?.[key]).toMatchObject({ uid: a.uid, name: record(a).name, state: 'away' }));
+    for (const m of mine) for (const rec of Object.values(m)) expect(rec.uid).toBe(a.uid);
+    await a.server.room.leave(code, key);
+    stop();
+  });
+
+  it('room: roster는 본인 칸만 지우고 지우면 다시 만들기 전에는 멤버 기록을 쓰지 못한다', async () => {
+    const code = await newRoom();
+    await expect(a.server.room.removeRoster(code, b.uid)).rejects.toThrow();
+    await b.server.room.removeRoster(code, b.uid);
+    await expect(b.server.room.join(code, `${b.uid}_d1`, record(b))).rejects.toThrow();
+    await b.server.room.ensureRoster(code, b.uid, b.server.time.serverNow());
+    await b.server.room.join(code, `${b.uid}_d1`, record(b));
+    await b.server.room.leave(code, `${b.uid}_d1`);
   });
 
   it('room: 주인이 지우면 삭제 표시와 함께 멤버 기록이 지워지고 다시 쓰지 못한다', async () => {
@@ -297,7 +327,7 @@ function contract(make: (name: string) => Promise<Client>, seed: Seed) {
     expect(await b.server.files.get('0'.repeat(64))).toBeNull();
     const max = new Uint8Array(FILE_MAX_RAW_BYTES).fill(7);
     expect(await b.server.files.get(await a.server.files.put(max))).toEqual(max);
-    await expect(a.server.files.put(new Uint8Array(FILE_MAX_RAW_BYTES + 1))).rejects.toThrow('너무 큽니다');
+    await expect(a.server.files.put(new Uint8Array(FILE_MAX_RAW_BYTES + 1))).rejects.toThrow('너무 커요');
   });
 
   it('files: 해시와 내용이 맞지 않는 파일은 없는 것으로 보고 그 해시로는 올리지 못한다', async () => {
@@ -346,9 +376,9 @@ const DB = process.env.FIREBASE_DATABASE_EMULATOR_HOST;
 const AUTH = process.env.FIREBASE_AUTH_EMULATOR_HOST;
 describe.skipIf(!DB || !AUTH)('firebase emulator', () => {
   const ns = `contract-${randomCode(6).toLowerCase()}`;
+  // 시험 모듈 contract의 사용자 범위와 post의 받은 기록만 더한 규칙을 이 namespace에 올린다
+  const rules = buildRules({ contract: (t) => ({ u: { $uid: t.owner() } }), post: (t) => ({ u: { $uid: { in: t.inbox() } } }) });
   beforeAll(async () => {
-    // 시험 모듈 contract의 사용자 범위와 post의 받은 기록만 더한 규칙을 이 namespace에 올린다
-    const rules = buildRules({ contract: (t) => ({ u: { $uid: t.owner() } }), post: (t) => ({ u: { $uid: { in: t.inbox() } } }) });
     const res = await fetch(`http://${DB}/.settings/rules.json?ns=${ns}`, {
       method: 'PUT', headers: { Authorization: 'Bearer owner' }, body: JSON.stringify(rules),
     });
@@ -380,6 +410,36 @@ describe.skipIf(!DB || !AUTH)('firebase emulator', () => {
       method: 'PUT', headers: { Authorization: 'Bearer owner' }, body: JSON.stringify(value),
     });
     expect(res.ok).toBe(true);
+  });
+
+  // 규칙 배포 실수처럼 잠깐 읽기를 거부당하면 SDK가 구독을 끊는다. 다시 연결되면 다시 걸어 그 뒤의 값을 받는다
+  it('읽기를 잠깐 거부당해 끊긴 구독은 다시 연결되면 다시 걸린다', async () => {
+    const c = await make('resub');
+    const put = async (path: string, body: unknown) => {
+      const res = await fetch(`http://${DB}/${path}?ns=${ns}`, { method: 'PUT', headers: { Authorization: 'Bearer owner' }, body: JSON.stringify(body) });
+      expect(res.ok).toBe(true);
+    };
+    const path = `mod/contract/u/${c.uid}/w`;
+    await put(`${path}.json`, 1);
+    const seen: unknown[] = [];
+    const stop = c.server.docs({ scope: 'user', module: 'contract', uid: c.uid }).watch('w', (v) => seen.push(v));
+    await until(() => expect(seen.at(-1)).toBe(1));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      await put('.settings/rules.json', { rules: { '.read': false, '.write': false } });
+      await until(() => expect(warn).toHaveBeenCalled());
+      await put('.settings/rules.json', rules);
+      c.goOffline();
+      c.goOnline();
+      await until(() => expect(c.server.connection.online()).toBe(true));
+      await put(`${path}.json`, 2);
+      await until(() => expect(seen.at(-1)).toBe(2));
+    } finally {
+      warn.mockRestore();
+      await put('.settings/rules.json', rules);
+      stop();
+      await c.close();
+    }
   });
 
   // 로그인 전에 연결을 열면 그 연결이 로그인하지 않은 채로 남는다 (firebase/index.ts의 start)

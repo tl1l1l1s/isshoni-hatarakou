@@ -13,6 +13,9 @@ export type Dispose = () => void;
 /** 방 밖에서 방이 필요한 일을 하려 할 때 알리는 글. 코어가 needsRoom 메뉴 항목에 쓰고 모듈도 같은 글을 쓴다 */
 export const NOT_IN_ROOM = '방에 들어가면 쓸 수 있어요. 방 만들기 / 참여하기에서 들어가요.';
 
+/** 연결이 끊긴 동안 사용자가 시작한 쓰기를 멈출 때 알리는 글 (0031 오프라인 쓰기 정책). 적은 글은 지우지 않고 둔다 */
+export const OFFLINE = '연결이 끊겨서 보내지 못했어요. 연결되면 다시 해 주세요.';
+
 /** 모듈이 declare module로 넓히는 이벤트와 공개 API 타입 */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface EventMap {}
@@ -21,6 +24,8 @@ export interface ModuleApis {}
 
 export interface SettingField {
   label: string;
+  /** 설정 창이 항목 아래에 작은 글로 보이는 설명 */
+  hint?: string;
   section?: string;
   widget?: 'toggle' | 'number' | 'text' | 'select';
   min?: number;
@@ -70,8 +75,10 @@ export interface RoomEventDecl {
   perMinute?: number;
 }
 
-/** 받은 방 이벤트. self는 내 uid가 보낸 것(내 다른 PC 포함) */
-export interface RoomEventMsg<T = unknown> { uid: string; at: number; payload: T; self: boolean }
+/** 받은 방 이벤트. self는 내 uid가 보낸 것(내 다른 PC 포함). at은 서버가 받은 시각이다.
+ *  key는 이벤트마다 다르고 모든 PC에서 같으며 보낸 시각(보낸 앱이 어림한 서버 시각) 순서로 정렬된다.
+ *  같은 때에 온 이벤트의 순서를 PC마다 같게 정하려면 key를 문자열로 비교한다 (나중 이벤트가 더 크다) */
+export interface RoomEventMsg<T = unknown> { key: string; uid: string; at: number; payload: T; self: boolean }
 
 /** characterStates 조건 함수가 받는 좌석 (10.5) */
 export interface SeatView {
@@ -128,6 +135,9 @@ export interface WindowDecl {
   keepAlive?: boolean;
   resizable?: boolean;
 }
+
+/** 창 안에서 묻는 글과 단추 이름 (ctx.ui.ask, confirmLeave). cancel을 빼면 ask는 취소, confirmLeave는 계속하기 */
+export interface AskQuestion { text: string; ok: string; cancel?: string }
 
 /** 슬롯에 넣는 화면 조각이 받는 값. seat는 좌석 슬롯(seat.badge, chip.buttons)에서만 있다.
  *  windowId는 조각을 그린 패널 창 id이고 실행 화면에 그린 조각에는 없다 (ctx.ui.guard에 넘긴다) */
@@ -284,6 +294,7 @@ export interface RoomCtx {
   /** reason은 방에서 밀려났을 때의 안내 (예: 주인이 방을 지움) */
   onChange(fn: (code: string | null, reason?: string) => void): Dispose;
   join(code: string): Promise<JoinResult>;
+  /** 스스로 방에서 나간다. roster에서도 빠져 그 방 기록(채팅, 사진, 가챠 같은 것)을 더 읽지 못하고 코드로 다시 들어오면 다시 읽는다 */
   leave(): Promise<void>;
   /** 방을 만들고 주인이 된다. 코드는 코어가 뽑는다 */
   create(): Promise<string>;
@@ -299,7 +310,8 @@ export interface RoomCtx {
   /** 주인이 방을 지우기 직전에 부른다. deleteWithRoom 컬렉션이 아직 남아 있을 때 삭제 표시 같은 것을 쓴다 (OUR-01, OUR-02) */
   beforeRemove(fn: (code: string) => Promise<void>): Dispose;
   /** 이 모듈의 방 이벤트를 보낸다 (roomEvents에 선언한 type만, payload는 schema로 검사).
-   *  방 밖이거나 분당 한도를 넘으면 보내지 않고 false. 보낸 앱이 60초 뒤에 지운다 */
+   *  방 밖이거나 연결이 끊겼거나 분당 한도를 넘으면 보내지 않고 false. 끊겨서인지는 ctx.connection.online()으로 나눈다.
+   *  보낸 앱이 60초 뒤에 지운다 */
   emit(type: string, payload: unknown): boolean;
   /** 이 모듈의 방 이벤트를 받는다. 들어온 뒤에 보낸 60초 안의 것만 한 번씩 오고 내가 보낸 것도 온다.
    *  schema에 맞지 않는 payload는 버린다 */
@@ -337,7 +349,8 @@ export interface Ctx {
     name(): string;
     /** 친구에게 알려 주는 짧은 코드. 계정 발급 스크립트가 정한다 (ACC-04). 메모리 서버에서는 null */
     friendCode(): string | null;
-    setName(name: string): void;
+    /** 서버 프로필에 쓰고 서버가 받은 뒤에 이 PC의 이름을 바꾼다. 연결이 끊겼거나 서버가 거부하면 이름은 그대로 두고 그 까닭으로 reject */
+    setName(name: string): Promise<void>;
     /** 서버 프로필을 읽기 전에 보일 이름 (이 PC에 둔 이름). 이미 이름이 있으면 두고 서버에는 쓰지 않는다.
      *  프로필을 읽으면 그 이름으로 바뀌고 프로필에 이름이 없으면 이 이름을 한 번 올린다 */
     fillName(name: string): void;
@@ -387,7 +400,7 @@ export interface Ctx {
     /** 같은 bench id 좌석을 붙여 책상 하나에 앉힌다 (AVT-21). null이면 뺀다 */
     setBench(key: string, bench: string | null): void;
   };
-  /** OS 알림. 누르면 onClick (채팅 안 읽음, 친구 초대) */
+  /** OS 알림. 누르면 onClick (채팅 안 읽음, 친구 초대). 회사원 모드에서는 띄우지 않는다 */
   notify(opts: { title: string; body: string; onClick?: () => void }): void;
   bus: {
     emit<K extends keyof EventMap & string>(name: K, payload: EventMap[K]): void;
@@ -402,6 +415,14 @@ export interface Ctx {
     onChange(fn: () => void): Dispose;
     /** 선언된 gate 전부. need는 지금 조건 값이고 tunable을 읽지 못하면 null */
     list(): GateInfo[];
+  };
+  /** 서버 연결 (0031 오프라인 쓰기 정책). 사용자가 시작한 쓰기(보내기, 저장, 지우기)는 online()이 false면 시작하지 않고
+   *  OFFLINE을 알리며 적은 글을 둔다. 접속 상태, seenAt, 집중 합계 같은 바탕 쓰기는 그대로 써서 다시 연결되면 올라가게 둔다.
+   *  끊긴 지 5초가 지나면 코어가 실행 화면 칩과 모든 창 위쪽 띠로 끊김을 보이므로 모듈은 따로 보이지 않아도 된다 */
+  connection: {
+    online(): boolean;
+    /** 연결되거나 끊기면 부른다 (lifecycle의 online, offline과 같은 때) */
+    onChange(fn: (online: boolean) => void): Dispose;
   };
   /**
    * 그리기. 방 사람 모두가 같은 효과를 보려면 효과를 방 이벤트로 보내고 받은 쪽에서 실행한다.
@@ -427,8 +448,12 @@ export interface Ctx {
      *  ESC, 창의 닫기 단추(제목 표시줄 ×), 설정 창 탭 바꾸기처럼 코어가 창을 닫거나 화면을 바꿀 때 그 창 안에 글과 닫기, 계속하기를 띄우고
      *  닫기를 눌러야 떠난다. 모듈이 ctx.ui.close로 닫을 때와 앱을 끝낼 때는 묻지 않는다 */
     guard(windowId: string, check: () => string | null): Dispose;
-    /** 모듈이 제 화면을 바꾸기 전에(창 안의 탭, 뒤로) 같은 물음을 띄운다. 물을 글이 없거나 닫기를 누르면 true */
-    confirmLeave(windowId: string): Promise<boolean>;
+    /** 모듈이 제 화면을 바꾸기 전에(창 안의 탭, 뒤로) 같은 물음을 띄운다. 물을 글이 없거나 떠나기 단추를 누르면 true.
+     *  q를 주면 그 글과 단추 이름으로 묻는다 (예: 슬롯 바꾸기 { text: '캐릭터를 저장하지 않았어요. 바꿀까요?', ok: '바꾸기' }) */
+    confirmLeave(windowId: string, q?: Partial<AskQuestion>): Promise<boolean>;
+    /** 그 창 안에 묻고 답을 돌려준다 (지우기 확인 같은 것). ok 단추를 누르면 true, cancel 단추나 ESC는 false.
+     *  기본 포커스는 cancel이다. 창이 닫혀 있거나 숨겨져 있으면 묻지 않고 false */
+    ask(windowId: string, q: AskQuestion): Promise<boolean>;
     /** 모듈 화면 안에서 다른 모듈이 슬롯에 넣은 조각을 그린다 (예: launcher.cards, rooms.settings) */
     Slot: ComponentType<{ name: string; seat?: SeatView }>;
     /** 캐릭터 미리보기. appearance를 빼면 내 지금 외형을 그린다 (런처, 캐릭터 만들기, 꾸미기) */
