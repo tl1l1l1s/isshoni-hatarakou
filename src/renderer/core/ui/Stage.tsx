@@ -127,8 +127,12 @@ export function Stage({ core }: { core: CoreRuntime }) {
   useLayoutEffect(() => {
     let last = '';
     let raf = 0;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     const send = () => {
+      if (raf) cancelAnimationFrame(raf);
+      if (timer) clearTimeout(timer);
       raf = 0;
+      timer = null;
       const rects: Rect[] = [...(root.current?.querySelectorAll<HTMLElement>('[data-interactive]') ?? [])].map((el) => {
         const r = el.getBoundingClientRect();
         return { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) };
@@ -136,15 +140,33 @@ export function Stage({ core }: { core: CoreRuntime }) {
       const key = JSON.stringify(rects);
       if (key !== last) void core.deps.bridge.invoke('stage.setInteractive', { rects: JSON.parse((last = key)) as Rect[] });
     };
-    const schedule = () => (raf ||= requestAnimationFrame(send));
+    // 그릴 일이 없어 프레임이 멈춘 동안에도 보내도록 타이머를 함께 건다
+    const schedule = () => {
+      raf ||= requestAnimationFrame(send);
+      timer ??= setTimeout(send, 60);
+    };
     const mo = new MutationObserver(schedule);
     if (root.current) mo.observe(root.current, { subtree: true, childList: true, attributes: true });
     window.addEventListener('resize', schedule);
+    // 메인이 창 크기를 바꾼 뒤 창의 resize 이벤트가 오지 않는 경우가 있다. 뷰포트가 그 크기가 될 때까지 기다렸다가 다시 보낸다
+    let waitId = 0;
+    const offResized = core.deps.bridge.on('stage.resized', ({ height }) => {
+      const id = ++waitId;
+      const tryLater = (left: number) => {
+        if (id !== waitId) return;
+        if (window.innerHeight === height || left === 0) send();
+        else setTimeout(() => tryLater(left - 1), 30);
+      };
+      tryLater(20);
+    });
     schedule();
     return () => {
       mo.disconnect();
       window.removeEventListener('resize', schedule);
+      offResized();
+      waitId++;
       cancelAnimationFrame(raf);
+      if (timer) clearTimeout(timer);
     };
   }, [core]);
 

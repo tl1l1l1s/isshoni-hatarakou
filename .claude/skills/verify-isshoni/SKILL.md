@@ -93,3 +93,7 @@ Playwright `_electron` API로 조작한다. `verify()` 본문이 받는 `Session
 - 빌드는 `out/`을 덮어쓴다. 다른 작업이 `npm run e2e`를 돌리는 중이면 끝난 뒤에 빌드한다.
 - 실행하는 몇 초 동안 앱 창이 실제 화면에 뜬다.
 - 기능을 더하거나 바꾸면 `/maintain-verification-skill`로 지도를 맞춘다.
+
+## OS click
+
+Playwright 클릭은 OS를 거치지 않아서 클릭 통과(10.8.1)를 증명하지 못한다. `node .claude/skills/verify-isshoni/osclick.ts`는 macOS에서 CGEvent로 실제 화면 좌표를 눌러 빈 자리는 아래 창으로 통과하고 캐릭터와 칩과 메뉴는 스테이지가 받는지 확인한다. 시스템 설정의 손쉬운 사용에 터미널 앱이 켜져 있어야 하고 처음 실행할 때 `click.swift`를 `$TMPDIR/isshoni-osclick`으로 컴파일한다. 검사는 가짜 플랫폼의 커서를 실제 커서로 바꾸고 스테이지 아래에 클릭을 기록하는 창을 깐다. 실행하는 몇 초 동안 마우스 커서가 움직이니 그동안 입력하지 않는다. 마지막 항목(멀리서 바로 찍기)은 50ms 폴링의 한계를 보는 참고용이라 실패해도 검사는 통과한다. Windows는 이 검사로 볼 수 없고 체크리스트로 확인한다.

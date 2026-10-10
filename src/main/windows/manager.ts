@@ -226,6 +226,11 @@ export function createStage(): void {
   });
   stage = win;
   rects = [];
+  // 창이 줄어들 때 렌더러에 resize 이벤트가 오지 않는 경우가 있어 메인이 바뀐 크기를 알린다. 렌더러는 이 크기로 클릭 영역을 다시 보낸다
+  win.on('resize', () => {
+    const { width, height } = win.getContentBounds();
+    send('stage.resized', { width, height });
+  });
   platform.overlay.afterCreate(win);
   applyOpacity();
   win.setIgnoreMouseEvents(true);

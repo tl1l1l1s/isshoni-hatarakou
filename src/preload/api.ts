@@ -89,6 +89,8 @@ export interface CoreEventMap {
   'pick.cancel': Record<string, never>;
   /** 캐릭터가 있는 모니터의 작업 영역 크기가 바뀌었다 (모니터 바꾸기, 배율과 해상도 변경) */
   'stage.workArea': { width: number; height: number };
+  /** 메인이 스테이지 창 크기를 바꿨다. 렌더러는 창의 resize 이벤트가 오지 않아도 이 크기에 맞춰 클릭 영역을 다시 보낸다 */
+  'stage.resized': { width: number; height: number };
 }
 
 export type Dispose = () => void;
