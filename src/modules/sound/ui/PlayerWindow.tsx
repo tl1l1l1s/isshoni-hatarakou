@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 import type { Ctx } from '@core/types';
 import type {} from '@modules/growth/api';
 import type {} from '@modules/account/api';
@@ -13,6 +13,8 @@ import css from './sound.module.css';
 const YT = 'https://www.youtube-nocookie.com';
 type YtMsg = { event?: string; info?: unknown };
 const titleOf = (info: unknown) => (info as { videoData?: { title?: unknown } } | null)?.videoData?.title;
+/** 제목은 처음 재생할 때 플레이어가 알려 준다. 그 전에는 영상 id로 줄을 나눠 보인다 */
+const trackName = (t: { v: string; title: string }) => t.title || `제목 없는 곡 (${t.v})`;
 
 /** 플레이리스트와 백색소음 창 (SND-01..SND-09). 닫아도 숨기기만 해서 재생이 이어진다.
  *  유튜브 스크립트 없이 embed iframe에 postMessage 명령을 보낸다 (CSP script-src 'self') */
@@ -29,6 +31,8 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
   const [error, setError] = useState<string | null>(null);
   const [link, setLink] = useState('');
   const [seed, setSeed] = useState(() => ctx.clock.now());
+  // 회사원 모드에서는 백색소음이 나지 않으므로 고르기를 막고 안내를 바꾼다 (SND-08)
+  const quiet = useSyncExternalStore(ctx.mode.on, () => ctx.mode.get() === 'quiet');
   const frame = useRef<HTMLIFrameElement>(null);
   const root = useRef<HTMLDivElement>(null);
 
@@ -75,6 +79,7 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
   const open = (p: Promise<Guest | null>) => void p.then(listen, () => setError('친구 플리를 읽지 못했어요'));
   const surfNow = () => open(surf(ctx, guest ? `${guest.uid}:${guest.preset}` : null));
   const pickFriend = () => {
+    setError(null);
     if (mini) resize(false);
     void friends(ctx).then(setPicking);
   };
@@ -200,10 +205,10 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
           allow="autoplay; encrypted-media"
         />
       ) : (
-        <div className={`${css.video} ${css.empty}`}>곡을 더블클릭하면 여기에 플레이어가 나와요</div>
+        <div className={`${css.video} ${css.empty}`}>곡을 누르면 여기에 플레이어가 나와요. ▶는 첫 곡부터 틀어요.</div>
       )}
       <div className={css.side}>
-        <div className={css.now}>{track ? track.title || track.v : '재생 중인 곡 없음'}</div>
+        <div className={css.now}>{track ? trackName(track) : '재생 중인 곡 없음'}</div>
         <div className={css.buttons}>
           <button title="이전 곡" onClick={() => go(-1)}>⏮</button>
           <button title={playing && track ? '일시정지' : '재생'} onClick={toggle}>{playing && track ? '⏸' : '▶'}</button>
@@ -222,7 +227,7 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
             🔀
           </button>
           <button
-            title="파도타기. 우클릭하면 친구를 골라 들어요"
+            title="파도타기. 아무 친구 플리로 넘어가요"
             aria-label="파도타기"
             onClick={surfNow}
             onContextMenu={(e) => {
@@ -233,6 +238,11 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
             🌊
           </button>
         </div>
+        {!mini && <button onClick={pickFriend}>친구 플리 듣기</button>}
+        <div className={css.vol}>
+          <span>음량 {s.musicVolume}%</span>
+          <button aria-label={mini ? '크게 보기' : '작게 보기'} onClick={() => resize(!mini)}>{mini ? '크게' : '작게'}</button>
+        </div>
         <input
           type="range"
           aria-label="플레이리스트 음량"
@@ -241,7 +251,6 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
           value={s.musicVolume}
           onChange={(e) => ctx.settings.set({ musicVolume: Number(e.target.value) })}
         />
-        <button className={css.size} title={mini ? '크게 보기' : '작게 보기'} aria-label={mini ? '크게 보기' : '작게 보기'} onClick={() => resize(!mini)}>{mini ? '□' : '－'}</button>
       </div>
     </div>
   );
@@ -268,7 +277,14 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
         )}
         {level !== null && <span className={css.lv}>Lv.{level}</span>}
         {guest ? (
-          <button onClick={() => setGuest(null)}>내 플리로</button>
+          <button
+            onClick={() => {
+              setError(null);
+              setGuest(null);
+            }}
+          >
+            내 플리로
+          </button>
         ) : (
           <label className={css.pub} title="켜면 내 플리를 듣는 친구가 사진이나 이름을 눌러 내 마이홈으로 와요">
             <input type="checkbox" checked={list.home} onChange={(e) => save({ home: e.target.checked })} />
@@ -282,7 +298,7 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
         <input
           className={css.bioInput}
           aria-label="소개글"
-          placeholder="오늘의 bio 한마디를 적어주세요"
+          placeholder="오늘의 한마디를 적어 보세요"
           maxLength={BIO_MAX}
           value={list.bio}
           onChange={(e) => save({ bio: e.target.value })}
@@ -312,18 +328,15 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
             onKeyDown={(e) => e.key === 'Enter' && !e.nativeEvent.isComposing && rename()}
           />
         )}
-        {!guest && naming === null && <button title="프리셋 이름 바꾸기" aria-label="프리셋 이름 바꾸기" onClick={() => setNaming(list.presets[list.cur]!.name)}>✎</button>}
-        {!guest && (
-          <button
-            title={list.locked ? '잠금 켜짐. 파도타기에 내 플리가 나오지 않아요' : '잠금 꺼짐. 파도타기에 내 플리가 나와요'}
-            aria-label="파도타기 잠금"
-            aria-pressed={list.locked}
-            onClick={() => save({ locked: !list.locked })}
-          >
-            {list.locked ? '🔒' : '🔓'}
-          </button>
-        )}
+        {!guest && naming === null && <button aria-label="프리셋 이름 바꾸기" onClick={() => setNaming(list.presets[list.cur]!.name)}>이름 바꾸기</button>}
       </div>
+      {/* 파도타기 잠금 (SND-06). 잠가도 친구가 나를 골라 듣는 것은 막지 않는다 */}
+      {!guest && (
+        <label className={css.share}>
+          친구의 🌊 파도타기에 내 플리 넣기
+          <input type="checkbox" checked={!list.locked} onChange={(e) => save({ locked: !e.target.checked })} />
+        </label>
+      )}
     </>
   );
 
@@ -340,6 +353,7 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
       {picking ? (
         <div className={css.pick}>
           <p className={css.hint}>{picking.length ? '누구의 플리를 들을까요?' : '친구로 등록한 사람이 없어요.'}</p>
+          {picking.length > 0 && <button onClick={surfNow}>아무 친구나</button>}
           {picking.map((f) => (
             <button key={f.uid} onClick={() => open(openFriend(ctx, f))}>{f.name}</button>
           ))}
@@ -353,12 +367,13 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
               key={t.k}
               className={i === idx ? css.on : undefined}
               tabIndex={0}
-              title="더블클릭하면 이 곡부터 재생해요"
-              onDoubleClick={() => playAt(i)}
+              title="누르면 이 곡부터 재생해요"
+              // 줄 안의 ▲ ▼ × 단추를 누른 것은 재생으로 보지 않는다
+              onClick={(e) => !(e.target as HTMLElement).closest('button') && playAt(i)}
               onKeyDown={(e) => e.key === 'Enter' && playAt(i)}
             >
               <span className={css.no}>{i === idx ? '▶' : i + 1}</span>
-              <span className={css.title}>{t.title || t.v}</span>
+              <span className={css.title}>{trackName(t)}</span>
               {!guest && (
                 <>
                   <button title="위로" onClick={() => move(i, -1)}>▲</button>
@@ -375,20 +390,20 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
         <h4>🌙 백색소음</h4>
         <div className={css.kinds}>
           {(['off', ...KINDS] as const).map((k) => (
-            <button key={k} aria-pressed={s.noise === k} onClick={() => ctx.settings.set({ noise: k })}>
+            <button key={k} aria-pressed={s.noise === k} disabled={quiet} onClick={() => ctx.settings.set({ noise: k })}>
               {k === 'off' ? '끄기' : KIND_LABEL[k]}
             </button>
           ))}
         </div>
         <label>
           음량 {s.noiseVolume}%
-          <input type="range" min={0} max={100} value={s.noiseVolume} onChange={(e) => ctx.settings.set({ noiseVolume: Number(e.target.value) })} />
+          <input type="range" min={0} max={100} value={s.noiseVolume} disabled={quiet} onChange={(e) => ctx.settings.set({ noiseVolume: Number(e.target.value) })} />
         </label>
         <label>
           같은 방 사람들 소리도 함께 듣기
           <input type="checkbox" checked={s.shareOthers} onChange={(e) => ctx.settings.set({ shareOthers: e.target.checked })} />
         </label>
-        <p className={css.hint}>타이핑하는 동안만 소리가 나요.</p>
+        <p className={css.hint}>{quiet ? '회사원 모드에서는 백색소음과 알림음이 나지 않아요.' : '그리거나 타이핑하는 동안만 소리가 나요. 손을 멈추면 조용해져요.'}</p>
       </section>
     </>
   );

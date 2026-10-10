@@ -5,12 +5,15 @@ import type {} from '@modules/friends/api';
 import type { PlanItem } from './api';
 import { LIST_MAX, parsePlans, type Row } from './logic';
 
-interface Store { mine: Row[]; friends: Map<string, PlanItem[]>; subs: Set<() => void> }
+/** 친구 일정에는 이름을 두지 않고 names에서 읽어 붙인다. 이름은 일정과 따로 다시 읽기 때문이다 */
+interface Store { mine: Row[]; friends: Map<string, Array<Omit<PlanItem, 'who'>>>; names: Map<string, string>; subs: Set<() => void> }
 const stores = new WeakMap<Ctx, Store>();
+/** 친구 이름을 다시 읽는 간격 */
+const NAME_MS = 60_000;
 
 function store(ctx: Ctx): Store {
   let s = stores.get(ctx);
-  if (!s) stores.set(ctx, (s = { mine: [], friends: new Map(), subs: new Set() }));
+  if (!s) stores.set(ctx, (s = { mine: [], friends: new Map(), names: new Map(), subs: new Set() }));
   return s;
 }
 
@@ -22,7 +25,23 @@ function changed(ctx: Ctx, s: Store) {
 export function items(ctx: Ctx): PlanItem[] {
   const s = store(ctx);
   const me = ctx.self.uid();
-  return [...s.mine.map(({ id, date, title }) => ({ id, owner: me, who: '', date, title })), ...[...s.friends.values()].flat()];
+  return [
+    ...s.mine.map(({ id, date, title }) => ({ id, owner: me, who: '', date, title })),
+    ...[...s.friends.values()].flat().map((p) => ({ ...p, who: s.names.get(p.owner) ?? '친구' })),
+  ];
+}
+
+/** 친구 이름을 읽어 바뀌었으면 알린다. 프로필이 없거나 이름이 비어 있으면 친구라고 부른다 */
+function readName(ctx: Ctx, s: Store, uid: string): void {
+  ctx.users.profile(uid).then(
+    (p) => {
+      const name = String(p?.name || '친구');
+      if (s.names.get(uid) === name) return;
+      s.names.set(uid, name);
+      changed(ctx, s);
+    },
+    () => undefined,
+  );
 }
 
 /** 친구의 공개 일정. 규칙이 막으면(아직 나를 친구로 등록하지 않음) 구독하지 않는다.
@@ -30,12 +49,14 @@ export function items(ctx: Ctx): PlanItem[] {
 function watchFriend(ctx: Ctx, s: Store, uid: string): Dispose {
   let stop: Dispose | null = null;
   let alive = true;
-  void Promise.all([ctx.server.userOf(uid, ['pub']).list({ limit: 1 }), ctx.users.profile(uid)])
-    .then(([, p]) => {
+  readName(ctx, s, uid);
+  void ctx.server
+    .userOf(uid, ['pub'])
+    .list({ limit: 1 })
+    .then(() => {
       if (!alive) return;
-      const who = String(p?.name ?? '친구');
       stop = ctx.server.userOf(uid).watchList('pub', { limit: LIST_MAX, last: true }, (rows) => {
-        s.friends.set(uid, parsePlans(rows).map(({ id, date, title }) => ({ id, owner: uid, who, date, title })));
+        s.friends.set(uid, parsePlans(rows).map(({ id, date, title }) => ({ id, owner: uid, date, title })));
         changed(ctx, s);
       });
     })
@@ -67,6 +88,10 @@ export function watchPlans(ctx: Ctx): void {
   };
   sync(friends.list());
   friends.onChange(sync);
+  // ponytail: 프로필을 구독할 수 없어 공개 일정이 있는 친구의 이름을 1분마다 다시 읽는다. 프로필 구독이 생기면 그것으로 바꾼다
+  ctx.timers.every(NAME_MS, () => {
+    for (const [uid, plans] of s.friends) if (plans.length) readName(ctx, s, uid);
+  });
 }
 
 /** 탭에 보여 줄 일정. 내 것이면 setup이 구독한 전체, 친구 방문이면 그 친구가 공개한 것만 */

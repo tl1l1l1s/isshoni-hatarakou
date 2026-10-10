@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildRules } from '../../../rules/build.ts';
 import { issued } from '../../../rules/tests/issued.ts';
 import fragment from './rules';
-import { NAME_MAX } from './logic';
+import { COLORS, NAME_MAX } from './logic';
 
 const built = buildRules({ dday: fragment });
 
@@ -37,5 +37,14 @@ describe.skipIf(!process.env.FIREBASE_DATABASE_EMULATOR_HOST)('dday 규칙 (에�
     await assertFails(ref('alice', 'cards/k3').set({ ...card, name: 'x'.repeat(NAME_MAX + 1) }));
     await assertFails(ref('alice', 'cards/k3').set({ ...card, date: '10월 19일' }));
     await assertFails(ref('alice', 'cards/k3').set({ ...card, extra: 1 }));
+  });
+
+  it('카드 색은 고른 색 그대로 7자 색 코드면 받고 예전 기본 색도 받는다', async () => {
+    for (const color of ['#0a1b2c', '#ABCDEF', '#ffffff', '#000000', ...COLORS.map(([c]) => c)]) {
+      await assertSucceeds(ref('alice', 'cards/k4').set({ ...card, color }));
+    }
+    for (const color of ['#abc', '0a1b2c', '#0a1b2', '#0a1b2c0', '#0a1b2g', 'red', 1]) {
+      await assertFails(ref('alice', 'cards/k4').set({ ...card, color }));
+    }
   });
 });
