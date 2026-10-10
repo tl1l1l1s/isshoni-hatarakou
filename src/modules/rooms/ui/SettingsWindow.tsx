@@ -10,7 +10,7 @@ export default function SettingsWindow({ ctx }: { ctx: Ctx }) {
   const [confirm, setConfirm] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const code = room.code;
-  if (!code || !room.owner) return <p>방 주인만 방 설정을 바꿀 수 있습니다.</p>;
+  if (!code || !room.owner) return <p>방 주인만 방 설정을 바꿀 수 있어요.</p>;
 
   const setCap = (cap: number) => ctx.server.room(code).set('cfg', { cap, v: 1 }).catch((e: Error) => setMsg(e.message));
   const remove = () =>
@@ -37,7 +37,7 @@ export default function SettingsWindow({ ctx }: { ctx: Ctx }) {
       <hr />
       {confirm ? (
         <>
-          <p>방을 지우면 되돌릴 수 없고 모두 방에서 나갑니다. 지울까요?</p>
+          <p>되돌릴 수 없고 모두 방에서 나가요.</p>
           <div className={css.row}>
             <button onClick={() => void remove()}>지우기</button>
             <button onClick={() => setConfirm(false)}>취소</button>

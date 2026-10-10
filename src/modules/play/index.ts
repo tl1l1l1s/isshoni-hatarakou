@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { defineModule, type Ctx } from '@core/types';
+import { defineModule, NOT_IN_ROOM, type Ctx } from '@core/types';
 import type {} from '@modules/chat/api';
 import { BUBBLE_PRIORITY } from '@modules/status/api';
 import { PLAY_LEVELS } from './api';
 import { effects } from './effects';
 import { Aim, Dance, FlyText, initialLocal, Local, Pet, Roll } from './logic';
-import { bomb, dance, danceWait, headText, hit, listen, NOT_IN_ROOM, onChatText, react, roll, rollWait, stopAll, targetOf } from './state';
+import { bomb, dance, danceWait, headText, hit, listen, onChatText, react, roll, rollWait, stopAll, targetOf } from './state';
 import FlyBar from './ui/FlyBar';
 
 const level = (gte: number, label: string) => ({ requires: { module: 'growth', key: 'level', gte }, sticky: true, label });

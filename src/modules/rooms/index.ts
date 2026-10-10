@@ -1,12 +1,10 @@
 import { z } from 'zod';
 import { ROOM_CAP_MAX, ROOM_CAP_MIN } from '@shared/constants';
-import { defineModule, type Dispose } from '@core/types';
+import { defineModule, NOT_IN_ROOM, type Dispose } from '@core/types';
 import type { RoomsApi } from './api';
 import { forget, Local, mustLeave, remember } from './logic';
 import { info, joinRoom, leaveRoom, publish } from './state';
 import { RoomCard, RoomChip } from './ui/slots';
-
-const NOT_IN_ROOM = '방에 들어가 있지 않습니다.';
 
 export default defineModule<RoomsApi>({
   id: 'rooms',
@@ -36,7 +34,7 @@ export default defineModule<RoomsApi>({
   ui: {
     windows: [
       { id: 'rooms.join', title: '방 만들기 / 참여하기', width: 340, height: 420, focusable: true, component: () => import('./ui/JoinWindow') },
-      { id: 'rooms.settings', title: '방 설정', width: 340, height: 420, focusable: true, component: () => import('./ui/SettingsWindow') },
+      { id: 'rooms.settings', title: '방 설정', width: 340, height: 560, focusable: true, component: () => import('./ui/SettingsWindow') },
     ],
     contributions: [
       { slot: 'menu.main', id: 'rooms.menu', label: '방 만들기 / 참여하기', command: 'rooms.open', order: 20 },
@@ -50,12 +48,12 @@ export default defineModule<RoomsApi>({
     {
       id: 'rooms.remove',
       // 확인은 방 설정 창이 받는다
-      enabledWhen: (ctx) => (!info(ctx).code ? NOT_IN_ROOM : info(ctx).owner ? null : '방 주인만 지울 수 있습니다.'),
+      enabledWhen: (ctx) => (!info(ctx).code ? NOT_IN_ROOM : info(ctx).owner ? null : '방 주인만 지울 수 있어요.'),
       run: async (ctx) => {
         const code = info(ctx).code!;
         await ctx.room.remove(code);
         ctx.local.update<Local>('account', (s) => forget(s, code));
-        ctx.ui.toast('방을 지웠습니다.');
+        ctx.ui.toast('방을 지웠어요.');
       },
     },
   ],
@@ -67,7 +65,7 @@ export default defineModule<RoomsApi>({
       const r = info(ctx);
       if (!r.code || ctx.room.current() !== r.code || !mustLeave(ctx.room.members(), r.cap)) return;
       void leaveRoom(ctx);
-      ctx.ui.toast(`정원 ${r.cap}명이 차서 방에서 나왔습니다.`);
+      ctx.ui.toast(`정원 ${r.cap}명이 차서 방에서 나왔어요.`);
     };
 
     ctx.room.onChange((code) => {

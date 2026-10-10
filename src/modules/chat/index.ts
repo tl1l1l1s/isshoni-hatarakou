@@ -1,10 +1,10 @@
 import { z } from 'zod';
-import { defineModule } from '@core/types';
+import { defineModule, NOT_IN_ROOM } from '@core/types';
 import { Sha256 } from '@shared/schemas';
 import { BUBBLE_PRIORITY } from '@modules/status/api';
 import type { ChatApi } from './api';
 import { EMOJI_MS, EMOJIS, FONT_SIZES, FontSize, Local, Mine, Msg } from './logic';
-import { CHAT_OFF, emojis, flash, intercept, loadMine, NOT_IN_ROOM, says, view, watchRoom, WINDOW } from './state';
+import { emojis, flash, intercept, loadMine, offText, says, view, watchRoom, WINDOW } from './state';
 import { ChatChip, ChatSetting } from './ui/slots';
 
 /** 방 채팅. 방 주인이 방 설정에서 켜고 끈다 (ROM-02) */
@@ -13,8 +13,8 @@ export default defineModule<ChatApi>({
   title: '대화하기',
   version: '0.1.0',
   specIds: ['ROM-02', 'COM-01', 'COM-02', 'COM-08', 'COM-09', 'COM-18', 'COM-04', 'SET-08'],
-  // 대화하기 창 이름 옆 프로필 사진
-  optionalRequires: ['account'],
+  // 대화하기 창 이름 옆 프로필 사진, 채팅을 끈 사람이 방 주인인지
+  optionalRequires: ['account', 'rooms'],
   // 대화하기 창 글자 크기 (COM-04, SET-08). 창 안과 설정 창 일반 탭에서 고른다
   settings: { version: 1, scope: 'device', schema: z.object({ fontSize: FontSize.default('m') }), fields: { fontSize: { label: '채팅 글자 크기', options: FONT_SIZES } } },
   profile: { emo: Mine },
@@ -41,18 +41,19 @@ export default defineModule<ChatApi>({
   ],
   ui: {
     windows: [
-      { id: WINDOW, title: '대화하기', width: 360, height: 480, focusable: true, component: () => import('./ui/ChatWindow') },
+      { id: WINDOW, title: '대화하기', width: 360, height: 600, focusable: true, component: () => import('./ui/ChatWindow') },
       { id: 'chat.emoji', title: '이모티콘', width: 260, height: 260, component: () => import('./ui/EmojiWindow') },
     ],
     contributions: [
       { slot: 'menu.main', id: 'chat.menu', label: '대화하기', command: 'chat.open', order: 22, needsRoom: true },
       { slot: 'menu.main', id: 'chat.emojiMenu', label: '이모티콘', command: 'chat.emoji', order: 23, needsRoom: true },
       { slot: 'chip.buttons', id: 'chat.chip', label: '대화하기', component: ChatChip },
-      { slot: 'rooms.settings', id: 'chat.setting', label: '채팅 켜기', component: ChatSetting },
+      // 방 설정 창에서 정원 바로 아래에 둔다
+      { slot: 'rooms.settings', id: 'chat.setting', label: '채팅 켜기', component: ChatSetting, order: -1 },
     ],
   },
   commands: [
-    { id: 'chat.open', enabledWhen: (ctx) => (!view(ctx).code ? NOT_IN_ROOM : view(ctx).on ? null : CHAT_OFF), run: (ctx) => ctx.ui.open(WINDOW) },
+    { id: 'chat.open', enabledWhen: (ctx) => (!view(ctx).code ? NOT_IN_ROOM : view(ctx).on ? null : offText(ctx)), run: (ctx) => ctx.ui.open(WINDOW) },
     { id: 'chat.emoji', enabledWhen: (ctx) => (view(ctx).code ? null : NOT_IN_ROOM), run: (ctx) => ctx.ui.open('chat.emoji') },
   ],
   setup(ctx) {

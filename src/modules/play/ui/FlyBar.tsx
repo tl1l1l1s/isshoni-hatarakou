@@ -44,9 +44,10 @@ export default function FlyBar({ ctx }: SlotProps) {
       {flying && st.fly && ctx.gates.isOpen('play.flyColor') && <input type="color" aria-label="글자 색" value={l.color} onChange={(e) => set({ color: e.target.value })} />}
       {ctx.gates.isOpen('play.bomb') && (
         <button title="폭탄" onClick={() => void ctx.commands.run('play.bomb').catch((e: Error) => ctx.ui.toast(e.message))}>
-          💣
+          💣 폭탄 던지기
         </button>
       )}
+      {flying && st.fly && <p className={css.hint}>보낸 글은 모두의 화면을 흘러가고 기록에 남지 않아요.</p>}
     </div>
   );
 }

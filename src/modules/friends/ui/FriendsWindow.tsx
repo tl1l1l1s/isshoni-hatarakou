@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import type { AccountPresence, Ctx } from '@core/types';
 import { plan, profileView } from '../logic';
-import { accept, answer, decline, invite, requestByCode, unfriend, useFriends } from '../state';
+import { accept, answer, cancel, decline, invite, requestByCode, unfriend, useFriends } from '../state';
 import css from './friends.module.css';
 
 type Run = (job: () => Promise<string | null>) => void;
@@ -13,7 +13,7 @@ function useMyRoom(ctx: Ctx): string | null {
 
 /** 친구창 (FRD-01 내 코드와 코드로 신청, FRD-02 받은 신청, FRD-03 목록, FRD-04 받은 초대) */
 export default function FriendsWindow({ ctx }: { ctx: Ctx }) {
-  const { list, inbox } = useFriends(ctx);
+  const { list, inbox, sent } = useFriends(ctx);
   const [input, setInput] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -39,16 +39,24 @@ export default function FriendsWindow({ ctx }: { ctx: Ctx }) {
   return (
     <div>
       <h4>내 친구 코드</h4>
-      <div className={css.row}>
-        <span className={css.code}>{code ?? '없음'}</span>
-        {code && (
-          <button onClick={() => run(() => ctx.shell.copy(code).then(() => '복사했어요.'))}>복사</button>
-        )}
-      </div>
-      <label>
-        친구에게 오프라인으로 보이기
-        <input type="checkbox" checked={hidden} onChange={(e) => ctx.settings.set({ appearOffline: e.target.checked })} />
-      </label>
+      {/* 프로필을 아직 받지 못했으면(오프라인으로 시작) 코드가 없다 */}
+      {code ? (
+        <div className={css.row}>
+          <span className={css.code}>{code}</span>
+          <button
+            onClick={() =>
+              void ctx.shell.copy(code).then(
+                () => ctx.ui.toast('친구 코드를 복사했어요.'),
+                () => ctx.ui.toast('복사하지 못했어요. 코드를 직접 알려 주세요.'),
+              )
+            }
+          >
+            코드 복사
+          </button>
+        </div>
+      ) : (
+        <p className={css.muted}>연결되면 친구 코드가 보여요.</p>
+      )}
       <form
         className={css.row}
         onSubmit={(e) => {
@@ -86,6 +94,15 @@ export default function FriendsWindow({ ctx }: { ctx: Ctx }) {
         ),
       )}
 
+      {Object.entries(sent).map(([uid, s]) => (
+        <div key={`sent:${uid}`} className={css.card}>
+          <span>{s.name}님의 수락을 기다리는 중이에요.</span>
+          <div className={css.row}>
+            <button disabled={busy} onClick={() => run(() => cancel(ctx, uid).then(() => null))}>신청 취소</button>
+          </div>
+        </div>
+      ))}
+
       <h4>친구 {friends.length}명</h4>
       {friends.length === 0 ? (
         <p className={css.muted}>아직 친구가 없어요. 친구 코드를 주고받아 보세요.</p>
@@ -96,6 +113,10 @@ export default function FriendsWindow({ ctx }: { ctx: Ctx }) {
           ))}
         </ul>
       )}
+      <label>
+        친구에게 오프라인으로 보이기
+        <input type="checkbox" checked={hidden} onChange={(e) => ctx.settings.set({ appearOffline: e.target.checked })} />
+      </label>
     </div>
   );
 }

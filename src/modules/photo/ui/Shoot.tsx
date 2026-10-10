@@ -106,7 +106,7 @@ function View({ ctx, session, im, localOwn }: { ctx: Ctx; session: Session; im: 
         {v.count && <div className={css.count} role="status">{v.count.left}</div>}
       </div>
       <p className={css.hint}>
-        {v.count ? `컷 ${v.count.cut + 1} / ${cfg.n} 찍는 중이에요.` : '아래 단추나 키로 움직여요. 미리보기를 누르고 A D로 옮기고 Q E로 돌고 W S로 다가가거나 물러나요. Space는 점프예요.'}
+        {v.count ? `컷 ${v.count.cut + 1} / ${cfg.n} 찍는 중이에요.` : '아래 단추로 거리와 자세를 고르고 촬영 시작을 눌러요. 찍고 나면 꾸미기 탭이 열려요. 키보드로는 미리보기를 누른 뒤 A D로 옮기고 Q E로 돌고 W S로 다가가거나 물러나고 Space로 점프해요.'}
       </p>
       <p className={css.hint}>함께 찍는 사람 {names || '없음'}</p>
       {v.room && <p className={css.hint}>{v.full ? '자리 네 칸이 다 찼어요. 자리가 나면 함께 찍어요.' : !v.joined ? '자리를 잡는 중이에요.' : v.host ? '내가 진행해요. 설정을 고르고 촬영을 시작해요.' : `${v.hostName}님이 진행해요. 설정과 촬영 시작은 진행하는 사람이 해요.`}</p>}

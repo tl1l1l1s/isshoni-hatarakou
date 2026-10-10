@@ -7,7 +7,7 @@ import type { ModuleManifest } from '@core/types';
 import type { RenderBackend } from '@render/port';
 import type { Bridge } from '../../preload/api';
 import friends from './index';
-import { accept, answer, invite, requestByCode, snap, unfriend } from './state';
+import { accept, answer, cancel, decline, invite, requestByCode, snap, unfriend } from './state';
 
 let hub: MemoryHub;
 const notes: string[] = [];
@@ -60,10 +60,14 @@ describe('friends 시뮬레이터', () => {
     expect(await requestByCode(a.ctx, 'mate-bbbb3333')).toBe('bob님에게 친구 신청을 보냈어요.');
     await vi.advanceTimersByTimeAsync(0);
     expect(snap(b.ctx).inbox?.alice?.req?.name).toBe('alice');
+    // 보낸 신청은 답이 올 때까지 친구창에 남고 좌석 메뉴의 친구 신청은 숨는다
+    expect(snap(a.ctx).sent).toEqual({ bob: { name: 'bob' } });
+    expect(a.core.registry.reason('friends.request', { uid: 'bob', name: 'bob' })).toBe('이미 신청을 보냈어요.');
 
     await accept(b.ctx, 'alice');
     await vi.advanceTimersByTimeAsync(0);
     expect(a.friends()).toEqual(['bob']);
+    expect(snap(a.ctx).sent).toEqual({});
     expect(b.friends()).toEqual(['alice']);
     expect(hub.read('mod/friends/u/alice/in')).toBeNull();
     expect(hub.read('mod/friends/u/bob/in')).toBeNull();
@@ -84,5 +88,24 @@ describe('friends 시뮬레이터', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(a.friends()).toEqual([]);
     expect(b.friends()).toEqual(['alice']);
+  });
+
+  it('보낸 신청은 상대가 거절하거나 내가 취소하면 빠지고 다시 신청할 수 있다', async () => {
+    const a = await app('alice', 'AAAA2222');
+    const b = await app('bob', 'BBBB3333');
+    await requestByCode(a.ctx, 'BBBB3333');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(snap(a.ctx).sent).toEqual({ bob: { name: 'bob' } });
+
+    await decline(b.ctx, 'alice');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(snap(a.ctx).sent).toEqual({});
+    expect(a.core.registry.reason('friends.request', { uid: 'bob', name: 'bob' })).toBeNull();
+
+    await requestByCode(a.ctx, 'BBBB3333');
+    await cancel(a.ctx, 'bob');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(snap(a.ctx).sent).toEqual({});
+    expect(hub.read('mod/friends/u/bob/in')).toBeNull();
   });
 });

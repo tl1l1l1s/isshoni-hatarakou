@@ -11,7 +11,6 @@ import {
 
 export const HEART = '💗';
 export const DIZZY = '💫';
-export const NOT_IN_ROOM = '방에 들어가 있을 때 쓸 수 있어요.';
 
 interface State {
   /** 좌석 key별 머리 위 글. reaction은 설정과 조용한 모드를 따르는 반응 (CHR-11) */
