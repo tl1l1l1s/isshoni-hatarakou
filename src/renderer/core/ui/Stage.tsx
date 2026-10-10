@@ -1,5 +1,5 @@
 import {
-  Component, createContext, Fragment, Suspense, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent, type ReactNode,
+  Component, createContext, Fragment, Suspense, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type PointerEvent, type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
 import type { CharacterView, Point } from '@render/port';
@@ -378,7 +378,8 @@ function Seat(props: SeatProps & { riding: boolean; away: boolean; joinedOffset:
   const beside = chipBox ? side : null;
   return (
     <div className={css.seat} data-side={beside ?? undefined} style={{ width: beside ? undefined : width, marginLeft: -joinedOffset }}>
-      <div ref={box} className={css.view} style={{ width, height }}>
+      {/* 말풍선은 scale로 커지므로 화면 폭을 배율로 나눈 값을 최대 폭으로 준다 */}
+      <div ref={box} className={css.view} style={{ width, height, ...(props.bubbleMax && ({ '--bubble-max': `${props.bubbleMax / scale}px` } as CSSProperties)) }}>
         {!hidden && <Body {...props} hit={hit} anchors={anchors} />}
         {cover && <Cover {...props} file={cover.file} side={Math.round(cover.size * scale)} feet={anchors.feet} />}
         {/* 이 좌석이 남의 머리 위에 올라타 있으면 위에 탄 좌석은 그쪽 Rider가 그린다 */}
@@ -425,7 +426,7 @@ function Rider(props: SeatProps & { head: Point }) {
 }
 
 /** 말풍선과 클릭 영역. 대상을 고르는 중이면 다른 사람 좌석을 강조하고 누르면 고른다 */
-function Body({ core, seat, scale, showBubble, bubbleMax, onToggle, onAct, actLabel, onShake, onPick, hit, anchors }: SeatProps & { hit: Rect; anchors: { bubble: Point } }) {
+function Body({ core, seat, scale, showBubble, onToggle, onAct, actLabel, onShake, onPick, hit, anchors }: SeatProps & { hit: Rect; anchors: { bubble: Point } }) {
   const bubble = core.bubbleOf(seat);
   const press = useRef<Shake | null>(null);
   const name = seat.name || '이름 없음';
@@ -433,10 +434,7 @@ function Body({ core, seat, scale, showBubble, bubbleMax, onToggle, onAct, actLa
   return (
     <>
       {showBubble && bubble && (
-        <div
-          className={css.bubble}
-          style={{ left: anchors.bubble.x, top: anchors.bubble.y, transform: `translate(-50%, -100%) scale(${scale})`, ...(bubbleMax && { maxWidth: bubbleMax / scale }) }}
-        >
+        <div className={css.bubble} style={{ left: anchors.bubble.x, top: anchors.bubble.y, transform: `translate(-50%, -100%) scale(${scale})` }}>
           {typeof bubble === 'string' ? <span className={css.bubbleText}>{bubble}</span> : <FileImage core={core} hash={bubble.image} />}
         </div>
       )}

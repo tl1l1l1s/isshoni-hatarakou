@@ -84,7 +84,7 @@
 .seat[data-side='left'] > .chipCol { align-items: flex-end; }
 /* 머리 위 말풍선. 글은 두 줄까지 보이고 넘치면 줄인다. 좌석 칸 오른쪽 끝에 눌려 좁아지지 않게 폭을 글 길이로 둔다 */
 .bubble {
-  position: absolute; transform-origin: 50% 100%; width: max-content; max-width: 150px; box-sizing: border-box; padding: 5px 10px; border-radius: 12px;
+  position: absolute; transform-origin: 50% 100%; width: max-content; max-width: var(--bubble-max, 150px); box-sizing: border-box; padding: 5px 10px; border-radius: 12px;
   background: var(--glass-solid); color: var(--fg); font-size: 11px; font-weight: 500; line-height: 1.3;
   pointer-events: none; z-index: 1;
   -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
