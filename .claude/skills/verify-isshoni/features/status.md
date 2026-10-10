@@ -35,5 +35,7 @@ Preconditions:
 
 - 가짜 친구 기록은 메모리 서버 권한상 내 앱이 쓸 수 없다. 사용자가 만들 수 없는 준비 조건이라 렌더러 세션의 기록을 바꾼다. `const file = core.ctxs.get('awaypic').ctx.local.get('account').file`로 내가 올린 그림을 쓰고 `core.session.raw = { ...core.session.raw, devfriend_dev: { ...core.session.raw.devfriend_dev, state: 'away', m: { awaypic: { pic: { file, size: 60 } } } } }` 다음에 `core.session.refresh()`를 부른다. 보고에 이 조작을 적는다.
 - 그림은 Blob으로 늦게 읽혀서 `img`가 생긴 직후 찍으면 빈 상자가 찍힐 수 있다. `img` 개수를 확인한 뒤 찍는다.
+- 자리비움이나 바쁨인 사람의 이름표 이름 뒤에도 `자리비움`, `바쁨`이 붙는다([런처와 실행 화면](./launcher-stage.md)의 이름표 상태). 말풍선을 찾을 때는 `s.stage.locator('div[class*="bubble"]', { hasText: '자리비움' })`처럼 말풍선으로 좁힌다.
+- 내 상태칩은 방 안팎 어디서나 `메뉴 ▼` 바로 왼쪽에 있다. 연결이 끊긴 동안에는 `연결 끊김` 칩이 그 자리에 온다.
 - 회사원 모드에서는 그림을 숨긴다. 켜는 경로는 [설정 창](./settings.md)에 있고 그림이 숨는 것은 `src/modules/status/sim.test.ts`가 다룬다.
 - 등록한 그림은 64KB(base64) 파일 한도에 맞춰 긴 변 500px부터 줄여서 저장한다. 사진처럼 복잡한 그림은 300px까지 줄여도 넘으면 등록을 거절하고 그 이유를 탭에 보여 준다.

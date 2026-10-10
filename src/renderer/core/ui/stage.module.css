@@ -58,7 +58,7 @@
 .state[data-state='busy']::after { content: ''; position: absolute; left: 2px; right: 2px; top: 3.5px; height: 2px; border-radius: 1px; background: #fff; }
 .stateText { flex: none; font-size: 11px; }
 /* 올라탄 캐릭터의 이름 (COM-16). 이름표는 제자리에 남으므로 몸에 붙인다 */
-.riderName {
+.towerName {
   position: absolute; transform-origin: 100% 50%; max-width: 80px; height: 18px; padding: 0 6px; box-sizing: border-box; border-radius: 9px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; line-height: 18px; pointer-events: none; z-index: 1;
   background: var(--chip-bg); color: var(--chip-fg); box-shadow: inset 0 0 0 1px var(--chip-edge);
@@ -66,7 +66,7 @@
 /* 서버 연결 끊김 (0031). 상태칩 줄의 칩과 창 위쪽 띠 */
 :where(.chipBox) > button.offline { box-shadow: inset 0 0 0 1.5px var(--chip-fg); font-weight: 600; }
 .offlineBand {
-  position: sticky; top: 0; z-index: 5; margin: calc(-1 * var(--sp-5)) calc(-1 * var(--sp-5)) var(--sp-3); padding: 6px var(--sp-5);
+  position: sticky; top: calc(-1 * var(--sp-5)); z-index: 5; margin: calc(-1 * var(--sp-5)) calc(-1 * var(--sp-5)) var(--sp-3); padding: 6px var(--sp-5);
   background: var(--accent); color: var(--on-accent); font-size: 12px; font-weight: 500;
 }
 /* 읽지 않은 수 배지 ([data-unread], theme.css)를 상태칩 단추 오른쪽 위에 붙인다 */

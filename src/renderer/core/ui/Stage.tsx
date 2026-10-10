@@ -416,7 +416,7 @@ function Rider(props: SeatProps & { head: Point }) {
   return (
     <div ref={box} className={css.rider} style={{ width: size.width, height: size.height, left: head.x - anchors.feet.x, top: head.y - anchors.feet.y }}>
       <Body {...props} hit={hit} anchors={anchors} />
-      <span className={css.riderName} style={{ right: size.width - hit.x - hit.width, top: hit.y + hit.height / 2, transform: `translateY(-50%) scale(${scale})` }}>
+      <span className={css.towerName} style={{ right: size.width - hit.x - hit.width, top: hit.y + hit.height / 2, transform: `translateY(-50%) scale(${scale})` }}>
         {props.seat.name || '이름 없음'}
       </span>
       {props.riders().map((r) => <Rider key={r.seat.key} {...r} head={anchors.head} />)}
