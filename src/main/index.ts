@@ -15,7 +15,7 @@ import { registerScheme, serveApp } from './protocol';
 import { createStore } from './store';
 import { createTray } from './tray';
 import { startUpdater } from './updater';
-import { createStage, getRects, getStage, place, send, setVisible, toggle, useStore } from './windows/manager';
+import { createStage, dragging, getRects, getStage, place, send, setVisible, toggle, useStore } from './windows/manager';
 
 registerScheme();
 
@@ -92,7 +92,7 @@ function boot(): void {
     createStage();
     createTray();
     startActivity(platform, (s) => send('activity', s));
-    startClickThrough(getStage, getRects, platform.cursorPoint);
+    startClickThrough(getStage, getRects, platform.cursorPoint, dragging);
     startUpdater((version) => send('update.ready', { version }));
     // 렌더러가 멈춰도 동작하도록 메인이 처리한다. Mac의 Cmd+Option+H는 다른 앱 가리기라서 두 OS 모두 Control을 쓴다
     if (!globalShortcut.register('Control+Alt+H', toggle)) {

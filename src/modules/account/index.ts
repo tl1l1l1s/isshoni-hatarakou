@@ -23,7 +23,8 @@ export default defineModule<AccountApi>({
   server: { version: 1, collections: { photo: { scope: 'user', schema: Sha256, template: 'friendsRead' } } },
   ui: {
     contributions: [
-      { slot: 'settings.tabs', id: 'account.tab', label: '계정', order: 10, component: AccountTab },
+      // 저장하지 않은 닉네임이 있으면 설정 창을 닫거나 탭을 바꾸기 전에 묻는다
+      { slot: 'settings.tabs', id: 'account.tab', label: '계정', order: 10, component: (p: SlotProps) => createElement(AccountTab, { ...p, win: 'core.settings' }) },
       { slot: 'launcher.me', id: 'account.me', label: '내 정보', component: Me },
     ],
   },

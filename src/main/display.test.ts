@@ -1,5 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { pickDisplay, remember } from './display';
+import { anchorOf, pickDisplay, placeAt, remember } from './display';
+
+describe('placeAt', () => {
+  const area = { x: 100, y: 0, width: 1000, height: 800 };
+  const size = { width: 200, height: 300 };
+  it('자리가 없으면 아래 가운데', () => {
+    expect(placeAt(area, size)).toEqual({ x: 500, y: 500, ...size });
+  });
+  it('끌어 둔 자리로 돌아오고 크기가 바뀌어도 아래 가운데 점이 그대로다', () => {
+    const a = anchorOf(area, { x: 150, y: 200, ...size });
+    expect(placeAt(area, size, a)).toEqual({ x: 150, y: 200, ...size });
+    expect(placeAt(area, { width: 100, height: 400 }, a)).toEqual({ x: 200, y: 100, width: 100, height: 400 });
+  });
+  it('작업 영역이 줄거나 창이 커져도 작업 영역 안에 남는다', () => {
+    const corner = anchorOf(area, { x: 900, y: 500, ...size });
+    expect(placeAt({ x: 100, y: 0, width: 600, height: 400 }, size, corner)).toEqual({ x: 500, y: 100, ...size });
+    expect(placeAt(area, { width: 200, height: 900 }, { x: 0.5, y: 0.5 })).toMatchObject({ y: -100 });
+  });
+});
 
 const d = (id: number, x: number, width: number, height: number, scaleFactor = 1, rotation = 0) => ({
   id, bounds: { x, y: 0, width, height }, rotation, scaleFactor,

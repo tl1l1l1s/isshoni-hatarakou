@@ -33,7 +33,7 @@ export default defineModule<WardrobeApi>({
       { id: 'wardrobe.conflict', title: '캐릭터 맞추기', width: 440, height: 460, component: () => import('./ui/ConflictWindow') },
     ],
     contributions: [
-      { slot: 'menu.main', id: 'wardrobe.open', label: '캐릭터 만들기', command: 'wardrobe.open', order: 20 },
+      { slot: 'menu.main', id: 'wardrobe.open', label: '캐릭터 만들기', command: 'wardrobe.open', order: 40 },
       { slot: 'launcher.cards', id: 'wardrobe.slots', label: '캐릭터 슬롯', component: SlotCard, order: 5 },
       { slot: 'settings.tabs', id: 'wardrobe.solo', label: '자리 추가', component: SoloTab, order: 25 },
     ],

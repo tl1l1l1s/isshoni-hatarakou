@@ -13,6 +13,7 @@ import { CoreRuntime } from './runtime';
 import type { ModuleManifest } from './types';
 import { coreModule } from './coreModule';
 import { CharacterPreview, Panels, SlotItems, Stage } from './ui/Stage';
+import { standardsMode } from './ui/windows';
 
 type Profile = { name?: string; friendCode?: string };
 /** 부팅 중 서버 읽기를 기다리는 시간. 오프라인이면 Firebase 읽기는 연결될 때까지 끝나지 않는다 */
@@ -102,6 +103,7 @@ async function askSetupCode(bridge: Bridge, signIn: (code: string) => Promise<st
   await bridge.invoke('win.prepare', { name, title: '설정 코드 입력', width: 360, height: 220, focusable: true, resizable: false });
   const win = window.open('', name);
   if (!win) throw new Error('설정 코드 창을 열지 못했습니다');
+  standardsMode(win.document);
   win.document.title = '설정 코드 입력';
   for (const n of document.head.querySelectorAll('style, link[rel=stylesheet]')) win.document.head.appendChild(n.cloneNode(true));
   win.document.body.className = 'panel';

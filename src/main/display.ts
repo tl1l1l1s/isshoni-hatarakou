@@ -12,6 +12,25 @@ export function remember(d: DisplayLike): SavedDisplay {
   return { id: d.id, fp: `${w}x${h}@${d.bounds.x},${d.bounds.y}r${d.rotation}s${d.scaleFactor}`, w, h };
 }
 
+/** 스테이지 자리: 사용자가 끌어 옮긴 창의 아래 가운데 점을 작업 영역 안의 비율로 둔다. 배율이나 해상도가 바뀌어도 같은 쪽에 남는다 */
+export interface Anchor { x: number; y: number }
+
+/** 창이 작업 영역 밖으로 나가지 않게 옮긴다. 작업 영역보다 높으면 아래를 맞춘다 */
+export function clampIn(area: Rect, b: Rect): Rect {
+  const x = Math.min(Math.max(b.x, area.x), area.x + area.width - b.width);
+  const y = Math.min(Math.max(b.y, area.y), area.y + area.height - b.height);
+  return { ...b, x, y };
+}
+
+/** anchor 자리에 size 크기 창을 놓는다. anchor가 없으면 아래 가운데 */
+export function placeAt(area: Rect, size: { width: number; height: number }, a: Anchor = { x: 0.5, y: 1 }): Rect {
+  return clampIn(area, { x: Math.round(area.x + a.x * area.width - size.width / 2), y: Math.round(area.y + a.y * area.height - size.height), ...size });
+}
+
+export function anchorOf(area: Rect, b: Rect): Anchor {
+  return { x: (b.x + b.width / 2 - area.x) / area.width, y: (b.y + b.height - area.y) / area.height };
+}
+
 /** 저장한 id, 해상도와 위치와 회전과 배율 지문, 같은 해상도, 주 모니터 순서로 찾는다 */
 export function pickDisplay<T extends DisplayLike>(all: T[], primary: T, saved: SavedDisplay | null): T {
   if (!saved) return primary;

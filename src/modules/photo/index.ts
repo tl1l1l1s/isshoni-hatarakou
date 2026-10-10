@@ -33,7 +33,7 @@ export default defineModule({
   ui: {
     windows: [{ id: 'photo.main', title: '스티커 사진', width: 620, height: 820, focusable: true, component: () => import('./ui/PhotoWindow') }],
     contributions: [
-      { slot: 'menu.main', id: 'photo.open', label: '스티커 사진', command: 'photo.open', order: 40, quiet: 'hide' },
+      { slot: 'menu.main', id: 'photo.open', label: '스티커 사진', command: 'photo.open', order: 24, quiet: 'hide' },
       { slot: 'chat.toolbar', id: 'photo.chatButton', label: '스티커 사진', component: ChatButton, quiet: 'hide' },
     ],
   },

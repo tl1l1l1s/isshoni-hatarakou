@@ -1,16 +1,20 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { SlotProps } from '@core/types';
 import { NAME_MAX_LENGTH } from '@shared/constants';
 import { cleanName, PHOTO_SIDE } from '../logic';
 import Photo from './Photo';
 import css from './account.module.css';
 
-/** 설정 창과 내 정보 화면의 계정 탭. code가 false면 친구 코드 줄을 뺀다 (내 정보 머리에 이미 있다) */
-export default function AccountTab({ ctx, code: showCode = true }: SlotProps & { code?: boolean }) {
+/** 설정 창과 내 정보 화면의 계정 탭. code가 false면 친구 코드 줄을 뺀다 (내 정보 머리에 이미 있다).
+ *  win은 이 탭이 그려진 창이고 저장하지 않은 닉네임이 있으면 그 창을 떠나기 전에 묻는다. focusName이면 닉네임 칸에 바로 들어간다 */
+export default function AccountTab({ ctx, code: showCode = true, win, focusName }: SlotProps & { code?: boolean; win?: string; focusName?: boolean }) {
   const [name, setName] = useState(ctx.self.name());
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const code = ctx.self.friendCode();
+  const typed = useRef(name);
+  typed.current = name;
+  useEffect(() => (win ? ctx.ui.guard(win, () => (typed.current.trim() !== ctx.self.name() ? '닉네임을 저장하지 않았어요. 닫을까요?' : null)) : undefined), [ctx, win]);
 
   const save = () => {
     const r = cleanName(name);
@@ -55,7 +59,7 @@ export default function AccountTab({ ctx, code: showCode = true }: SlotProps & {
       <form onSubmit={(e) => (e.preventDefault(), save())}>
         <label>
           닉네임
-          <input value={name} maxLength={NAME_MAX_LENGTH} onChange={(e) => setName(e.target.value)} />
+          <input className={css.nameInput} value={name} maxLength={NAME_MAX_LENGTH} autoFocus={focusName} onChange={(e) => setName(e.target.value)} />
         </label>
         <button type="submit">저장</button>
       </form>

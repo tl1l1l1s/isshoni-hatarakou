@@ -14,10 +14,12 @@ export function shouldIgnore(c: Point, b: Rect, rects: Rect[], nearPx: number): 
   return !rects.some((r) => x >= r.x && x < r.x + r.width && y >= r.y && y < r.y + r.height);
 }
 
+/** held가 true인 동안(스테이지를 끄는 중)은 클릭을 계속 받는다 */
 export function startClickThrough(
   getWin: () => BrowserWindow | null,
   getRects: () => Rect[],
   cursorPoint: () => Point,
+  held: () => boolean = () => false,
 ): () => void {
   let lastWin: BrowserWindow | null = null;
   let last: boolean | null = null;
@@ -26,7 +28,7 @@ export function startClickThrough(
     // 숨긴 스테이지는 클릭을 받을 일이 없으니 커서를 읽지 않는다
     if (!win || win.isDestroyed() || !win.isVisible()) return;
     if (win !== lastWin) [lastWin, last] = [win, null];
-    const ignore = shouldIgnore(cursorPoint(), win.getBounds(), getRects(), CURSOR_NEAR_PX);
+    const ignore = !held() && shouldIgnore(cursorPoint(), win.getBounds(), getRects(), CURSOR_NEAR_PX);
     if (ignore !== last) {
       win.setIgnoreMouseEvents(ignore);
       last = ignore;

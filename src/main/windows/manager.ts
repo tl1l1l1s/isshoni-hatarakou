@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import type { CoreEventMap, CoreInvokeMap, Rect } from '../../preload/api';
 import type { Store } from '../store';
 import { report } from '../crash';
-import { pickDisplay, remember, type SavedDisplay } from '../display';
+import { anchorOf, clampIn, pickDisplay, placeAt, remember, type Anchor, type SavedDisplay } from '../display';
 import { platform, panelMaterial } from '../platform';
 import { pageUrl } from '../protocol';
 
@@ -43,6 +43,10 @@ export function effectsBounds(name: string): Rect | null {
   const w = panels.get(name);
   return isEffects(name) && w && !w.isDestroyed() ? w.getBounds() : null;
 }
+
+// 사용자가 이름표를 끌어 옮긴 스테이지 자리 (모니터 id마다). 위치 초기화 때 지운다
+const PLACE_FILE = 'device/stage-place.json';
+const savedPlaces = () => (store?.read(PLACE_FILE) ?? {}) as Record<string, Anchor>;
 
 // 캐릭터를 띄울 모니터 (SET-06, NFR-08). undefined는 아직 읽지 않음
 const DISPLAY_FILE = 'device/display.json';
@@ -158,24 +162,51 @@ export function send<K extends keyof CoreEventMap>(event: K, payload: CoreEventM
   if (stage && !stage.isDestroyed()) stage.webContents.send(`core:${event}`, payload);
 }
 
-/** 렌더러가 좌석 배율과 메뉴 높이를 맞출 작업 영역 크기 */
-export function workArea(): { width: number; height: number } {
-  const { width, height } = currentDisplay().workArea;
-  return { width, height };
+/** 렌더러가 좌석 배율과 메뉴 높이를 맞출 작업 영역 크기. above는 스테이지 아래 가운데 점 위로 남은 높이로 메뉴가 그 안에서 커진다 */
+export function workArea(): { width: number; height: number; above: number } {
+  const d = currentDisplay();
+  const { width, height } = d.workArea;
+  return { width, height, above: Math.round((savedPlaces()[d.id]?.y ?? 1) * height) };
 }
 
-/** 고른 모니터(없으면 주 모니터) 작업 영역 아래 가운데. 크기와 위치가 같으면 다시 적용하지 않는다.
- *  작업 영역 크기가 마지막으로 알린 것과 다르면 렌더러에 알린다 */
+/** 고른 모니터(없으면 주 모니터) 작업 영역의 끌어 둔 자리, 없으면 아래 가운데. 작업 영역 밖으로 나가지 않게 맞추고 크기와 위치가 같으면 다시 적용하지 않는다.
+ *  작업 영역 크기나 남은 높이가 마지막으로 알린 것과 다르면 렌더러에 알린다 */
 let toldArea = '';
 export function place(): void {
   if (!stage) return;
-  const wa = currentDisplay().workArea;
-  const b = { x: Math.round(wa.x + (wa.width - size.width) / 2), y: wa.y + wa.height - size.height, ...size };
-  applyBounds(stage, b);
-  const key = `${wa.width}x${wa.height}`;
+  const d = currentDisplay();
+  applyBounds(stage, placeAt(d.workArea, size, savedPlaces()[d.id]));
+  const area = workArea();
+  const key = JSON.stringify(area);
   if (key === toldArea) return;
   toldArea = key;
-  send('stage.workArea', { width: wa.width, height: wa.height });
+  send('stage.workArea', area);
+}
+
+/** 이름표를 끄는 동안 시작할 때의 창 아래 가운데 점. 렌더러가 보낸 포인터 이동만큼 옮긴다 */
+let dragFrom: { x: number; y: number } | null = null;
+let holdUntil = 0;
+/** 끄는 동안 커서가 클릭 영역을 잠깐 벗어나도 클릭 통과로 바꾸지 않는다. 렌더러가 끝을 알리지 못해도 2초 뒤에 풀린다 */
+export const dragging = () => Date.now() < holdUntil;
+
+/** 고른 모니터의 작업 영역 안에서만 옮기고 모니터마다 자리를 기억한다. 끝나면 남은 높이를 렌더러에 알린다 */
+export function dragStage(phase: 'start' | 'move' | 'end', dx: number, dy: number): void {
+  if (!stage) return;
+  if (phase === 'start') {
+    const b = stage.getBounds();
+    dragFrom = { x: b.x + b.width / 2, y: b.y + b.height };
+  }
+  if (!dragFrom) return;
+  if (phase === 'end') {
+    dragFrom = null;
+    holdUntil = 0;
+    return place();
+  }
+  holdUntil = Date.now() + 2000;
+  const d = currentDisplay();
+  const b = clampIn(d.workArea, { x: Math.round(dragFrom.x + dx - size.width / 2), y: Math.round(dragFrom.y + dy - size.height), ...size });
+  store?.write(PLACE_FILE, { ...savedPlaces(), [d.id]: anchorOf(d.workArea, b) });
+  applyBounds(stage, b);
 }
 
 const same = (a: Bounds, b: Bounds) => a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
@@ -213,9 +244,10 @@ export function setVisible(visible: boolean): void {
 
 export const toggle = () => setVisible(hidden);
 
-/** 위치 초기화 (SET-16): 스테이지를 다시 놓고 기억한 패널 위치를 지우고 열린 패널을 가운데로 옮긴다 */
+/** 위치 초기화 (SET-16): 끌어 둔 스테이지 자리와 기억한 패널 위치를 지우고 스테이지를 아래 가운데에, 열린 패널을 가운데로 옮긴다 */
 export function resetPositions(): void {
   store?.write(WINDOWS_FILE, {});
+  store?.write(PLACE_FILE, {});
   for (const w of BrowserWindow.getAllWindows()) if (w !== stage) w.center();
   place();
   setVisible(true);
@@ -238,6 +270,8 @@ export function createStage(): void {
   });
   stage = win;
   rects = [];
+  dragFrom = null;
+  holdUntil = 0;
   // 창이 줄어들 때 렌더러에 resize 이벤트가 오지 않는 경우가 있어 메인이 바뀐 크기를 알린다. 렌더러는 이 크기로 클릭 영역을 다시 보낸다
   win.on('resize', () => {
     const { width, height } = win.getContentBounds();
@@ -294,6 +328,10 @@ export function createStage(): void {
     prepared.delete(frameName);
     panels.set(frameName, child);
     child.removeMenu();
+    // 저장하지 않은 일이 있는 패널은 beforeunload로 닫기를 막고 창 안에 묻는다 (ctx.ui.guard). 앱을 끝낼 때는 막지 않는다
+    child.webContents.on('will-prevent-unload', (e) => {
+      if (quitting) e.preventDefault();
+    });
     // keepAlive 패널은 사용자가 닫아도 숨기기만 해서 렌더러의 portal(재생 중인 플레이어)을 남긴다.
     // 렌더러의 window.close()는 이 이벤트 없이 닫히므로 모듈을 내릴 때는 실제로 닫힌다
     child.on('close', (e) => {

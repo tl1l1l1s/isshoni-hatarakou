@@ -51,7 +51,7 @@ export default defineModule<SoundApi>({
       { id: WINDOW, title: '플레이리스트', width: PLAYER.width, height: PLAYER.height, focusable: true, keepAlive: true, component: () => import('./ui/PlayerWindow') },
     ],
     contributions: [
-      { slot: 'menu.main', id: 'sound.menu', label: '플레이리스트', command: 'sound.open', order: 30 },
+      { slot: 'menu.main', id: 'sound.menu', label: '플레이리스트', command: 'sound.open', order: 44 },
       { slot: 'chip.buttons', id: 'sound.chip', label: '플레이리스트', component: Chip, order: 10 },
     ],
   },

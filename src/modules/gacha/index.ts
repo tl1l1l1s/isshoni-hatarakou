@@ -46,8 +46,8 @@ export default defineModule<GachaApi>({
       { id: 'gacha.inventory', title: '보관함', width: 360, height: 480, component: () => import('./ui/InventoryWindow') },
     ],
     contributions: [
-      { slot: 'menu.main', id: 'gacha.menu', label: '가챠', command: 'gacha.open', order: 20 },
-      { slot: 'menu.main', id: 'gacha.inventoryMenu', label: '보관함', command: 'gacha.inventory', order: 21 },
+      { slot: 'menu.main', id: 'gacha.menu', label: '가챠', command: 'gacha.open', order: 41, needsRoom: true },
+      { slot: 'menu.main', id: 'gacha.inventoryMenu', label: '보관함', command: 'gacha.inventory', order: 42 },
       { slot: 'rooms.settings', id: 'gacha.settings', label: '가챠', component: OwnerSection },
       // 런처 내 정보 화면의 보관함 탭 (SCR-03)
       { slot: 'account.box', id: 'gacha.box', label: '보관함', component: Box },

@@ -45,8 +45,8 @@ export default defineModule<ChatApi>({
       { id: 'chat.emoji', title: '이모티콘', width: 260, height: 260, component: () => import('./ui/EmojiWindow') },
     ],
     contributions: [
-      { slot: 'menu.main', id: 'chat.menu', label: '대화하기', command: 'chat.open', order: 20 },
-      { slot: 'menu.main', id: 'chat.emojiMenu', label: '이모티콘', command: 'chat.emoji', order: 21 },
+      { slot: 'menu.main', id: 'chat.menu', label: '대화하기', command: 'chat.open', order: 22, needsRoom: true },
+      { slot: 'menu.main', id: 'chat.emojiMenu', label: '이모티콘', command: 'chat.emoji', order: 23, needsRoom: true },
       { slot: 'chip.buttons', id: 'chat.chip', label: '대화하기', component: ChatChip },
       { slot: 'rooms.settings', id: 'chat.setting', label: '채팅 켜기', component: ChatSetting },
     ],

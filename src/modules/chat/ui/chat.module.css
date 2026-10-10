@@ -1,8 +1,6 @@
-/* 상태칩 줄 안의 💬 버튼과 안 읽은 수 */
+/* 상태칩 줄 안의 💬 버튼과 안 읽은 수. 칩 모양은 코어가 준다 */
 .pill {
-  position: relative; display: inline-flex; align-items: center; font-size: 11px;
-  height: 20px; padding: 0 8px; border: 0; border-radius: 10px; cursor: pointer;
-  background: var(--chip-bg); color: var(--chip-fg); box-shadow: inset 0 0 0 1px var(--chip-edge); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  position: relative; display: inline-flex; align-items: center;
 }
 .count {
   position: absolute; top: -5px; right: -6px; min-width: 14px; height: 14px; padding: 0 3px; border-radius: 7px; box-sizing: border-box;

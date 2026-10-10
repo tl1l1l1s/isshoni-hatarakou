@@ -49,7 +49,7 @@ export default function LauncherWindow({ ctx }: { ctx: Ctx }) {
         <ctx.ui.CharacterPreview />
       </div>
       <div className={css.name}>
-        {name || '이름 없음'}
+        <span>{name || '이름 없음'}</span>
         {level !== undefined && <span className={css.level}>{level}</span>}
       </div>
       <button className={css.start} onClick={start}>시작하기</button>

@@ -32,7 +32,7 @@ export default defineModule<HomeApi>({
   ui: {
     windows: [{ id: 'home.main', title: '마이홈', width: 800, height: 580, focusable: true, component: () => import('./ui/HomeWindow') }],
     contributions: [
-      { slot: 'menu.main', id: 'home.open', label: '마이홈', command: 'home.open', order: 30, quiet: 'hide' },
+      { slot: 'menu.main', id: 'home.open', label: '마이홈', command: 'home.open', order: 45, quiet: 'hide' },
       { slot: 'seat.menu', id: 'home.seat', label: '마이홈 보기', command: 'home.visit', quiet: 'hide' },
     ],
   },

@@ -231,7 +231,7 @@ it('한 계정 한 기기: 쓰지 않는 PC는 계정 접속 상태를 쓰지 �
 function fakeEffectDom() {
   const made: string[] = [];
   const node = (tag = 'div') => (made.push(tag), { style: {}, appendChild: <T,>(c: T) => c, prepend: () => {}, remove: () => {}, getContext: () => ({ setTransform: () => {} }) });
-  const doc = { title: '', head: { childNodes: [], appendChild: () => {} }, body: node('body'), createElement: node };
+  const doc = { title: '', head: { childNodes: [], appendChild: () => {} }, body: node('body'), createElement: node, open: () => {}, write: () => {}, close: () => {} };
   vi.stubGlobal('document', doc);
   vi.stubGlobal('window', { screenX: 0, screenY: 0, devicePixelRatio: 1, open: () => ({ document: doc, closed: false, devicePixelRatio: 1, close: () => {} }) });
   return { canvases: () => made.filter((t) => t === 'canvas').length };
@@ -283,14 +283,57 @@ it('효과: detach 두 개가 모두 끝나야 좌석에 돌아오고 끝난 효
   vi.unstubAllGlobals();
 });
 
-it('패널 ESC: 모듈이 이미 처리한 ESC(defaultPrevented)는 창을 닫지 않는다', async () => {
+it('패널 ESC: 모듈이 이미 처리한 ESC(defaultPrevented)는 창을 닫지 않고 저장하지 않은 일이 있으면 창 안에 묻는다', async () => {
   const { core } = await boot([]);
   const closed: string[] = [];
   core.windows.close = (id) => void closed.push(id);
+  core.windows.live = () => true;
   const w = { id: 'demo.w' } as OpenWindow;
+  const esc = () => core['onPanelKey'](w, { key: 'Escape', defaultPrevented: false } as KeyboardEvent);
   core['onPanelKey'](w, { key: 'Escape', defaultPrevented: true } as KeyboardEvent);
-  core['onPanelKey'](w, { key: 'Escape', defaultPrevented: false } as KeyboardEvent);
-  expect(closed).toEqual(['demo.w']);
+  esc();
+  await vi.waitFor(() => expect(closed).toEqual(['demo.w']));
+
+  // 물을 글이 있으면 닫지 않고 묻는다. 묻는 중의 ESC는 계속하기이고 닫기를 누르면 닫는다
+  let dirty = true;
+  const off = core.ctxs.get('core')!.ctx.ui.guard('demo.w', () => (dirty ? '저장하지 않았어요' : null));
+  esc();
+  expect(core.windows.asking.get()).toMatchObject({ id: 'demo.w', text: '저장하지 않았어요' });
+  esc();
+  expect(core.windows.asking.get()).toBeNull();
+  esc();
+  core.windows.asking.get()!.answer(true);
+  await vi.waitFor(() => expect(closed).toEqual(['demo.w', 'demo.w']));
+  // 저장해서 글이 없어지거나 guard를 풀면 묻지 않는다
+  dirty = false;
+  expect(await core.windows.confirm('demo.w')).toBe(true);
+  dirty = true;
+  off();
+  expect(await core.windows.confirm('demo.w')).toBe(true);
+});
+
+it('알림은 방금 쓴 패널에 뜨고 그 패널이 닫히면 런처 화면에서는 런처에, 실행 화면에서는 스테이지에 뜬다. 두 개까지만 남는다', async () => {
+  const { core } = await boot([]);
+  const live = new Set(['launcher.main', 'demo.w']);
+  core.windows.live = (id) => live.has(id);
+  core.windows.touch('launcher.main');
+  await new Promise((r) => setTimeout(r, 5));
+  core.windows.touch('demo.w');
+  core.toast('하나');
+  const one = core.toasts.get()[0]!;
+  expect(core.toastPanel(one)).toBe('demo.w');
+  // 띄우자마자 닫힌 창(저장하고 닫는 창)의 알림은 런처나 실행 화면으로 옮기고 오래 보인 뒤에 닫혔으면 그리지 않는다
+  live.delete('demo.w');
+  core.mode.set('launcher');
+  expect(core.toastPanel(one)).toBe('launcher.main');
+  core.mode.set('run');
+  expect(core.toastPanel(one)).toBeNull();
+  expect(core.toastPanel({ ...one, id: one.id - 2000 })).toBeUndefined();
+  // 실행 화면을 더 최근에 눌렀으면 실행 화면에 뜬다
+  core.windows.touch('');
+  core.toast('둘');
+  core.toast('셋');
+  expect(core.toasts.get().map((t) => [t.text, t.at])).toEqual([['둘', null], ['셋', null]]);
 });
 
 it('외형 파일이 JSON이 아니면 외형 없음(null)', async () => {
