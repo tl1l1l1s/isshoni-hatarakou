@@ -105,7 +105,7 @@ export function watchInbox(ctx: Ctx, limit = BOOK_PAGE): void {
     ctx.local.update<Local>('account', (s) => ({ ...s, giftSeen: lastAt(fresh, s.giftSeen) }));
     ctx.notify({
       title: '말랑이 선물',
-      body: fresh.length > 1 ? `말랑이 선물 ${fresh.length}개가 왔어요.` : `${fresh[0]!.name}님이 말랑이를 보냈어요.`,
+      body: fresh.length > 1 ? `말랑이 선물 ${fresh.length}개가 왔어요.` : `${fresh[0]!.name || '이름 없음'}님이 말랑이를 보냈어요.`,
       onClick: () => openHome(ctx, null),
     });
   });
@@ -206,7 +206,7 @@ export function useFriends(ctx: Ctx): Visit[] {
     if (!friends) return;
     let alive = true;
     const load = () => {
-      Promise.all(friends.list().map(async ({ uid }) => ({ uid, name: String((await ctx.users.profile(uid))?.name ?? '이름 없음') })))
+      Promise.all(friends.list().map(async ({ uid }) => ({ uid, name: String((await ctx.users.profile(uid))?.name || '이름 없음') })))
         .then((l) => alive && setList(l))
         .catch((e: Error) => ctx.log.warn(`친구 이름 읽기 실패: ${e.message}`));
     };

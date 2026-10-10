@@ -26,8 +26,8 @@ export type Track = z.infer<typeof Track>;
 export const PRESETS = 3;
 export const PRESET_NAME_MAX = 20;
 export const BIO_MAX = 140;
-/** 플레이리스트 창 크기. 축소 플레이어는 플레이어 줄만 남긴 높이다 (SND-04) */
-export const PLAYER = { width: 360, height: 640, miniHeight: 240 };
+/** 플레이리스트 창 크기. 원래 크기는 맨 아래 백색소음 안내까지 스크롤 없이 보이는 높이이고 축소 플레이어는 플레이어 줄만 남긴 높이다 (SND-04) */
+export const PLAYER = { width: 360, height: 690, miniHeight: 240 };
 
 export const Preset = z.object({ name: z.string().max(PRESET_NAME_MAX), tracks: z.array(Track).max(MAX_TRACKS) });
 export type Preset = z.infer<typeof Preset>;

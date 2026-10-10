@@ -43,7 +43,7 @@ export function BookPanel({ ctx, owner, mine, book, more, onMore, onClose }: {
           {book.map((b) => (
             <li key={`${b.sender}/${b.id}`}>
               <div>
-                <b>{b.name}</b> <small className={css.count}>{when(b.at)}</small>
+                <b>{b.name || '이름 없음'}</b> <small className={css.count}>{when(b.at)}</small>
                 <p className={css.pre}>{b.text}</p>
               </div>
               {mine && <button onClick={() => run(ctx, () => removeBook(ctx, b))}>지우기</button>}
@@ -82,7 +82,7 @@ export function GiftPanel({ ctx, home, gifts, onClose }: { ctx: Ctx; home: Home;
               <li key={key}>
                 <span className={css.thumb}>{files[g.file] && <img src={files[g.file]} alt="" />}</span>
                 <div>
-                  <b>{g.name}님의 선물</b> <small className={css.count}>{when(g.at)}</small>
+                  <b>{g.name || '이름 없음'}님의 선물</b> <small className={css.count}>{when(g.at)}</small>
                   {g.msg && <p className={css.pre}>{g.msg}</p>}
                   {asking === key ? (
                     <p>
@@ -143,19 +143,26 @@ export function MallangiPanel({ ctx, home, onClose }: { ctx: Ctx; home: Home; on
           }}
         />
       ) : (
-        <p>
-          <button disabled={full} onClick={() => setDrawing(true)}>그리기</button> <button disabled={full} onClick={upload}>그림 올리기</button>
-        </p>
+        <>
+          <p>
+            <button disabled={full} onClick={() => setDrawing(true)}>그리기</button> <button disabled={full} onClick={upload}>그림 올리기</button>
+          </p>
+          <p className={css.hint}>말랑이 부르기를 누르면 이 가운데 하나가 나와서 바닥을 걸어 다녀요. 친구 탭에서 친구에게 선물할 수 있어요.</p>
+        </>
       )}
-      <p className={css.hint}>말랑이 부르기를 누르면 이 가운데 하나가 나와서 바닥을 걸어 다녀요. 친구 탭에서 친구에게 선물할 수 있어요.</p>
     </>
   );
 }
+
+/** 그리는 칸의 한 변. 저장할 때 MALLANGI_SIDE로 줄인다 */
+const DRAW_SIDE = 240;
 
 function DrawPad({ ctx, onSave, onCancel }: { ctx: Ctx; onSave: (file: string) => Promise<void>; onCancel: () => void }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const last = useRef<Pt | null>(null);
   const [color, setColor] = useState('#1f2430');
+  // 아직 아무것도 그리지 않았으면 칸 가운데에 안내를 둔다
+  const [empty, setEmpty] = useState(true);
   const pos = (ev: PointerEvent<HTMLCanvasElement>): Pt => {
     const r = ev.currentTarget.getBoundingClientRect();
     return { x: ev.clientX - r.left, y: ev.clientY - r.top };
@@ -182,24 +189,40 @@ function DrawPad({ ctx, onSave, onCancel }: { ctx: Ctx; onSave: (file: string) =
     });
   return (
     <div className={css.pad}>
-      <canvas
-        ref={canvas}
-        width={MALLANGI_SIDE}
-        height={MALLANGI_SIDE}
-        onPointerDown={(ev) => {
-          ev.currentTarget.setPointerCapture(ev.pointerId);
-          last.current = pos(ev);
-          draw(ev);
-        }}
-        onPointerMove={draw}
-        onPointerUp={() => (last.current = null)}
-        onPointerCancel={() => (last.current = null)}
-      />
-      <p>
-        <input type="color" value={color} title="펜 색" onChange={(e) => setColor(e.target.value)} />{' '}
-        <button onClick={() => canvas.current!.getContext('2d')!.clearRect(0, 0, MALLANGI_SIDE, MALLANGI_SIDE)}>지우기</button>{' '}
-        <button onClick={onCancel}>취소</button> <button type="submit" onClick={save}>저장</button>
-      </p>
+      <div className={css.canvas}>
+        <canvas
+          ref={canvas}
+          width={DRAW_SIDE}
+          height={DRAW_SIDE}
+          onPointerDown={(ev) => {
+            ev.currentTarget.setPointerCapture(ev.pointerId);
+            setEmpty(false);
+            last.current = pos(ev);
+            draw(ev);
+          }}
+          onPointerMove={draw}
+          onPointerUp={() => (last.current = null)}
+          onPointerCancel={() => (last.current = null)}
+        />
+        {empty && <span>여기에 펜으로 그려 보세요</span>}
+      </div>
+      <div className={css.row}>
+        <label>
+          펜 색
+          <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
+        </label>
+        <span className={css.grow} />
+        <button
+          onClick={() => {
+            canvas.current!.getContext('2d')!.clearRect(0, 0, DRAW_SIDE, DRAW_SIDE);
+            setEmpty(true);
+          }}
+        >
+          지우기
+        </button>
+        <button onClick={onCancel}>취소</button>
+        <button type="submit" onClick={save}>저장</button>
+      </div>
     </div>
   );
 }

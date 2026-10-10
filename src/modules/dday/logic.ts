@@ -20,15 +20,24 @@ export const Card = z.object({
 export type Card = z.infer<typeof Card>;
 export type Row = Card & { id: string };
 
-/** 카드 색 위에서 더 잘 읽히는 글자색. 흰 글자와 #1d1d1f 글자 가운데 WCAG 대비가 큰 쪽이다 */
+/** 카드 색 위에서 더 잘 읽히는 글자색. 흰 글자와 검은 글자 가운데 WCAG 대비가 큰 쪽이다.
+ *  두 대비가 같아지는 색에서도 4.58:1이라 어떤 카드 색이든 작은 글자가 4.5:1을 넘는다 */
 export function inkOn(hex: string): string {
   const lin = (i: number) => {
     const c = parseInt(hex.slice(i, i + 2), 16) / 255;
     return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
   };
   const l = 0.2126 * lin(1) + 0.7152 * lin(3) + 0.0722 * lin(5);
-  // 흰 글자 대비 1.05 / (l + 0.05)와 #1d1d1f(밝기 0.0123) 대비 (l + 0.05) / 0.0623을 견준다
-  return (l + 0.05) ** 2 > 1.05 * 0.0623 ? '#1d1d1f' : '#ffffff';
+  // 흰 글자 대비 1.05 / (l + 0.05)와 검은 글자 대비 (l + 0.05) / 0.05를 견준다
+  return (l + 0.05) ** 2 > 1.05 * 0.05 ? '#000000' : '#ffffff';
+}
+
+/** 사용자가 적은 색 코드. #RRGGBB와 #RGB를 받고(#는 빼도 된다) 저장하는 #rrggbb로 바꾼다. 아니면 null */
+export function parseHex(text: string): string | null {
+  const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(text.trim());
+  if (!m) return null;
+  const h = m[1]!.length === 3 ? [...m[1]!].map((c) => c + c).join('') : m[1]!;
+  return `#${h.toLowerCase()}`;
 }
 
 /** 서버 목록을 읽어 날짜 순서로 놓는다. 모양이 틀린 카드는 버린다 */

@@ -19,6 +19,8 @@ interface Drag { i: number; kind: 'move' | 'size' | 'turn'; s0: Sticker; p0: Pt 
 interface Spark { id: number; text: string; x: number; y: number; dx: number; dy: number }
 
 const ANIMS: Array<[Anim, string]> = [['none', '없음'], ['bob', '둥실'], ['spin', '빙글']];
+/** 박수 이모지 빨리 고르기. 칸에 직접 적을 수도 있다 */
+const CLAPS = ['👏', '🎉', '❤️', '👍', '🔥', '✨'];
 const YT = 'https://www.youtube-nocookie.com';
 let sparkId = 0;
 
@@ -46,6 +48,10 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
     ctx.local.update<Local>('account', (s) => ({ ...s, bookSeen: Math.max(s.bookSeen, at) }));
     setSeen(at);
   }, [ctx, mine, panel, book, seen]);
+
+  // 편집한 것을 저장하지 않고 ESC, 창 닫기 단추, 탭으로 떠나려 하면 코어가 묻는다. 편집을 시작하면 draft가 home과 같고 고칠 때마다 새 값이 된다
+  const dirty = mode !== 'view' && draft !== home;
+  useEffect(() => (dirty ? ctx.ui.guard('home.main', () => '저장하지 않은 편집이 있어요. 닫을까요?') : undefined), [ctx, dirty]);
 
   const shown = (mode !== 'view' && draft) || home;
   const files = useFiles(ctx, shown ? [...shown.stickers.map((s) => s.file), ...('file' in shown.bg ? [shown.bg.file] : []), ...(shown.wall ? [shown.wall] : [])] : []);
@@ -170,6 +176,7 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
     >
       <aside className={css.profile}>
         {Photo && <Photo uid={uid} size={88} />}
+        {tools && Photo && <small className={css.count}>사진은 설정 창의 계정 탭에서 바꿔요.</small>}
         <h3>{name}</h3>
         {tools ? (
           <>
@@ -183,9 +190,9 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
               }}
             >
               <option value="">배경음악 없음</option>
-              {shown.bgm && !tracks.some((t) => t.v === shown.bgm!.v) && <option value={shown.bgm.v}>{shown.bgm.title || shown.bgm.v}</option>}
+              {shown.bgm && !tracks.some((t) => t.v === shown.bgm!.v) && <option value={shown.bgm.v}>{shown.bgm.title || `제목 없는 곡 (${shown.bgm.v})`}</option>}
               {tracks.map((t, i) => (
-                <option key={i} value={t.v}>{t.title || t.v}</option>
+                <option key={i} value={t.v}>{t.title || `제목 없는 곡 (${t.v})`}</option>
               ))}
             </select>
             {!tracks.length && <small className={css.count}>플레이리스트에 곡을 넣으면 배경음악으로 고를 수 있어요.</small>}
@@ -207,11 +214,16 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
                 박수 이모지
                 <input value={shown.clap ?? ''} placeholder={DEFAULT_CLAP} maxLength={CLAP_EMOJI_MAX} onChange={(e) => edit((d) => ({ ...d, clap: e.target.value || undefined }))} />
               </label>
+              <div className={css.claps}>
+                {CLAPS.map((e) => (
+                  <button key={e} aria-label={`박수 ${e}`} aria-pressed={emoji === e} onClick={() => edit((d) => ({ ...d, clap: e }))}>{e}</button>
+                ))}
+              </div>
             </div>
           </>
         ) : (
           <>
-            <BgmBar bgm={shown.bgm} />
+            <BgmBar bgm={shown.bgm} mine={mine} />
             <p className={css.pre}>{shown.profile || (mine ? '자기소개를 적어 보세요.' : '아직 자기소개가 없어요.')}</p>
           </>
         )}
@@ -219,13 +231,14 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
 
       <section className={css.main}>
         <div className={css.bar}>
-          <button onClick={() => toggle('book')}>방명록{badge > 0 && <span className={css.badge}>{badge}</span>}</button>
+          {/* 편집하는 동안에는 꾸미기 도구만 남기고 박수는 고른 이모지를 미리 보려고 둔다 */}
+          {!tools && <button onClick={() => toggle('book')}>방명록{badge > 0 && <span className={css.badge}>{badge}</span>}</button>}
           <button title={mine ? '눌러서 미리 보기' : `하루 ${CLAP_DAILY}번까지 보낼 수 있어요`} onClick={clap}>
             {emoji} 박수 {claps}
           </button>
-          {mine && <button onClick={() => toggle('gifts')}>선물함{gifts.length > 0 && <span className={css.badge}>{gifts.length}</span>}</button>}
-          {home.mallangi.length > 0 && <button onClick={() => herd.current?.call()}>말랑이 부르기</button>}
-          {mine && <button onClick={() => toggle('mallangi')}>말랑이 관리</button>}
+          {mine && !tools && <button onClick={() => toggle('gifts')}>선물함{gifts.length > 0 && <span className={css.badge}>{gifts.length}</span>}</button>}
+          {home.mallangi.length > 0 && !tools && <button onClick={() => herd.current?.call()}>말랑이 부르기</button>}
+          {mine && !tools && <button onClick={() => toggle('mallangi')}>말랑이 관리</button>}
           <span className={css.grow} />
           {mine && mode === 'view' && <button onClick={startEdit}>편집</button>}
           {tools && (
@@ -357,16 +370,18 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
   );
 }
 
-/** 배경음악 막대. 누를 때만 플레이어를 띄워 재생한다. 유튜브 약관에 따라 플레이어는 200x200으로 보이게 둔다 (HOM-04) */
-function BgmBar({ bgm }: { bgm: Bgm | undefined }) {
+/** 배경음악 막대. 누를 때만 플레이어를 띄워 재생한다. 유튜브 약관에 따라 플레이어는 200x200으로 보이게 둔다 (HOM-04).
+ *  곡이 없으면 누를 것이 없으니 막대 대신 글만 보인다 */
+function BgmBar({ bgm, mine }: { bgm: Bgm | undefined; mine: boolean }) {
   const [on, setOn] = useState(false);
+  if (!bgm) return <small className={css.count}>{mine ? '배경음악 없음. 편집에서 플레이리스트 곡을 고를 수 있어요.' : '배경음악 없음'}</small>;
   return (
     <>
       <div className={css.bgm}>
-        {bgm && <button aria-label={on ? '배경음악 끄기' : '배경음악 듣기'} onClick={() => setOn(!on)}>{on ? '■' : '▶'}</button>}
-        <span className={css.bgmTitle}>{bgm ? bgm.title || '제목 없는 곡' : '배경음악 없음'}</span>
+        <button aria-label={on ? '배경음악 끄기' : '배경음악 듣기'} onClick={() => setOn(!on)}>{on ? '■' : '▶'}</button>
+        <span className={css.bgmTitle}>{bgm.title || '제목 없는 곡'}</span>
       </div>
-      {bgm && on && (
+      {on && (
         <iframe
           className={css.player}
           src={`${YT}/embed/${bgm.v}?autoplay=1&playsinline=1&rel=0`}

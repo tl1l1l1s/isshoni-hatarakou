@@ -14,14 +14,16 @@ export default function HomeWindow({ ctx }: { ctx: Ctx }) {
   const owner = visit?.uid ?? ctx.self.uid();
   const name = visit ? visit.name : ctx.self.name();
   const Extra = tabs.find((t) => t.id === tab)?.component;
+  // 탭을 바꾸면 지금 탭 화면이 사라지므로 저장하지 않은 편집이 있으면 먼저 묻는다
+  const go = (id: string) => id !== tab && void ctx.ui.confirmLeave('home.main').then((ok) => ok && setTab(id));
   return (
     <div className={css.window}>
       <div className={css.row}>
         <nav className={css.tabs}>
-          <button aria-pressed={tab === 'home'} onClick={() => setTab('home')}>마이홈</button>
-          <button aria-pressed={tab === 'friends'} onClick={() => setTab('friends')}>친구</button>
+          <button aria-pressed={tab === 'home'} onClick={() => go('home')}>마이홈</button>
+          <button aria-pressed={tab === 'friends'} onClick={() => go('friends')}>친구</button>
           {tabs.map((t) => (
-            <button key={t.id} aria-pressed={tab === t.id} onClick={() => setTab(t.id)}>{t.label}</button>
+            <button key={t.id} aria-pressed={tab === t.id} onClick={() => go(t.id)}>{t.label}</button>
           ))}
         </nav>
         {visit && (
@@ -60,7 +62,8 @@ function FriendsTab({ ctx }: { ctx: Ctx }) {
 
   const open = (f: Visit) => {
     setTo(to === f.uid ? null : f.uid);
-    setPick(null);
+    // 말랑이가 하나뿐이면 고를 것 없이 그것을 보낸다
+    setPick(mallangi.length === 1 ? 0 : null);
     setMsg('');
   };
   const send = (f: Visit, file: string) =>
@@ -83,6 +86,7 @@ function FriendsTab({ ctx }: { ctx: Ctx }) {
           {to === f.uid &&
             (mallangi.length ? (
               <div className={css.giftForm}>
+                {mallangi.length > 1 && <p className={css.hint}>보낼 말랑이를 골라 주세요.</p>}
                 <div className={css.cells}>
                   {mallangi.map((h, i) => (
                     <button key={i} className={css.thumb} aria-pressed={pick === i} onClick={() => setPick(i)}>

@@ -88,7 +88,8 @@ export default function SchedulerTab({ ctx, owner, mine }: HomeTabProps & { ctx:
               <li key={p.id}>
                 <div>
                   <b>{p.title}</b> {mine && p.pub && <small className={css.hint}>공개</small>}
-                  {p.memo && <p className={css.pre}>{p.memo}</p>}
+                  {/* 내 일정의 긴 메모는 세 줄로 접어 수정과 지우기가 목록 안에 보이게 한다. 전체는 수정에서 보인다 */}
+                  {p.memo && <p className={mine ? `${css.pre} ${css.clamp}` : css.pre}>{p.memo}</p>}
                 </div>
                 {mine && (
                   <span className={css.row}>

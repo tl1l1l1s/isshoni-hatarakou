@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cardWrites, COLORS, ddayLabel, inkOn, parseCards, type Card } from './logic';
+import { Card, cardWrites, COLORS, ddayLabel, inkOn, parseCards, parseHex } from './logic';
 
 const card: Card = { name: '마감', date: '2026-10-19', fromOne: false, color: '#112233', notify: true, pub: true, v: 1 };
 
@@ -38,6 +38,29 @@ describe('카드 글자색 (HOM-21)', () => {
 
   it('모든 카드 색에서 작은 글자도 4.5:1 이상이다', () => {
     for (const [c] of COLORS) expect(contrast(c, inkOn(c))).toBeGreaterThanOrEqual(4.5);
-    expect(COLORS.map(([c]) => inkOn(c))).toEqual(['#1d1d1f', '#1d1d1f', '#1d1d1f', '#1d1d1f', '#ffffff', '#ffffff']);
+    expect(COLORS.map(([c]) => inkOn(c))).toEqual(['#000000', '#000000', '#000000', '#000000', '#ffffff', '#ffffff']);
+  });
+
+  it('사용자가 고른 어떤 색에서도 4.5:1 이상이다', () => {
+    const hex = (n: number) => n.toString(16).padStart(2, '0');
+    let worst = Infinity;
+    for (let r = 0; r < 256; r += 5) {
+      for (let g = 0; g < 256; g += 5) {
+        for (let b = 0; b < 256; b += 5) {
+          const c = `#${hex(r)}${hex(g)}${hex(b)}`;
+          worst = Math.min(worst, contrast(c, inkOn(c)));
+        }
+      }
+    }
+    expect(worst).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('색 코드는 #RRGGBB와 #RGB를 받아 소문자 #rrggbb로 바꾼다', () => {
+    expect(parseHex('#3A8FD9')).toBe('#3a8fd9');
+    expect(parseHex(' #f0a ')).toBe('#ff00aa');
+    expect(parseHex('2f9e5b')).toBe('#2f9e5b');
+    for (const bad of ['', '#', '#12', '#1234', '#12345', '#1234567', '#ggg', 'red', '##123456']) expect(parseHex(bad)).toBeNull();
+    // 바꾼 값과 예전 기본 색은 카드 모양에 맞는다
+    for (const color of [parseHex('#f0a'), parseHex('ABCDEF'), ...COLORS.map(([c]) => c)]) expect(Card.safeParse({ ...card, color }).success).toBe(true);
   });
 });
