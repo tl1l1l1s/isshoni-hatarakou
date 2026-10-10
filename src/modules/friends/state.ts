@@ -1,21 +1,23 @@
 // 친구 목록과 받은 기록, 서버 동작. 창도 같은 ctx를 받으므로 상태는 ctx마다 하나 둔다
 import { useCallback, useSyncExternalStore } from 'react';
 import type { z } from 'zod';
-import type { Ctx, Dispose } from '@core/types';
+import { NOT_IN_ROOM, type Ctx, type Dispose } from '@core/types';
 import { Entry, FRIEND_CODE_LENGTH, FRIEND_MAX, friendCodeOf, INBOX_MAX, plan, profileView, Slot, type Effect } from './logic';
 
 export interface Snap {
   /** 처음 받기 전에는 null */
   list: Record<string, Entry> | null;
   inbox: Record<string, Slot> | null;
+  /** 내가 보내고 아직 답이 없는 신청 */
+  sent: Record<string, { name: string }>;
 }
 
-interface Store { snap: Snap; subs: Set<() => void>; done: Set<string> }
+interface Store { snap: Snap; subs: Set<() => void>; done: Set<string>; watching: Map<string, Dispose> }
 const stores = new WeakMap<Ctx, Store>();
 
 function store(ctx: Ctx): Store {
   let s = stores.get(ctx);
-  if (!s) stores.set(ctx, (s = { snap: { list: null, inbox: null }, subs: new Set(), done: new Set() }));
+  if (!s) stores.set(ctx, (s = { snap: { list: null, inbox: null, sent: {} }, subs: new Set(), done: new Set(), watching: new Map() }));
   return s;
 }
 
@@ -135,7 +137,34 @@ export async function request(ctx: Ctx, uid: string, name: string): Promise<stri
     return `${name}님과 친구가 됐어요.`;
   }
   await ctx.server.sendTo(uid).set('req', { name: ctx.self.name(), at: ctx.clock.serverNow() });
+  track(ctx, uid, name);
   return `${name}님에게 친구 신청을 보냈어요.`;
+}
+
+/** 보낸 신청을 상대 받은 기록에서 지켜보다가 지워지면 뺀다. 상대가 수락하면 내 앱이 지우고 거절하면 상대가 지운다.
+ *  ponytail: 이 실행 동안만 기억한다. 앱을 다시 켜면 기다리는 신청이 친구창에서 빠지고 좌석 메뉴에 친구 신청이 다시 보인다 */
+function track(ctx: Ctx, uid: string, name: string): void {
+  const s = store(ctx);
+  s.watching.get(uid)?.();
+  patch(ctx, { sent: { ...s.snap.sent, [uid]: { name } } });
+  const stop = ctx.server.sendTo(uid).watch('req', (v) => v === null && untrack(ctx, uid));
+  if (uid in s.snap.sent) s.watching.set(uid, stop);
+  else stop();
+}
+
+function untrack(ctx: Ctx, uid: string): void {
+  const s = store(ctx);
+  s.watching.get(uid)?.();
+  s.watching.delete(uid);
+  if (!(uid in s.snap.sent)) return;
+  const { [uid]: _, ...rest } = s.snap.sent;
+  patch(ctx, { sent: rest });
+}
+
+/** 보낸 신청 취소 */
+export async function cancel(ctx: Ctx, uid: string): Promise<void> {
+  await ctx.server.sendTo(uid).remove('req');
+  untrack(ctx, uid);
 }
 
 export async function requestByCode(ctx: Ctx, input: string): Promise<string> {
@@ -149,7 +178,7 @@ export async function requestByCode(ctx: Ctx, input: string): Promise<string> {
 /** 지금 있는 방으로 부른다 (FRD-04). 상대 목록에 내가 없으면 규칙이 막는다 */
 export async function invite(ctx: Ctx, uid: string, name: string): Promise<string> {
   const room = ctx.room.current();
-  if (!room) return '먼저 방에 들어가 주세요.';
+  if (!room) return NOT_IN_ROOM;
   try {
     await ctx.server.sendTo(uid).set('inv', { room, name: ctx.self.name(), at: ctx.clock.serverNow() });
     return `${name}님을 ${room} 방으로 초대했어요.`;

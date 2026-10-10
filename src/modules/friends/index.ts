@@ -37,11 +37,12 @@ export default defineModule<FriendsApi>({
   commands: [
     { id: 'friends.open', run: (ctx) => ctx.ui.open('friends.main') },
     {
-      // seat.menu가 { uid, name }을 넘긴다. 이미 친구면 좌석 메뉴에서 숨긴다
+      // seat.menu가 { uid, name }을 넘긴다. 이미 친구이거나 신청을 보내 두었으면 좌석 메뉴에서 숨긴다
       id: 'friends.request',
       enabledWhen: (ctx, args) => {
         const t = Target.safeParse(args);
-        return t.success && isFriend(ctx, t.data.uid) ? '이미 친구예요.' : null;
+        if (!t.success) return null;
+        return isFriend(ctx, t.data.uid) ? '이미 친구예요.' : t.data.uid in snap(ctx).sent ? '이미 신청을 보냈어요.' : null;
       },
       run: async (ctx, args) => {
         const t = Target.parse(args);

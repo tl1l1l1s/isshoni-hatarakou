@@ -11,7 +11,7 @@ export function ChatChip({ ctx, seat }: SlotProps) {
   // 안 읽은 글이 있을 때만 보인다. 창 열기는 ▼ 메뉴에 있다
   if (!seat?.self || !v.code || !v.on || v.unread === 0) return null;
   return (
-    <button className={css.pill} title="대화하기" onClick={() => ctx.ui.open(WINDOW)}>
+    <button title="대화하기" onClick={() => ctx.ui.open(WINDOW)}>
       💬{v.unread > 0 && <span className={css.count}>{badge(v.unread)}</span>}
     </button>
   );
@@ -49,7 +49,7 @@ export function EmojiPicker({ ctx }: { ctx: Ctx }) {
             <Pic ctx={ctx} hash={h} />
           </button>
         ))}
-        {!removing && mine.length < MINE_MAX && <button title="이모티콘 추가" onClick={add}>＋</button>}
+        {!removing && mine.length < MINE_MAX && <button className={css.wide} title="이모티콘 추가" onClick={add}>＋ 내 그림 넣기</button>}
         {mine.length > 0 && <button className={css.wide} onClick={() => setRemoving(!removing)}>{removing ? '완료' : '빼기'}</button>}
       </div>
     </>

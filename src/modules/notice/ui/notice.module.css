@@ -6,6 +6,8 @@
 .head { display: flex; align-items: center; gap: var(--sp-2); width: 100%; padding: var(--sp-2) 0; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .tag { flex: none; font-size: 11px; color: var(--fg-muted); }
 .title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; }
+/* 펼친 글은 제목 전체를 보여 준다 */
+.head[aria-expanded='true'] .title { white-space: normal; overflow: visible; }
 .unread .title { font-weight: 650; }
 .when { flex: none; font-size: 11px; color: var(--fg-subtle); }
 .dot { flex: none; width: 6px; height: 6px; border-radius: 3px; background: var(--fg); }

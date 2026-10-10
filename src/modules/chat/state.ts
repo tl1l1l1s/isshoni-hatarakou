@@ -1,13 +1,17 @@
 // 채팅 상태와 동작. 상태는 ctx마다 따로 둔다
 import { useCallback, useSyncExternalStore } from 'react';
 import { FILE_MAX_RAW_BYTES, NAME_MAX_LENGTH, SERVER_TIME } from '@shared/constants';
-import type { Ctx, Dispose } from '@core/types';
+import { NOT_IN_ROOM, type Ctx, type Dispose } from '@core/types';
+import type {} from '@modules/rooms/api';
 import { clean, countUnread, Mine, MINE_MAX, MINE_SIDE, MSG_LIMIT, MSG_MAX, msgKey, nextTime, SAY_MS, short, type Item, type Local, type Msg } from './logic';
 
 export const WINDOW = 'chat.room';
-export const NOT_IN_ROOM = '방에 들어가 있을 때 쓸 수 있습니다.';
-export const CHAT_OFF = '방 주인이 채팅을 꺼 두었습니다.';
-export const ROOM_CHANGED = '방이 바뀌어 보내지 않았습니다.';
+export const CHAT_OFF = '방 주인이 채팅을 꺼 두었어요.';
+export const CHAT_OFF_MINE = '채팅을 꺼 두었어요. 방 설정에서 다시 켤 수 있어요.';
+export const ROOM_CHANGED = '방이 바뀌어 보내지 않았어요.';
+
+/** 채팅이 꺼져 있을 때의 안내. 끈 사람이 나면 다시 켜는 곳을 알려 준다 */
+export const offText = (ctx: Ctx): string => (ctx.modules.get('rooms')?.isOwner() ? CHAT_OFF_MINE : CHAT_OFF);
 
 export interface View {
   code: string | null;
@@ -128,12 +132,16 @@ export async function send(ctx: Ctx, raw: string, to: string | null = view(ctx).
   if (!on) throw new Error(CHAT_OFF);
   const text = clean(raw);
   if (!text) return;
-  if (text.length > MSG_MAX) throw new Error(`${MSG_MAX}자까지 보낼 수 있습니다.`);
+  if (text.length > MSG_MAX) throw new Error(`${MSG_MAX}자까지 보낼 수 있어요.`);
   const b = box(ctx);
   for (const fn of b.hooks) if (fn(text)) return;
   b.lastT = nextTime(ctx.clock.serverNow(), b.lastT);
   const uid = ctx.self.uid();
-  await ctx.server.room(code, ['msgs']).set(msgKey(b.lastT, uid), { uid, name: ctx.self.name().slice(0, NAME_MAX_LENGTH), text, at: SERVER_TIME, v: 1 });
+  // 규칙 거절 같은 서버 오류 원문은 기록에만 남기고 화면에는 다시 보내라는 안내만 보인다
+  await ctx.server.room(code, ['msgs']).set(msgKey(b.lastT, uid), { uid, name: ctx.self.name().slice(0, NAME_MAX_LENGTH), text, at: SERVER_TIME, v: 1 }).catch((e: Error) => {
+    ctx.log.warn(`채팅 보내기 실패: ${e.message}`);
+    throw new Error('잠시 뒤에 다시 보내기를 눌러 주세요.');
+  });
 }
 
 /** 이모티콘은 채팅이 꺼져 있어도 보낸다 (COM-08) */

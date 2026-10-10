@@ -78,7 +78,7 @@ describe('자리비움과 방 관리 시뮬레이터', () => {
     await vi.advanceTimersByTimeAsync(1_000);
     expect(b!.ctx.room.current()).toBeNull();
     expect(b!.shown.has('status.leave')).toBe(false);
-    expect(b!.toasts()).toContain('자리를 오래 비워서 방에서 나왔습니다.');
+    expect(b!.toasts()).toContain('자리를 오래 비워서 방에서 나왔어요.');
     expect(a!.ctx.room.members().map((s) => s.uid)).toEqual(['alice']);
     // 다음에 켤 때도 다시 들어가도록 마지막 방은 남긴다
     expect(b!.ctx.local.get<{ lastRoom: string | null }>('account').lastRoom).toBe(code);
@@ -128,7 +128,7 @@ describe('자리비움과 방 관리 시뮬레이터', () => {
     await b!.idle(0);
     await vi.advanceTimersByTimeAsync(0);
     expect(b!.ctx.room.current()).toBeNull();
-    expect(b!.toasts()).toContain('정원 2명이 차서 방에서 나왔습니다.');
+    expect(b!.toasts()).toContain('정원 2명이 차서 방에서 나왔어요.');
     expect(c!.ctx.room.current()).toBe(code);
   });
 

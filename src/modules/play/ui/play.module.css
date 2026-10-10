@@ -1,2 +1,4 @@
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
 .bar label { margin: 0; }
+/* 날리기를 켰을 때 단추 줄 아래에 한 줄로 둔다 */
+.hint { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--fg-muted); }

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryServer, MemoryHub } from '@server/memory';
 import { CoreRuntime } from '@core/runtime';
 import { JsonFile, emptySettings } from '@core/persist';
-import type { ModuleManifest } from '@core/types';
+import { NOT_IN_ROOM, type ModuleManifest } from '@core/types';
 import type { RenderBackend } from '@render/port';
 import type { Bridge } from '../../preload/api';
 import rooms from './index';
@@ -64,7 +64,7 @@ describe('rooms 시뮬레이터', () => {
     expect([a, b, c, d].map((x) => x!.ctx.room.current())).toEqual([code, code, code, null]);
     for (const x of [a, b, c]) expect(x!.ctx.room.members().map((s) => s.uid).sort()).toEqual(['alice', 'bob', 'carol']);
     expect(Object.keys(hub.read(`rooms/${code}/members`) as object)).toHaveLength(3);
-    expect(d!.toasts()).toContain('정원 3명이 차서 방에서 나왔습니다.');
+    expect(d!.toasts()).toContain('정원 3명이 차서 방에서 나왔어요.');
     expect(d!.local().lastRoom).toBeNull();
     // 친구가 따라 들어갈 수 있게 지금 방 코드를 계정 접속 기록에 쓴다 (나오면 지운다)
     expect(hub.read('users/bob/presence/m/rooms')).toEqual({ code });
@@ -72,8 +72,8 @@ describe('rooms 시뮬레이터', () => {
 
     // 주인 캐시: 주인이 아니면 rooms.remove가 이유를 돌려준다
     expect(a!.core.registry.reason('rooms.remove')).toBeNull();
-    expect(b!.core.registry.reason('rooms.remove')).toBe('방 주인만 지울 수 있습니다.');
-    expect(d!.core.registry.reason('rooms.remove')).toBe('방에 들어가 있지 않습니다.');
+    expect(b!.core.registry.reason('rooms.remove')).toBe('방 주인만 지울 수 있어요.');
+    expect(d!.core.registry.reason('rooms.remove')).toBe(NOT_IN_ROOM);
   });
 
   it('주인이 지운 방은 다음에 켤 때 자동 재입장에서 거절되고 최근 목록에서 빠진다', async () => {

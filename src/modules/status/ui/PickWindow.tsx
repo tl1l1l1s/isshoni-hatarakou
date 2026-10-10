@@ -40,7 +40,7 @@ export default function PickWindow({ ctx }: { ctx: Ctx }) {
           적용
         </button>
       </form>
-      <p className={css.hint}>{CUSTOM_MAX}자까지 머리 위에 보입니다.</p>
+      <p className={css.hint}>{CUSTOM_MAX}자까지 머리 위에 보여요.</p>
     </div>
   );
 }

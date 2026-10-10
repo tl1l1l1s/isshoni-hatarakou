@@ -19,7 +19,7 @@ export function RoomCard({ ctx }: SlotProps) {
   return (
     <div className={css.card}>
       <strong>워킹룸</strong>
-      <span className={css.muted}>{room.code ? `${room.code} 방에 ${room.count}명이 있습니다.` : '지금은 혼자 모드입니다.'}</span>
+      <span className={css.muted}>{room.code ? `${room.code} 방에 ${room.count}명이 있어요. 시작하면 같이 앉아요.` : '지금은 혼자 모드예요.'}</span>
       <button onClick={() => ctx.ui.open('rooms.join')}>{room.code ? '방 정보' : '방 만들기 / 참여하기'}</button>
     </div>
   );

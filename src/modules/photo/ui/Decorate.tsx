@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { MouseEvent, PointerEvent } from 'react';
-import type { Ctx } from '@core/types';
+import { NOT_IN_ROOM, type Ctx } from '@core/types';
 import { paintDoc } from '../draw';
 import { EMPTY, fileName, handleOf, INKS, PENS, push, redo, STICKER_SIZE, STICKERS, stickerAt, twist, undo } from '../logic';
 import type { Doc, History, PenId, Pt, Sticker } from '../logic';
@@ -28,6 +28,7 @@ export default function Decorate({ ctx, sheet }: { ctx: Ctx; sheet: ImageBitmap 
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [note, setNote] = useState('');
+  const room = useSyncExternalStore(ctx.room.onChange, ctx.room.current);
   const canvas = useRef<HTMLCanvasElement>(null);
   const drag = useRef<Drag | null>(null);
   const doc = hist.list[hist.at]!;
@@ -114,7 +115,7 @@ export default function Decorate({ ctx, sheet }: { ctx: Ctx; sheet: ImageBitmap 
   };
   const send = () =>
     run(async () => {
-      if (!ctx.room.current()) throw new Error('방에 들어가 있을 때만 보낼 수 있어요.');
+      if (!ctx.room.current()) throw new Error(NOT_IN_ROOM);
       const png = new Uint8Array(await (await render()).arrayBuffer());
       const file = await ctx.files.upload(await ctx.files.prepareImage(png, { maxSide: SEND_SIDE }));
       if (!ctx.room.emit('shared', { file })) throw new Error('지금은 보낼 수 없어요. 잠시 뒤에 다시 보내 주세요.');
@@ -165,10 +166,12 @@ export default function Decorate({ ctx, sheet }: { ctx: Ctx; sheet: ImageBitmap 
         <button disabled={hist.at === hist.list.length - 1} onClick={() => change(redo)}>앞으로</button>
         <button disabled={!doc.strokes.length && !doc.stickers.length} onClick={() => change((h) => push(h, EMPTY))}>전부 지우기</button>
         <span className={css.grow} />
-        <button disabled={busy} onClick={() => void send()}>방에 보내기</button>
+        <button disabled={busy || !room} onClick={() => void send()}>방에 보내기</button>
         <button type="submit" disabled={busy} onClick={save}>저장하기</button>
       </div>
-      <p className={css.hint}>저장하기는 내 컴퓨터에 바로 내려받아요. 방에 보내기는 64KB 안으로 줄인 사진을 지금 방에 있는 사람들에게 보내요.</p>
+      <p className={css.hint}>
+        저장하기는 내 컴퓨터에 바로 내려받아요. {room ? '방에 보내기는 64KB 안으로 줄인 사진을 지금 방에 있는 사람들에게 보내요.' : '방에 보내기는 방에 들어가 있을 때 쓸 수 있어요.'}
+      </p>
       {note && <p className={css.hint} role="status">{note}</p>}
       {msg && <p role="alert" className={css.error}>{msg}</p>}
     </div>

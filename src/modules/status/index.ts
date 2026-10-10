@@ -90,7 +90,7 @@ export default defineModule({
           ctx.ui.close('status.leave');
           left = ctx.room.current();
           void ctx.room.leave();
-          ctx.ui.toast('자리를 오래 비워서 방에서 나왔습니다.');
+          ctx.ui.toast('자리를 오래 비워서 방에서 나왔어요.');
         });
       } else {
         leaving?.();

@@ -29,6 +29,7 @@ function fake(read: Local['read'] = {}) {
     ui: { open: vi.fn() },
     timers: { at: (ms: number, fn: () => void) => clearTimeout.bind(null, setTimeout(fn, ms)) },
     clock: { serverNow: () => 1_000 },
+    log: { warn: vi.fn() },
   } as unknown as Ctx;
   watchRoom(ctx);
   return { ctx, enter: (c: string) => onRoom(c), push: (i: Item[]) => onList(i), cfg: (v: { on: boolean }) => onCfg(v), local: () => local, set };
@@ -114,6 +115,14 @@ describe('보내기', () => {
     expect(f.set).toHaveBeenCalledTimes(1);
     f.cfg({ on: false });
     await expect(send(f.ctx, '안녕')).rejects.toThrow(CHAT_OFF);
+  });
+
+  it('서버가 거절하면 원문은 기록에만 남기고 다시 보내라고 알린다', async () => {
+    const f = fake();
+    f.enter('R');
+    f.set.mockRejectedValueOnce(new Error('PERMISSION_DENIED: mod/chat/r/R/msgs/x'));
+    await expect(send(f.ctx, '안녕')).rejects.toThrow('잠시 뒤에 다시 보내기를 눌러 주세요.');
+    expect(f.ctx.log.warn).toHaveBeenCalledWith(expect.stringContaining('PERMISSION_DENIED'));
   });
 
   it('글을 쓸 때 들어가 있던 방과 지금 방이 다르면 보내지 않는다 (다시 보내기)', async () => {

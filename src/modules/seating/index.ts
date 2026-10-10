@@ -30,8 +30,9 @@ export default defineModule({
   },
   ui: {
     contributions: [
-      { slot: 'seat.menu', id: 'seating.ride', label: '머리 위에 올라타기', command: 'seating.ride' },
-      { slot: 'seat.menu', id: 'seating.sit', label: '벤치에 같이 앉기', command: 'seating.sit' },
+      // 다른 사용자 메뉴에서 친구(10번대)와 놀이(30번대) 다음에 둔다. 보이는 항목이 바뀌어도 순서가 같다
+      { slot: 'seat.menu', id: 'seating.ride', label: '머리 위에 올라타기', command: 'seating.ride', order: 50 },
+      { slot: 'seat.menu', id: 'seating.sit', label: '벤치에 같이 앉기', command: 'seating.sit', order: 51 },
       { slot: 'chip.buttons', id: 'seating.chip', label: '내려오기', component: Chip },
     ],
   },

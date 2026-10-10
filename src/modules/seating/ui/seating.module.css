@@ -1,4 +1,0 @@
-/* 상태칩 줄의 알약 단추. 칩 모양은 코어가 준다 */
-.pill {
-  display: inline-flex; align-items: center; white-space: nowrap;
-}

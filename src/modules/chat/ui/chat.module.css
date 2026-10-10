@@ -1,15 +1,16 @@
-/* 상태칩 줄 안의 💬 버튼과 안 읽은 수. 칩 모양은 코어가 준다 */
-.pill {
-  position: relative; display: inline-flex; align-items: center;
-}
+/* 상태칩 줄 안의 💬 버튼에 붙는 안 읽은 수. 칩 모양은 코어가 준다 */
 .count {
   position: absolute; top: -5px; right: -6px; min-width: 14px; height: 14px; padding: 0 3px; border-radius: 7px; box-sizing: border-box;
   background: var(--state-busy); color: #fff; font: 700 9px/14px system-ui, sans-serif; text-align: center; box-shadow: 0 0 0 1.5px var(--chip-bg);
 }
 .window { display: flex; flex-direction: column; gap: var(--sp-2); height: calc(100vh - 40px); }
 .list { flex: 1; min-height: 0; margin: 0; overflow-y: auto; }
+/* 펜으로 잡기 쉽게 목록 스크롤바만 넓힌다 */
+.list::-webkit-scrollbar { width: 12px; }
+.empty { margin: 0; color: var(--fg-muted); }
 .size { margin: 0; font-size: 12px; color: var(--fg-muted); }
-.msg { margin: 4px 0; line-height: 1.4; }
+.msg { display: flex; align-items: flex-start; gap: 4px; margin: 4px 0; line-height: 1.4; }
+.body { min-width: 0; }
 .text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .time { font-size: 11px; color: var(--fg-subtle); }
 .sep { display: flex; align-items: center; gap: 8px; margin: 8px 0; font-size: 11px; color: var(--fg-muted); }
@@ -21,7 +22,8 @@
 .emojis .wide { width: auto; padding: 0 8px; font-size: 12px; }
 .removing { opacity: 0.5; }
 .input { box-sizing: border-box; flex: 1; min-width: 0; resize: none; font: inherit; }
+.toggle { flex: none; width: 32px; min-height: 32px; height: 32px; padding: 0; font-size: 18px; }
 .row { display: flex; align-items: flex-end; gap: var(--sp-2); }
 .failed { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-m); background: var(--fill); overflow-wrap: anywhere; }
-.indent { display: inline-block; width: 18px; }
+.indent { flex: none; width: 18px; }
 .error { margin: 0; color: var(--danger); font-size: 12px; }

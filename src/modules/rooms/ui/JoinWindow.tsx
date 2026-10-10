@@ -5,14 +5,13 @@ import { CAPS, type Local } from '../logic';
 import { createRoom, joinRoom, useRoom } from '../state';
 import css from './rooms.module.css';
 
-/** 방 만들기와 참여하기 창 (ROM-05, ROM-06) */
+/** 방 만들기와 참여하기 창 (ROM-05, ROM-06). 친구는 받은 코드로 들어오는 쪽이라 참여하기를 먼저 둔다 */
 export default function JoinWindow({ ctx }: { ctx: Ctx }) {
   const room = useRoom(ctx);
   const [cap, setCap] = useState(4);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [copied, setCopied] = useState<string | null>(null);
 
   const run = async (job: () => Promise<string | null>) => {
     setBusy(true);
@@ -26,8 +25,8 @@ export default function JoinWindow({ ctx }: { ctx: Ctx }) {
   };
   const copy = () =>
     ctx.shell.copy(room.code ?? '').then(
-      () => setCopied(room.code),
-      () => setMsg('복사하지 못했습니다. 코드를 직접 알려 주세요.'),
+      () => ctx.ui.toast('방 코드를 복사했어요.'),
+      () => ctx.ui.toast('복사하지 못했어요. 코드를 직접 알려 주세요.'),
     );
   const note = msg && <p role="alert" className={css.error}>{msg}</p>;
 
@@ -36,8 +35,9 @@ export default function JoinWindow({ ctx }: { ctx: Ctx }) {
       <div>
         <p className={css.muted}>지금 들어가 있는 방</p>
         <p className={css.code}>{room.code}</p>
+        <p className={css.muted}>친구에게 이 코드를 알려 주면 같은 방에 들어와요.</p>
         <div className={css.row}>
-          <button onClick={() => void copy()}>{copied === room.code ? '복사했습니다' : '코드 복사'}</button>
+          <button onClick={() => void copy()}>코드 복사</button>
           <span>
             {room.count}명 / 정원 {room.cap}명
           </span>
@@ -54,23 +54,8 @@ export default function JoinWindow({ ctx }: { ctx: Ctx }) {
   const recent = ctx.local.get<Local>('account').recent;
   return (
     <div>
-      <h4>새 방 만들기</h4>
-      <div className={css.row}>
-        <label>
-          정원
-          <select value={cap} onChange={(e) => setCap(Number(e.target.value))}>
-            {CAPS.map((n) => (
-              <option key={n} value={n}>
-                {n}명
-              </option>
-            ))}
-          </select>
-        </label>
-        <button type="submit" disabled={busy} onClick={() => void run(() => createRoom(ctx, cap))}>
-          만들기
-        </button>
-      </div>
       <h4>코드로 참여하기</h4>
+      <p className={css.muted}>친구가 알려 준 6자 코드를 넣으면 같은 방에 앉아요.</p>
       <form
         className={css.row}
         onSubmit={(e) => {
@@ -96,6 +81,23 @@ export default function JoinWindow({ ctx }: { ctx: Ctx }) {
           </div>
         </>
       )}
+      <h4>새 방 만들기</h4>
+      <p className={css.muted}>만들면 6자 코드가 생겨요. 그 코드를 친구에게 알려 주세요.</p>
+      <div className={css.row}>
+        <label>
+          정원
+          <select value={cap} onChange={(e) => setCap(Number(e.target.value))}>
+            {CAPS.map((n) => (
+              <option key={n} value={n}>
+                {n}명
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="submit" disabled={busy} onClick={() => void run(() => createRoom(ctx, cap))}>
+          만들기
+        </button>
+      </div>
     </div>
   );
 }
