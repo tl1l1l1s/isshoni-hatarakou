@@ -7,6 +7,7 @@ import { bodyOnly, emptyAppearance, type Appearance } from '@shared/schemas';
 import { FPS_ASLEEP, FPS_AWAKE } from '@shared/constants';
 import { useBlobUrl } from '@shared/blobUrl';
 import type { CoreRuntime } from '../runtime';
+import { reportError } from '../bridge';
 import type { Store } from '../store';
 import { useCoreSettings } from '../coreSettings';
 import { arrange, fitScale } from '../seats';
@@ -525,7 +526,8 @@ class Guard extends Component<{ id: string; core: CoreRuntime; children: ReactNo
     return { failed: true };
   }
   override componentDidCatch(e: Error) {
-    this.props.core.log('error', 'slot', `${this.props.id}: ${e.message}`);
+    // 메인이 로그에 적고 자동 오류 보고로 모은다 (NFR-21)
+    reportError(this.props.core.deps.bridge, 'renderer.slot', e, `${this.props.id}: `);
   }
   override render() {
     return this.state.failed ? null : this.props.children;

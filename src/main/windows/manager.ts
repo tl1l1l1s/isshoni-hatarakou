@@ -4,6 +4,7 @@ import log from 'electron-log/main';
 import { join } from 'node:path';
 import type { CoreEventMap, CoreInvokeMap, Rect } from '../../preload/api';
 import type { Store } from '../store';
+import { report } from '../crash';
 import { pickDisplay, remember, type SavedDisplay } from '../display';
 import { platform, panelMaterial } from '../platform';
 import { pageUrl } from '../protocol';
@@ -249,7 +250,10 @@ export function createStage(): void {
   win.once('ready-to-show', () => {
     if (!hidden) win.showInactive();
   });
-  win.on('unresponsive', () => recreate(win, 'unresponsive'));
+  win.on('unresponsive', () => {
+    report('unresponsive', '스테이지가 응답하지 않아 다시 만듭니다');
+    recreate(win, 'unresponsive');
+  });
   win.webContents.on('render-process-gone', (_e, d) => {
     if (d.reason !== 'clean-exit') recreate(win, d.reason);
   });

@@ -443,6 +443,17 @@ export interface Ctx {
   /** ready는 모든 모듈의 setup이 끝난 뒤 한 번 온다 (자동 재입장 같은 일은 이때 한다) */
   lifecycle: { on(fn: (e: { type: 'ready' | 'suspend' | 'resume' | 'lock' | 'unlock' | 'shutdown' | 'online' | 'offline' }) => void): Dispose };
   log: { info(msg: string): void; warn(msg: string): void; error(msg: string): void };
+  /** 메인이 모은 자동 오류 보고 (NFR-21). 메인은 보고를 웹훅에 올리고 서버 기록으로 남길 모듈이 가져갈 때까지 PC에 둔다 */
+  crash: {
+    /** 보낼 웹훅 주소와 켜짐. 메인이 PC에 남겨 렌더러가 죽어도 다음 오류를 보낸다. 끄면 들고 있던 보고도 버린다 */
+    config(c: { hook: string; enabled: boolean }): Promise<void>;
+    /** 아직 서버에 남기지 않은 보고 */
+    pending(): Promise<Array<{ id: string; text: string }>>;
+    /** 서버에 남긴 보고를 뺀다 */
+    ack(ids: string[]): Promise<void>;
+    /** 메인이 새 보고를 만들면 부른다 */
+    onAdded(fn: () => void): Dispose;
+  };
 }
 
 /** 코어가 모듈 밖 데이터로 다루는 멤버 기록 (seat 계산 입력) */

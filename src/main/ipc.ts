@@ -6,6 +6,7 @@ import log from 'electron-log/main';
 import { z } from 'zod';
 import type { AppKey } from '@shared/appkey';
 import type { CoreInvokeMap } from '../preload/api';
+import { ackReports, pendingReports, report, setCrashConfig } from './crash';
 import { logDir, writeDiagnose } from './log';
 import { postJson } from './net';
 import { osName, platform, selfAppKey, panelMaterial } from './platform';
@@ -107,6 +108,17 @@ export function registerIpc(store: Store): void {
     'pick.escape': [on, ({ on }) => pickEscape(on)],
     'theme.set': [z.object({ source: z.enum(['system', 'light', 'dark']) }), ({ source }) => void (nativeTheme.themeSource = source)],
     'stage.workArea': [none, workArea],
+    // 자동 오류 보고 (NFR-21). 렌더러 오류는 로그에 적은 뒤 보고로 만든다
+    'crash.report': [
+      z.object({ type: z.string().max(64), message: z.string().max(4000), stack: z.string().max(8000) }),
+      ({ type, message, stack }) => {
+        log.error(`[renderer] ${type}: ${message}`);
+        report(type, message, stack);
+      },
+    ],
+    'crash.config': [z.object({ hook: z.string().max(300), enabled: z.boolean() }), setCrashConfig],
+    'crash.pending': [none, pendingReports],
+    'crash.ack': [z.object({ ids: z.array(z.string().max(32)).max(100) }), ({ ids }) => ackReports(ids)],
   };
   for (const [ch, [schema, fn]] of Object.entries(routes)) {
     ipcMain.handle(`core:${ch}`, (e, args: unknown) => {

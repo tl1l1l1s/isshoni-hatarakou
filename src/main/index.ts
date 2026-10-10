@@ -7,6 +7,7 @@ import { APP_ID } from '@shared/constants';
 import type { CoreEventMap } from '../preload/api';
 import { startActivity } from './activity';
 import { startClickThrough } from './clickthrough';
+import { crashReady, endRun, startCrash } from './crash';
 import { registerIpc } from './ipc';
 import { initLog, mainStatus } from './log';
 import { osName, platform } from './platform';
@@ -36,6 +37,8 @@ function boot(): void {
   if (osName === 'win') app.setAppUserModelId(APP_ID);
   const store = createStore(app.getPath('userData'), (e) => log.error('store write failed', e));
   useStore(store);
+  // 자동 오류 보고 (NFR-21). 지난 실행의 비정상 종료 표시를 새 로그가 쌓이기 전에 본다
+  startCrash(store, () => send('crash.added', {}));
 
   app.on('second-instance', () => setVisible(true));
   // Mac에서 켜져 있는 앱을 Finder로 다시 열면 second-instance 대신 이 이벤트가 온다
@@ -68,6 +71,8 @@ function boot(): void {
     w.on('query-session-end', () => void (shutdownSent || app.quit()));
     w.on('session-end', () => {
       store.flush();
+      // app.exit은 will-quit 없이 끝나므로 정상 종료 표시를 여기서 지운다
+      endRun();
       app.exit(0);
     });
   });
@@ -83,6 +88,7 @@ function boot(): void {
     }
     serveApp(store);
     registerIpc(store);
+    crashReady();
     createStage();
     createTray();
     startActivity(platform, (s) => send('activity', s));

@@ -947,6 +947,12 @@ export class CoreRuntime {
         warn: (msg) => this.log('warn', id, msg),
         error: (msg) => this.log('error', id, msg),
       },
+      crash: {
+        config: (c) => this.deps.bridge.invoke('crash.config', c),
+        pending: () => this.deps.bridge.invoke('crash.pending', {}),
+        ack: (ids) => this.deps.bridge.invoke('crash.ack', { ids }),
+        onAdded: (fn) => scope.add(this.deps.bridge.on('crash.added', fn)),
+      },
     };
 
     function roomEvent(type: string) {

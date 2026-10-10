@@ -7,7 +7,7 @@ import type { ServerPort } from '@server/port';
 import { getBackend } from '@render/index';
 import { modules } from '@modules/index';
 import { FRAME_ORIGIN, type Bridge } from '../../preload/api';
-import { getBridge } from './bridge';
+import { getBridge, reportError } from './bridge';
 import { JsonFile, emptySettings } from './persist';
 import { CoreRuntime } from './runtime';
 import type { ModuleManifest } from './types';
@@ -22,6 +22,9 @@ const BOOT_READ_MS = 3_000;
 export async function boot(root: HTMLElement): Promise<void> {
   // 1-2. 브리지 버전
   const bridge = getBridge();
+  // 처리하지 않은 오류는 메인이 모아 자동으로 알린다 (NFR-21). 패널 창의 화면도 이 문서의 스크립트라 여기서 받는다
+  window.addEventListener('error', (e) => reportError(bridge, 'renderer.error', e.error ?? e.message));
+  window.addEventListener('unhandledrejection', (e) => reportError(bridge, 'renderer.rejection', e.reason));
   if (bridge.version !== BRIDGE_VERSION) {
     root.textContent = `앱 파일이 서로 맞지 않습니다 (브리지 ${bridge.version}, 화면 ${BRIDGE_VERSION}). 앱을 다시 설치해 주세요.`;
     return;

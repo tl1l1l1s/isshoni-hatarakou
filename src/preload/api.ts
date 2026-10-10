@@ -78,6 +78,14 @@ export interface CoreInvokeMap {
   'theme.set': { args: { source: 'system' | 'light' | 'dark' }; result: void };
   /** 캐릭터가 있는 모니터의 작업 영역 크기(DIP). 스테이지가 좌석 배율과 메뉴 높이를 이 안에 맞춘다. 바뀌면 stage.workArea 이벤트가 온다 */
   'stage.workArea': { args: Record<string, never>; result: { width: number; height: number } };
+  /** 렌더러의 처리하지 않은 오류. 메인이 로그에 적고 자동 오류 보고로 모은다 (NFR-21) */
+  'crash.report': { args: { type: string; message: string; stack: string }; result: void };
+  /** 자동 오류 보고를 보낼 디스코드 웹훅 주소와 켜짐. 메인이 PC에 남겨 렌더러가 없을 때도 보낸다. 끄면 들고 있던 보고도 버린다 */
+  'crash.config': { args: { hook: string; enabled: boolean }; result: void };
+  /** 아직 서버 기록으로 남기지 않은 자동 오류 보고. 새 보고가 생기면 crash.added 이벤트가 온다 */
+  'crash.pending': { args: Record<string, never>; result: Array<{ id: string; text: string }> };
+  /** 서버에 남긴 보고를 목록에서 뺀다 */
+  'crash.ack': { args: { ids: string[] }; result: void };
 }
 
 /** 메인 → 렌더러 이벤트 */
@@ -96,6 +104,8 @@ export interface CoreEventMap {
   /** keepAlive 패널을 닫아 숨겼거나(visible false) 다시 띄웠다. name은 window.open의 창 이름.
    *  about:blank 패널은 스테이지의 backgroundThrottling: false를 물려받아 숨겨도 문서가 visible로 남으므로 코어가 이 이벤트로 문서에 반영한다 */
   'win.visibility': { name: string; visible: boolean };
+  /** 메인이 새 자동 오류 보고를 만들었다. 렌더러는 crash.pending으로 받아 서버 기록으로 남긴다 */
+  'crash.added': Record<string, never>;
 }
 
 export type Dispose = () => void;

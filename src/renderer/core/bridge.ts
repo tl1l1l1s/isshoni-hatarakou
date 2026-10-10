@@ -49,6 +49,10 @@ export function memoryBridge(): Bridge {
     'pick.escape': () => undefined,
     'theme.set': () => undefined,
     'stage.workArea': () => ({ width: screen.availWidth, height: screen.availHeight }),
+    'crash.report': () => undefined,
+    'crash.config': () => undefined,
+    'crash.pending': () => [],
+    'crash.ack': () => undefined,
   };
   return {
     version: BRIDGE_VERSION,
@@ -67,4 +71,11 @@ export function memoryBridge(): Bridge {
 
 export function getBridge(): Bridge {
   return window.bridge ?? memoryBridge();
+}
+
+/** 처리하지 않은 렌더러 오류를 메인에 알린다. 메인이 로그에 적고 자동 오류 보고로 모은다 (NFR-21). where는 오류가 난 곳의 이름 */
+export function reportError(bridge: Bridge, type: string, e: unknown, where = ''): void {
+  const message = `${where}${e instanceof Error ? e.message : String(e)}`.slice(0, 4000);
+  const stack = (e instanceof Error ? (e.stack ?? '') : '').slice(0, 8000);
+  void bridge.invoke('crash.report', { type, message, stack }).catch(() => undefined);
 }
