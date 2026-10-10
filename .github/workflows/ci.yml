@@ -34,6 +34,18 @@ jobs:
       - run: npx electron-builder --win --x64 --publish never
       - uses: actions/upload-artifact@v4
         with: { name: windows-installer, path: dist/*.exe, retention-days: 7 }
+      # 실제 Windows에서 앱을 켜 주요 흐름을 지나간다 (tests/e2e). 메모리 서버와 가짜 플랫폼으로 돌고 Firebase에 붙지 않는다
+      - run: npx electron-vite build --mode e2e
+      - run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: windows-e2e
+          path: |
+            test-results
+            playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
   mac-native:
     # Mac판은 나중이지만 활성 창 도우미가 받아지는지만 본다
     runs-on: macos-latest
