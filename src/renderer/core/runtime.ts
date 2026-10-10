@@ -779,6 +779,7 @@ export class CoreRuntime {
           );
         },
       },
+      net: { post: (url, json) => this.deps.bridge.invoke('net.post', { url, json: JSON.stringify(json) }) },
       shell: {
         copy: (text) => this.deps.bridge.invoke('clipboard.write', { text }),
         openExternal: async (url) => {

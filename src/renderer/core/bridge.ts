@@ -27,6 +27,7 @@ export function memoryBridge(): Bridge {
     'dialog.openImage': () => null,
     'clipboard.write': ({ text }) => void navigator.clipboard?.writeText(text).catch(() => undefined),
     'shell.openExternal': ({ url }) => void window.open(url, '_blank', 'noopener'),
+    'net.post': () => ({ ok: true, status: 204 }),
     'log.write': ({ level, scope, message }) => console[level](`[${scope}] ${message}`),
     'shell.openLogFolder': () => undefined,
     'app.quit': () => undefined,

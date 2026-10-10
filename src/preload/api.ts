@@ -37,6 +37,8 @@ export interface CoreInvokeMap {
   'clipboard.write': { args: { text: string }; result: void };
   /** http와 https 주소만 기본 브라우저로 연다 (NFR-18) */
   'shell.openExternal': { args: { url: string }; result: void };
+  /** 메인이 허락한 호스트(디스코드 웹훅)에만 JSON을 POST한다. 모듈은 ctx.net.post로 쓴다 */
+  'net.post': { args: { url: string; json: string }; result: { ok: boolean; status: number } };
   /** 그림 파일 고르기 대화상자. 고르지 않으면 null (OUR-03) */
   'dialog.openImage': { args: Record<string, never>; result: { name: string; bytes: Uint8Array } | null };
   'log.write': { args: { level: 'info' | 'warn' | 'error'; scope: string; message: string }; result: void };

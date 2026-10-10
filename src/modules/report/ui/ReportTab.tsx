@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Ctx } from '@core/types';
 import { SERVER_TIME } from '@shared/constants';
 import css from './report.module.css';
+import { hookBody } from '../logic';
 
 export const TEXT_MAX = 1000;
 
@@ -22,6 +23,8 @@ export default function ReportTab({ ctx }: { ctx: Ctx }) {
         () => {
           setText('');
           setMsg('보냈어요. 답장은 우편함으로 와요.');
+          const hook = ctx.tunables.get<string>('webhook');
+          if (hook) void ctx.net.post(hook, hookBody(ctx.self.name(), ctx.app.version, body)).catch((e: Error) => ctx.log.warn(`디스코드로 보내기 실패: ${e.message}`));
         },
         (e: Error) => {
           ctx.log.warn(`버그 제보 보내기 실패: ${e.message}`);

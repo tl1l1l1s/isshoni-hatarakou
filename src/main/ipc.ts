@@ -7,6 +7,7 @@ import { z } from 'zod';
 import type { AppKey } from '@shared/appkey';
 import type { CoreInvokeMap } from '../preload/api';
 import { logDir, writeDiagnose } from './log';
+import { postJson } from './net';
 import { osName, platform, selfAppKey, panelMaterial } from './platform';
 import { getFrameOrigins, setFrameOrigins } from './protocol';
 import type { Store } from './store';
@@ -72,6 +73,7 @@ export function registerIpc(store: Store): void {
     'dialog.openImage': [none, openImage],
     'clipboard.write': [z.object({ text: z.string().max(10_000) }), ({ text }) => clipboard.writeText(text)],
     'shell.openExternal': [z.object({ url: z.string().max(2000).regex(/^https?:\/\//i) }), ({ url }) => void shell.openExternal(url)],
+    'net.post': [z.object({ url: z.string().max(2000), json: z.string().max(4000) }), ({ url, json }) => postJson(url, json)],
     'log.write': [
       z.object({ level: z.enum(['info', 'warn', 'error']), scope: z.string().max(64), message: z.string() }),
       ({ level, scope, message }) => log[level](`[${scope}] ${message.slice(0, 4000)}`),

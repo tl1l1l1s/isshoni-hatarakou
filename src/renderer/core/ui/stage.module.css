@@ -32,9 +32,10 @@
 .menu button:hover { background: var(--fill-hover); }
 .menuNote { padding: 6px 10px; font-size: 12px; color: var(--fg-muted); }
 .menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 6px; }
-.toasts { position: absolute; top: 4px; left: 8px; right: 8px; display: flex; flex-direction: column; gap: 4px; pointer-events: none; z-index: 2; }
+/* 알림은 스테이지 폭이 넓어도 가운데에 글 길이만큼만 띄운다 (좌석이 많으면 창이 화면만큼 넓다) */
+.toasts { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); width: max-content; max-width: min(360px, calc(100% - 16px)); display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; z-index: 2; }
 .toast {
-  padding: 8px 12px; border-radius: var(--radius-l); font-size: 12px; line-height: 1.4;
+  max-width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: var(--radius-l); font-size: 12px; line-height: 1.4;
   background: var(--glass-solid); color: var(--fg); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
   box-shadow: var(--shadow-md), inset 0 0 0 1px var(--glass-edge), 0 0 0 0.5px rgb(0 0 0 / 10%);
 }

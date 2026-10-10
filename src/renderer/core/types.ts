@@ -350,6 +350,8 @@ export interface Ctx {
     /** http와 https 주소만 기본 브라우저로 연다. 다른 형식은 예외 (NFR-18) */
     openExternal(url: string): Promise<void>;
   };
+  /** 바깥 서비스로 보내기. 메인이 허락한 호스트의 웹훅 주소에만 JSON을 POST한다 (지금은 디스코드) */
+  net: { post(url: string, json: unknown): Promise<{ ok: boolean; status: number }> };
   /** 다른 사용자 정보 */
   users: {
     /** 공개 프로필 users/{uid}/public. 없으면 null */
