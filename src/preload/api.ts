@@ -78,6 +78,9 @@ export interface CoreInvokeMap {
   'theme.set': { args: { source: 'system' | 'light' | 'dark' }; result: void };
   /** 캐릭터가 있는 모니터의 작업 영역 크기(DIP). 스테이지가 좌석 배율과 메뉴 높이를 이 안에 맞춘다. 바뀌면 stage.workArea 이벤트가 온다 */
   'stage.workArea': { args: Record<string, never>; result: { width: number; height: number } };
+  /** 이름표를 끌어 스테이지를 옮긴다. dx, dy는 pointerdown 자리에서 움직인 거리(DIP)다. 메인은 끄는 동안 클릭 통과를 멈추고
+   *  고른 모니터의 작업 영역 안에서만 옮기며 자리를 모니터마다 기억한다 */
+  'stage.drag': { args: { phase: 'start' | 'move' | 'end'; dx: number; dy: number }; result: void };
   /** 렌더러의 처리하지 않은 오류. 메인이 로그에 적고 자동 오류 보고로 모은다 (NFR-21) */
   'crash.report': { args: { type: string; message: string; stack: string }; result: void };
   /** 자동 오류 보고를 보낼 디스코드 웹훅 주소와 켜짐. 메인이 PC에 남겨 렌더러가 없을 때도 보낸다. 끄면 들고 있던 보고도 버린다 */

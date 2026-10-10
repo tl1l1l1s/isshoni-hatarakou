@@ -30,7 +30,7 @@ export default defineModule<FriendsApi>({
   ui: {
     windows: [{ id: 'friends.main', title: '친구', width: 360, height: 480, focusable: true, component: () => import('./ui/FriendsWindow') }],
     contributions: [
-      { slot: 'menu.main', id: 'friends.menu', label: '친구', command: 'friends.open', order: 15 },
+      { slot: 'menu.main', id: 'friends.menu', label: '친구', command: 'friends.open', order: 21 },
       { slot: 'seat.menu', id: 'friends.seat', label: '친구 신청', command: 'friends.request', order: 10 },
     ],
   },

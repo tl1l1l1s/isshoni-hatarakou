@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Ctx, SlotProps } from '@core/types';
 import type {} from '@modules/friends/api';
 import type {} from '@modules/growth/api';
@@ -12,8 +12,25 @@ type Tab = 'box' | 'account' | 'trash';
 
 /** 런처 안의 내 정보 화면 (SCR-03). 프로필과 친구 랭킹, 자리비움 그림, 보관함과 계정과 휴지통 탭.
  *  자리비움 그림과 보관함은 awaypic과 gacha가 account.away, account.box 슬롯에 넣는다 */
-export default function MePage({ ctx }: SlotProps) {
+export default function MePage({ ctx, windowId }: SlotProps) {
   const [tab, setTab] = useState<Tab>('box');
+  // 수정으로 연 계정 탭은 닉네임 칸에 바로 들어간다. 탭 줄이 창 아래에 있으면 탭 줄을 위로 올려 계정 탭이 한 화면에 보이게 한다
+  const [edit, setEdit] = useState(false);
+  const nav = useRef<HTMLElement>(null);
+  // 계정 탭에 저장하지 않은 닉네임이 있으면 다른 탭으로 가기 전에 묻는다
+  const pick = (t: Tab) => {
+    if (t === tab) return;
+    void (windowId ? ctx.ui.confirmLeave(windowId) : Promise.resolve(true)).then((ok) => {
+      if (!ok) return;
+      setTab(t);
+      setEdit(false);
+    });
+  };
+  const startEdit = () => {
+    setTab('account');
+    setEdit(true);
+    requestAnimationFrame(() => nav.current?.scrollIntoView({ block: 'start' }));
+  };
   const [name, setName] = useState(ctx.self.name());
   useEffect(() => ctx.self.onChange((s) => setName(s.name)), [ctx]);
   const rank = useRank(ctx);
@@ -35,7 +52,7 @@ export default function MePage({ ctx }: SlotProps) {
           <div className={css.line}>
             <strong className={css.name}>{name || '이름 없음'}</strong>
             {level !== undefined && <span className={css.lv}>{level}</span>}
-            <button className={css.small} onClick={() => setTab('account')}>수정</button>
+            <button className={css.small} onClick={startEdit}>수정</button>
           </div>
           {code && (
             <div className={css.line}>
@@ -60,13 +77,13 @@ export default function MePage({ ctx }: SlotProps) {
       <h4>자리비움 그림</h4>
       <ctx.ui.Slot name="account.away" />
       <hr />
-      <nav>
-        <button aria-pressed={tab === 'box'} onClick={() => setTab('box')}>보관함</button>
-        <button aria-pressed={tab === 'account'} onClick={() => setTab('account')}>계정</button>
-        <button aria-pressed={tab === 'trash'} onClick={() => setTab('trash')}>휴지통 {trash?.length ?? 0}</button>
+      <nav ref={nav}>
+        <button aria-pressed={tab === 'box'} onClick={() => pick('box')}>보관함</button>
+        <button aria-pressed={tab === 'account'} onClick={() => pick('account')}>계정</button>
+        <button aria-pressed={tab === 'trash'} onClick={() => pick('trash')}>휴지통 {trash?.length ?? 0}</button>
       </nav>
       {tab === 'box' && <ctx.ui.Slot name="account.box" />}
-      {tab === 'account' && <AccountTab ctx={ctx} code={false} />}
+      {tab === 'account' && <AccountTab ctx={ctx} windowId={windowId} code={false} focusName={edit} />}
       {tab === 'trash' && <Trash ctx={ctx} items={trash} reload={reload} />}
     </div>
   );
@@ -125,7 +142,8 @@ function Trash({ ctx, items, reload }: { ctx: Ctx; items: TrashRecord[] | null; 
   if (!items) return <p className={css.hint}>불러오는 중이에요.</p>;
   return (
     <>
-      <p className={css.hint}>저장하거나 다른 PC와 맞출 때 덮어쓴 캐릭터가 10일 동안 남아요. 복원하면 원래 칸으로 돌아가고 그 칸의 지금 모습은 휴지통으로 가요.</p>
+      <p className={css.hint}>덮어쓴 캐릭터가 10일 동안 남아요.</p>
+      <p className={css.hint}>복원하면 지금 모습이 휴지통으로 가요.</p>
       {items.length === 0 && <p className={css.hint}>휴지통이 비어 있어요.</p>}
       {/* ponytail: 항목마다 미리보기를 하나씩 그린다(최대 50개). 느려지면 보이는 항목만 그린다 */}
       <ul className={css.trash}>

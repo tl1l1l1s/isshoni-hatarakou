@@ -34,7 +34,7 @@ export default defineModule({
       },
     },
   ],
-  ui: { contributions: [{ slot: 'settings.tabs', id: 'phone.tab', label: '폰 연결', component: PhoneTab, order: 11 }] },
+  ui: { contributions: [{ slot: 'settings.tabs', id: 'phone.tab', label: '폰 연결', component: PhoneTab, order: 16 }] },
   setup(ctx) {
     const doc = ctx.server.user();
     let all: Record<string, unknown> = {};

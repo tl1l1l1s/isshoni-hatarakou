@@ -49,6 +49,7 @@ export function memoryBridge(): Bridge {
     'pick.escape': () => undefined,
     'theme.set': () => undefined,
     'stage.workArea': () => ({ width: screen.availWidth, height: screen.availHeight }),
+    'stage.drag': () => undefined,
     'crash.report': () => undefined,
     'crash.config': () => undefined,
     'crash.pending': () => [],

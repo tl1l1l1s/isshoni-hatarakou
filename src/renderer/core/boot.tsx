@@ -13,6 +13,7 @@ import { CoreRuntime } from './runtime';
 import type { ModuleManifest } from './types';
 import { coreModule } from './coreModule';
 import { CharacterPreview, Panels, SlotItems, Stage } from './ui/Stage';
+import { standardsMode } from './ui/windows';
 
 type Profile = { name?: string; friendCode?: string };
 /** 부팅 중 서버 읽기를 기다리는 시간. 오프라인이면 Firebase 읽기는 연결될 때까지 끝나지 않는다 */
@@ -26,7 +27,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   window.addEventListener('error', (e) => reportError(bridge, 'renderer.error', e.error ?? e.message));
   window.addEventListener('unhandledrejection', (e) => reportError(bridge, 'renderer.rejection', e.reason));
   if (bridge.version !== BRIDGE_VERSION) {
-    root.textContent = `앱 파일이 서로 맞지 않습니다 (브리지 ${bridge.version}, 화면 ${BRIDGE_VERSION}). 앱을 다시 설치해 주세요.`;
+    root.textContent = `앱 파일이 서로 맞지 않아요 (브리지 ${bridge.version}, 화면 ${BRIDGE_VERSION}). 앱을 다시 설치해 주세요.`;
     return;
   }
   // 외부 출처가 메인의 CSP와 다르면 메인이 저장하고 스테이지를 다시 읽는다. 모듈을 켜기 전에 확인한다
@@ -59,7 +60,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   const manifests = [coreModule(core), ...modules];
   await core.preloadLocal(manifests);
   await core.start(manifests);
-  for (const s of core.host.status) if (!s.on) core.toast(`${s.id} 기능을 켜지 못했습니다. ${s.reason ?? ''}`);
+  for (const s of core.host.status) if (!s.on) core.toast(`${s.id} 기능을 켜지 못했어요. ${s.reason ?? ''}`);
   window.addEventListener('beforeunload', () => void core.flush());
 
   createRoot(root).render(
@@ -102,6 +103,7 @@ async function askSetupCode(bridge: Bridge, signIn: (code: string) => Promise<st
   await bridge.invoke('win.prepare', { name, title: '설정 코드 입력', width: 360, height: 220, focusable: true, resizable: false });
   const win = window.open('', name);
   if (!win) throw new Error('설정 코드 창을 열지 못했습니다');
+  standardsMode(win.document);
   win.document.title = '설정 코드 입력';
   for (const n of document.head.querySelectorAll('style, link[rel=stylesheet]')) win.document.head.appendChild(n.cloneNode(true));
   win.document.body.className = 'panel';

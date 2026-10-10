@@ -198,7 +198,7 @@ function DrawPad({ ctx, onSave, onCancel }: { ctx: Ctx; onSave: (file: string) =
       <p>
         <input type="color" value={color} title="펜 색" onChange={(e) => setColor(e.target.value)} />{' '}
         <button onClick={() => canvas.current!.getContext('2d')!.clearRect(0, 0, MALLANGI_SIDE, MALLANGI_SIDE)}>지우기</button>{' '}
-        <button onClick={onCancel}>취소</button> <button onClick={save}>저장</button>
+        <button onClick={onCancel}>취소</button> <button type="submit" onClick={save}>저장</button>
       </p>
     </div>
   );
@@ -311,7 +311,7 @@ export function ShelfPanel({ ctx, mine, list, onClose }: { ctx: Ctx; mine: boole
               <input type="checkbox" checked={form.m.pub} onChange={(e) => setForm({ ...form, m: { ...form.m, pub: e.target.checked } })} />
             </label>
             <p>
-              <button onClick={() => setForm(null)}>취소</button> <button onClick={submit}>{form.i === null ? '꽂기' : '저장'}</button>
+              <button onClick={() => setForm(null)}>취소</button> <button type="submit" onClick={submit}>{form.i === null ? '꽂기' : '저장'}</button>
             </p>
           </div>
         ) : (

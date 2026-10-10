@@ -72,8 +72,8 @@ export default defineModule<FocusApi>({
       { id: 'focus.mini', title: '기록', width: 200, height: 110, component: () => import('./ui/MiniWindow') },
     ],
     contributions: [
-      { slot: 'menu.main', id: 'focus.open', label: '포커스 기록', command: 'focus.open', order: 10 },
-      { slot: 'settings.tabs', id: 'focus.apps', label: '집중 앱', component: AppsTab, order: 10 },
+      { slot: 'menu.main', id: 'focus.open', label: '포커스 기록', command: 'focus.open', order: 11 },
+      { slot: 'settings.tabs', id: 'focus.apps', label: '집중 앱', component: AppsTab, order: 15 },
     ],
   },
   commands: [{ id: 'focus.open', run: (ctx) => ctx.ui.open('focus.record') }],

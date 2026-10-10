@@ -51,7 +51,7 @@ export function readLocal(decl: LocalDecl, stored: unknown): { data: unknown; er
   const rec = stored as { v?: number; data?: unknown };
   let v = typeof rec.v === 'number' ? rec.v : 1;
   let data = rec.data;
-  if (v > decl.version) return { data: decl.initial(), error: `앱보다 새 형식(v${v})이라 읽지 못했습니다` };
+  if (v > decl.version) return { data: decl.initial(), error: `앱보다 새 형식(v${v})이라 읽지 못했어요` };
   try {
     while (v < decl.version) {
       const step = decl.migrate?.[v - 1];

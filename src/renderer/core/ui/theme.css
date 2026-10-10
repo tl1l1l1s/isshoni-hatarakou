@@ -67,10 +67,13 @@ html, body { margin: 0; background: transparent; overflow: hidden; }
 ::selection { background: var(--fill-press); }
 
 /* ---- 패널 창 공통 ---- */
-/* body 규칙은 위 html, body 규칙보다 구체적이어야 하므로 :where로 감싸지 않는다 */
+/* body 규칙은 위 html, body 규칙보다 구체적이어야 하므로 :where로 감싸지 않는다.
+   패널 문서는 표준 모드라 body가 창 높이를 채우지 않으므로 높이를 주어 body가 스크롤하게 한다.
+   한국어는 어절 단위로 줄을 바꾸고 칸보다 긴 낱말(주소 같은 것)만 글자 단위로 바꾼다 */
 body.panel {
+  box-sizing: border-box; height: 100vh;
   background: var(--bg); color: var(--fg); overflow: auto; padding: var(--sp-5);
-  font-size: 13px; line-height: 1.5; letter-spacing: -0.005em;
+  font-size: 13px; line-height: 1.5; letter-spacing: -0.005em; word-break: keep-all; overflow-wrap: break-word;
 }
 /* OS 반투명 재질(Windows 11 Acrylic, macOS vibrancy)을 켠 창은 바탕을 비워 재질이 보이게 한다 */
 body.panel.material { background: color-mix(in srgb, var(--bg) 40%, transparent); }
@@ -105,12 +108,12 @@ body.panel.material { background: color-mix(in srgb, var(--bg) 40%, transparent)
 :where(body.panel) button[type='submit']:hover { opacity: 0.88; }
 :where(body.panel) :focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
 
-/* 탭: 둥근 판 안의 분할 단추 (nav 안의 단추) */
+/* 탭: 둥근 판 안의 분할 단추 (nav 안의 단추). 펜으로 옆 탭을 누르지 않게 30px 높이에 간격을 둔다 */
 :where(body.panel) nav {
-  display: inline-flex; flex-wrap: wrap; gap: 2px; width: fit-content; max-width: 100%; box-sizing: border-box; padding: 3px; margin-bottom: var(--sp-3);
+  display: inline-flex; flex-wrap: wrap; gap: var(--sp-1); width: fit-content; max-width: 100%; box-sizing: border-box; padding: 3px; margin-bottom: var(--sp-3);
   border-radius: calc(var(--radius-m) + 3px); background: var(--fill);
 }
-:where(body.panel) nav button { min-height: 26px; padding: 0 var(--sp-3); background: transparent; color: var(--fg-muted); }
+:where(body.panel) nav button { min-height: 30px; padding: 0 var(--sp-3); background: transparent; color: var(--fg-muted); }
 :where(body.panel) nav button:hover { background: var(--fill); color: var(--fg); }
 :where(body.panel) nav button[aria-pressed='true'] { background: var(--surface-strong); color: var(--fg); box-shadow: var(--shadow-sm); }
 
@@ -124,7 +127,14 @@ body.panel.material { background: color-mix(in srgb, var(--bg) 40%, transparent)
 :where(body.panel) textarea { padding: var(--sp-2) var(--sp-3); line-height: 1.5; }
 :where(body.panel) input::placeholder, :where(body.panel) textarea::placeholder { color: var(--fg-subtle); }
 :where(body.panel) input:focus, :where(body.panel) select:focus, :where(body.panel) textarea:focus { outline: none; box-shadow: inset 0 0 0 1px var(--fg-muted), 0 0 0 3px var(--ring); }
-:where(body.panel) input[type='checkbox'], :where(body.panel) input[type='radio'], :where(body.panel) input[type='range'] { accent-color: var(--accent); }
+:where(body.panel) input[type='checkbox'], :where(body.panel) input[type='radio'] { accent-color: var(--accent); }
+/* 슬라이더: 펜으로 잡기 쉽게 28px 줄 높이에 22px 손잡이 */
+:where(body.panel) input[type='range'] { appearance: none; height: 28px; margin: 0; background: none; cursor: pointer; }
+:where(body.panel) input[type='range']:disabled { opacity: 0.4; cursor: default; }
+:where(body.panel) input[type='range']::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: var(--fill-press); }
+:where(body.panel) input[type='range']::-webkit-slider-thumb {
+  appearance: none; width: 22px; height: 22px; margin-top: -8px; border-radius: 50%; background: var(--accent); box-shadow: var(--shadow-sm);
+}
 :where(body.panel) input[type='color'] { width: 32px; height: 26px; padding: 0; border: 0; border-radius: var(--radius-s); background: none; cursor: pointer; }
 
 /* 스크롤바: 얇고 둥글게 */

@@ -2,7 +2,7 @@
 // DOM은 패널처럼 스테이지 렌더러가 같은 JS 힙에서 그린다. 마지막 효과가 끝나면 닫는다.
 import type { Bridge, Rect } from '../../preload/api';
 import type { EffectSurface } from './types';
-import { copyStyles } from './ui/windows';
+import { copyStyles, standardsMode } from './ui/windows';
 
 export interface OpenSurface { surface: EffectSurface; area: Rect; close: () => void }
 
@@ -68,6 +68,7 @@ export class EffectWindow {
     const name = `effects:${++this.seq}`;
     const win = window.open('', name);
     if (!win) return null;
+    standardsMode(win.document);
     win.document.title = '효과';
     copyStyles(document, win.document);
     // OS가 창을 옮겼을 수 있어서(Mac은 메뉴 막대 아래로 내린다) 실제로 열린 영역을 쓴다

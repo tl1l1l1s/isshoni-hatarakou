@@ -1,13 +1,15 @@
 // OS 수준 클릭 검사 (macOS). Playwright 클릭은 OS를 거치지 않아 클릭 통과를 증명하지 못하므로 CGEvent로 실제 화면 좌표를 누른다.
 // 준비: 시스템 설정의 손쉬운 사용에 이 터미널을 켠다. 실행: node .claude/skills/verify-isshoni/osclick.ts
 import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, menu, verify, windowTitled } from './drive.ts';
 
 const bin = join(process.env.TMPDIR ?? '/tmp', 'isshoni-osclick');
-if (!existsSync(bin)) execFileSync('swiftc', ['-O', join(import.meta.dirname, 'click.swift'), '-o', bin]);
+const src = join(import.meta.dirname, 'click.swift');
+if (!existsSync(bin) || statSync(bin).mtimeMs < statSync(src).mtimeMs) execFileSync('swiftc', ['-O', src, '-o', bin]);
 const osClick = (x: number, y: number, mode: 'move' | 'instant' | 'hover' = 'move') => execFileSync(bin, [String(Math.round(x)), String(Math.round(y)), mode]);
+const osDrag = (x: number, y: number, x2: number, y2: number) => execFileSync(bin, [x, y, 'drag', x2, y2].map((v) => String(typeof v === 'number' ? Math.round(v) : v)));
 const frontmost = () => execFileSync('osascript', ['-e', 'tell application "System Events" to get name of first application process whose frontmost is true']).toString().trim();
 type Box = { x: number; y: number; width: number; height: number };
 
@@ -95,6 +97,45 @@ await verify('osclick', async (s) => {
   osClick(...(await pt(await box('내 캐릭터 쓰다듬기'), 0.5, 0.6)), 'instant');
   await s.stage.waitForTimeout(600);
   results['멀리서 바로 찍기 (참고)'] = (await stageHits()).includes('click') && (await probe()) === t2;
+
+  // 6) 이름표 끌기: 스테이지가 끈 만큼 옮겨지고 메뉴는 열리지 않으며 옮긴 뒤에도 빈 자리는 통과하고 캐릭터와 이름표는 눌린다
+  if ((await s.stage.getByRole('menu', { name: '가짜 친구' }).count()) > 0) osClick(...(await pt(await box('가짜 친구 메뉴'))));
+  await s.stage.waitForTimeout(600);
+  const before = await now();
+  const [px, py] = await pt(await box('내 메뉴'), 0.3);
+  osDrag(px, py, px - 150, py - 120);
+  await s.stage.waitForTimeout(800);
+  const after = await now();
+  results['이름표 끌기로 스테이지 이동'] = Math.abs(after.x - (before.x - 150)) <= 3 && Math.abs(after.y - (before.y - 120)) <= 3;
+  results['끌기는 메뉴를 열지 않음'] = (await s.stage.getByRole('button', { name: '설정', exact: true }).count()) === 0;
+  await s.shot(s.stage, 'os-dragged');
+  await s.app.evaluate(() => (globalThis as unknown as { probe: Electron.BrowserWindow }).probe.webContents.executeJavaScript(`document.title='probe';0`));
+  osClick(...(await emptySpot()));
+  await s.stage.waitForTimeout(400);
+  results['옮긴 뒤 빈 자리 통과'] = (await probe()).startsWith('HIT');
+  const t3 = await probe();
+  await stageHits();
+  osClick(...(await pt(await box('내 캐릭터 쓰다듬기'), 0.5, 0.6)));
+  await s.stage.waitForTimeout(700);
+  results['옮긴 뒤 캐릭터 클릭'] = (await stageHits()).includes('click') && (await probe()) === t3;
+  osClick(...(await pt(await box('내 메뉴'))));
+  await expect(s.stage.getByRole('button', { name: '설정', exact: true })).toBeVisible({ timeout: 3000 });
+  results['옮긴 뒤 이름표 짧게 누르면 메뉴'] = true;
+  await s.shot(s.stage, 'os-dragged-menu');
+  osClick(...(await pt(await chipBox())));
+  // 자리는 PC 데이터에 모니터마다 남는다 (저장은 1초 뒤에 몰아 쓴다)
+  await s.stage.waitForTimeout(1300);
+  const userData = await s.app.evaluate(({ app }) => app.getPath('userData'));
+  const places = JSON.parse(readFileSync(join(userData, 'device/stage-place.json'), 'utf8')) as Record<string, { x: number; y: number }>;
+  results['옮긴 자리를 기억'] = Object.values(places).some((a) => a.y < 1);
+  // 위치 초기화는 아래 가운데로 되돌린다
+  const st = await menu(s, '설정', '설정');
+  await st.getByRole('button', { name: '화면', exact: true }).click();
+  await st.getByRole('button', { name: '위치 초기화' }).click();
+  await expect(st.getByText('위치를 처음으로 되돌렸어요')).toBeVisible();
+  await expect.poll(async () => (await now()).y).toBe(before.y);
+  results['위치 초기화로 돌아옴'] = (await now()).x === before.x;
+  await st.close();
 
   for (const [k, v] of Object.entries(results)) console.log(v ? 'ok  ' : 'FAIL', k);
   if (Object.entries(results).some(([k, v]) => !v && !k.includes('참고'))) throw new Error('OS 클릭 검사 실패');

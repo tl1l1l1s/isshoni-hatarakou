@@ -14,8 +14,8 @@ import { getFrameOrigins, setFrameOrigins } from './protocol';
 import type { Store } from './store';
 import { installUpdate, updateState } from './updater';
 import {
-  chooseDisplay, displayLines, effectsBounds, getStage, listDisplays, pickEscape, prepare, prepareEffects, reloadStage, resetPositions, send, setOpacity252, setPanelVisible, setRects,
-  setSize, setVisible, workArea,
+  chooseDisplay, displayLines, dragStage, effectsBounds, getStage, listDisplays, pickEscape, prepare, prepareEffects, reloadStage, resetPositions, send, setOpacity252, setPanelVisible,
+  setRects, setSize, setVisible, workArea,
 } from './windows/manager';
 
 type Routes = {
@@ -108,6 +108,10 @@ export function registerIpc(store: Store): void {
     'pick.escape': [on, ({ on }) => pickEscape(on)],
     'theme.set': [z.object({ source: z.enum(['system', 'light', 'dark']) }), ({ source }) => void (nativeTheme.themeSource = source)],
     'stage.workArea': [none, workArea],
+    'stage.drag': [
+      z.object({ phase: z.enum(['start', 'move', 'end']), dx: z.number().min(-20_000).max(20_000), dy: z.number().min(-20_000).max(20_000) }),
+      ({ phase, dx, dy }) => dragStage(phase, dx, dy),
+    ],
     // 자동 오류 보고 (NFR-21). 렌더러 오류는 로그에 적은 뒤 보고로 만든다
     'crash.report': [
       z.object({ type: z.string().max(64), message: z.string().max(4000), stack: z.string().max(8000) }),

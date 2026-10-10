@@ -36,7 +36,7 @@ export default defineModule({
       { id: 'status.leave', title: '자리비움 안내', width: 340, height: 170, component: () => import('./ui/LeaveWindow') },
     ],
     contributions: [
-      { slot: 'menu.main', id: 'status.menu', label: '상태 고르기', command: 'status.open', order: 5 },
+      { slot: 'menu.main', id: 'status.menu', label: '상태 고르기', command: 'status.open', order: 10 },
       { slot: 'chip.buttons', id: 'status.chip', label: '상태', component: Chip },
     ],
   },

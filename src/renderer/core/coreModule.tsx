@@ -16,9 +16,10 @@ export function coreModule(core: CoreRuntime): ModuleManifest {
     settings: coreSettings,
     ui: {
       windows: [
-        { id: 'core.settings', title: '설정', width: 420, height: 520, focusable: true, component: async () => ({ default: () => <SettingsWindow core={core} /> }) },
+        // 탭이 한 줄에 들어가고 일반 탭의 소리 묶음까지 한 화면에 보이는 크기
+        { id: 'core.settings', title: '설정', width: 500, height: 640, focusable: true, component: async () => ({ default: () => <SettingsWindow core={core} /> }) },
       ],
-      contributions: [{ slot: 'settings.tabs', id: 'core.display', label: '화면', order: 20, component: ({ ctx }) => <DisplayTab core={core} ctx={ctx} /> }],
+      contributions: [{ slot: 'settings.tabs', id: 'core.display', label: '화면', order: 5, component: ({ ctx }) => <DisplayTab core={core} ctx={ctx} /> }],
     },
     commands: [
       { id: 'core.settings', run: (ctx) => ctx.ui.open('core.settings') },
@@ -83,15 +84,17 @@ function SettingsWindow({ core }: { core: CoreRuntime }) {
   const [tab, setTab] = useState('general');
   const current = tabs.find((x) => x.decl.id === tab);
   const Tab = current?.decl.component;
+  // 탭을 바꾸면 지금 탭의 화면이 사라지므로 저장하지 않은 일이 있으면 먼저 묻는다 (ctx.ui.guard)
+  const go = (id: string) => id !== tab && void core.windows.confirm('core.settings').then((ok) => ok && setTab(id));
   return (
     <div>
       <nav style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
-        <button aria-pressed={tab === 'general'} onClick={() => setTab('general')}>일반</button>
+        <button aria-pressed={tab === 'general'} onClick={() => go('general')}>일반</button>
         {tabs.map((x) => (
-          <button key={x.decl.id} aria-pressed={tab === x.decl.id} onClick={() => setTab(x.decl.id)}>{x.decl.label}</button>
+          <button key={x.decl.id} aria-pressed={tab === x.decl.id} onClick={() => go(x.decl.id)}>{x.decl.label}</button>
         ))}
       </nav>
-      {current && Tab ? <Tab ctx={current.ctx} /> : <General core={core} />}
+      {current && Tab ? <Tab ctx={current.ctx} windowId="core.settings" /> : <General core={core} />}
     </div>
   );
 }
@@ -144,7 +147,7 @@ function Disconnect({ core }: { core: CoreRuntime }) {
   if (!asking) return <p><button onClick={() => setAsking(true)}>이 PC 연결 해제</button></p>;
   return (
     <div>
-      <p>이 PC에서 계정 연결을 끊어요. 이 PC의 기록은 남고 다시 쓰려면 설정 코드를 넣어야 해요.</p>
+      <p>이 PC에서 연결을 끊어요. 다시 쓰려면 설정 코드가 필요해요.</p>
       <button onClick={() => void core.registry.run('core.disconnect')}>연결 해제</button> <button onClick={() => setAsking(false)}>취소</button>
     </div>
   );
@@ -163,7 +166,8 @@ function PenApps({ core, ctx }: { core: CoreRuntime; ctx: Ctx }) {
   };
   return (
     <div>
-      <p>그림 앱이 앞에 있는 동안에는 펜을 잠시 멈춰도 작업 중으로 보고 오래 쉬어도 방에서 자동으로 나가지 않아요. 자주 쓰는 그림 앱은 이미 들어 있어요.</p>
+      <p>그림 앱이 앞에 있으면 쉬어도 작업 중으로 봐요.</p>
+      <p>자주 쓰는 그림 앱은 이미 들어 있어요.</p>
       <ul>
         {apps.map((k) => (
           <li key={k}>
@@ -190,7 +194,8 @@ function DisplayTab({ core, ctx }: { core: CoreRuntime; ctx: Ctx }) {
         회사원 모드
         <input type="checkbox" checked={display === 'quiet'} onChange={(e) => ctx.mode.set(e.target.checked ? 'quiet' : 'normal')} />
       </label>
-      <p>켜면 마이홈, 머리 위 말풍선, 장난 기능이 잠기고 상태칩의 ▪ 버튼으로 화면을 바로 숨길 수 있어요. 숨긴 화면은 Ctrl+Alt+H나 트레이 메뉴로 다시 띄워요.</p>
+      <p>마이홈, 말풍선, 장난 기능을 잠그고 상태칩에 숨기기가 생겨요.</p>
+      <p>숨긴 화면은 Ctrl+Alt+H나 트레이 메뉴로 다시 띄워요.</p>
       <Field ctx={ctx} decl={coreSettings} name="theme" />
       <p>창과 메뉴의 밝기만 바뀌고 캐릭터 모습은 바뀌지 않아요.</p>
       {displays.length > 1 && (
@@ -213,8 +218,12 @@ function DisplayTab({ core, ctx }: { core: CoreRuntime; ctx: Ctx }) {
       <p>캐릭터를 큰 점과 적은 색으로 옛날 게임처럼 그려요.</p>
       <hr />
       <Field ctx={ctx} decl={coreSettings} name="opacity252" />
-      <p>화면 공유 영상이 검어지거나 깜빡일 때만 켜세요. 그런 일이 없으면 그냥 두세요. Windows에서만 바뀌어요.</p>
-      <button onClick={() => void core.registry.run('core.resetPositions')}>창 위치 초기화</button>
+      <p>화면 공유 영상이 깜빡일 때만 켜요. Windows 전용이에요.</p>
+      <hr />
+      <p>이름표를 끌어서 캐릭터를 옮길 수 있어요.</p>
+      <button onClick={() => void core.registry.run('core.resetPositions').then(() => ctx.ui.toast('위치를 처음으로 되돌렸어요'), (e: Error) => ctx.ui.toast(e.message))}>
+        위치 초기화
+      </button>
     </div>
   );
 }

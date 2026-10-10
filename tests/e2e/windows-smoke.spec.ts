@@ -315,7 +315,7 @@ test('혼자 스티커 사진을 한 컷 찍어 PNG로 저장한다', async () =
   await photo.close();
 });
 
-test('회사원 모드를 켜면 ▪ 버튼이 생기고 끄면 사라진다', async () => {
+test('회사원 모드를 켜면 숨기기 칩이 생기고 끄면 사라진다', async () => {
   const settings = await menu('설정', '설정');
   await settings.getByRole('button', { name: '화면', exact: true }).click();
   await settings.getByLabel('회사원 모드').check();

@@ -19,7 +19,7 @@
 
 - 실행 화면 ▼ 메뉴에서 이미 열린 창 이름을 한 번 더 누른다.
 - 플레이리스트 창의 닫기 단추를 누르고 ▼ 메뉴 `플레이리스트`로 다시 연다.
-- 설정 창 화면 탭에서 `회사원 모드`를 켜고 상태칩의 ▪ 버튼을 누른다. 트레이 메뉴 `보이기/숨기기`나 Ctrl+Alt+H로 다시 띄운다.
+- 설정 창 화면 탭에서 `회사원 모드`를 켜고 상태칩의 `숨기기` 칩을 누른다. 트레이 메뉴 `보이기/숨기기`나 Ctrl+Alt+H로 다시 띄운다.
 - 설정 창 `일반` 탭 시스템 묶음의 `컴퓨터 켤 때 자동 실행`을 누른다.
 - 대상 고르기는 대화하기 창 💣나 다른 사용자 메뉴의 폭탄 던지기로 시작한다. 레벨이 낮으면 잠겨 있다.
 
@@ -33,7 +33,7 @@ Preconditions:
 - **다시 열기.** `await menu(s, '포커스 기록', '포커스 기록')`을 두 번 실행한다. 두 번째 뒤 기록은 `포커스 기록:showInactive`, `포커스 기록:moveTop`이다. `상태 고르기`로 같은 순서를 하면 끝에 `상태 고르기:focus`가 더해진다. 같은 제목의 창은 하나다.
 - **두 번 열기.** 스테이지에서 `window.open`을 세는 함수로 감싼 뒤 `const w = core.registry.windows.get('status.pick')`과 `await Promise.all([core.windows.show(w.decl, w.ctx), core.windows.show(w.decl, w.ctx)])`를 실행한다. `window.open`은 한 번 불리고 `상태 고르기` 창은 하나다. 사용자가 이만큼 빠르게 누를 수 없어서 코어 함수를 직접 부른다.
 - **화면 밖 플레이어.** `await menu(s, '플레이리스트', '플레이리스트')` 뒤 메인에서 그 창의 `close()`와 `setBounds({ x: -6000, y: -6000 })`을 부른다. 창은 숨겨진 채로 남는다. 메뉴로 다시 열면 기록에 `플레이리스트:center`가 있고 창이 보이며 위치가 `screen.getDisplayMatching(b).workArea` 안이다.
-- **화면 숨기기.** `fakePlatform`의 `cursor`를 읽을 때마다 세는 getter로 바꾼다. 보이는 동안 0.5초에 10번쯤 읽는다. 포커스 기록과 설정 창을 열고 회사원 모드의 ▪ 버튼을 누르면 스테이지와 두 창의 `isVisible()`이 false이고 0.5초 동안 한 번도 읽지 않는다. `await s.stage.evaluate(() => window.bridge.invoke('stage.setVisible', { visible: true }))`로 다시 띄우면 세 창이 보이고 `moveTop` 기록에 `설정`과 `포커스 기록`이 있으며 다시 읽기 시작한다.
+- **화면 숨기기.** `fakePlatform`의 `cursor`를 읽을 때마다 세는 getter로 바꾼다. 보이는 동안 0.5초에 10번쯤 읽는다. 포커스 기록과 설정 창을 열고 회사원 모드의 `숨기기` 칩을 누르면 스테이지와 두 창의 `isVisible()`이 false이고 0.5초 동안 한 번도 읽지 않는다. `await s.stage.evaluate(() => window.bridge.invoke('stage.setVisible', { visible: true }))`로 다시 띄우면 세 창이 보이고 `moveTop` 기록에 `설정`과 `포커스 기록`이 있으며 다시 읽기 시작한다.
 - **자동 실행.** 설정 창 `일반` 탭의 `컴퓨터 켤 때 자동 실행`을 체크하면 `fakePlatform.autoStartOn`이 true가 되고 다시 연 설정 창에서도 체크되어 있다. `fakePlatform.autoStartOn = false`로 OS에서 끈 상태를 만들고 `bridge.invoke('stage.reload', {})`로 다시 시작한 뒤 런처에서 시작하기를 누르면 체크가 풀려 있다.
 - **ESC 풀기.** 방 `devdev`에 들어가 `void core.pickTarget(20_000)`으로 고르기를 시작한다. 실행 화면에 `누구에게 할지 캐릭터를 눌러 주세요`가 뜨고 `globalShortcut.isRegistered('Escape')`가 true다. 메인에서 스테이지의 `webContents.forcefullyCrashRenderer()`를 부르면 5초 안에 false가 된다. 새 세션에서 `bridge.invoke('pick.escape', { on: true })`만 부르면 10초쯤 뒤 false가 된다.
 - **로그오프.** 설정 창 화면 탭의 `테마`를 `dark`로 고른다. `s.stage.evaluate(() => window.bridge.invoke('store.read', { path: 'settings.json' }))`가 `modules.core.values.theme`에 `dark`를 주면 메인이 값을 들고 있는 것이다. 이때 미리 읽어 둔 `app.getPath('userData')`의 `settings.json`에는 아직 `"dark"`가 없다. 바로 메인에서 모든 창에 `w.emit('query-session-end', { preventDefault() {}, reasons: ['logoff'] })`를 낸다. 앱 프로세스가 1초 안에 끝나고 파일에 `"dark"`가 있다. 새 세션에서 같은 순서로 테마를 고른 뒤 확인 단계 없이 첫 창에 `w.emit('session-end', { reasons: ['logoff'] })`만 내도 앱이 바로 끝나고 파일에 `"dark"`가 있다.

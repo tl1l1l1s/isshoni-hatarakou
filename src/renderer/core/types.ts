@@ -10,6 +10,9 @@ export type { AccountPresence, Point, SceneSpec };
 
 export type Dispose = () => void;
 
+/** 방 밖에서 방이 필요한 일을 하려 할 때 알리는 글. 코어가 needsRoom 메뉴 항목에 쓰고 모듈도 같은 글을 쓴다 */
+export const NOT_IN_ROOM = '방에 들어가면 쓸 수 있어요. 방 만들기 / 참여하기에서 들어가요.';
+
 /** 모듈이 declare module로 넓히는 이벤트와 공개 API 타입 */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface EventMap {}
@@ -126,8 +129,9 @@ export interface WindowDecl {
   resizable?: boolean;
 }
 
-/** 슬롯에 넣는 화면 조각이 받는 값. seat는 좌석 슬롯(seat.badge, chip.buttons)에서만 있다 */
-export interface SlotProps { ctx: Ctx; seat?: SeatView }
+/** 슬롯에 넣는 화면 조각이 받는 값. seat는 좌석 슬롯(seat.badge, chip.buttons)에서만 있다.
+ *  windowId는 조각을 그린 패널 창 id이고 실행 화면에 그린 조각에는 없다 (ctx.ui.guard에 넘긴다) */
+export interface SlotProps { ctx: Ctx; seat?: SeatView; windowId?: string }
 
 export interface ContributionDecl {
   slot: string;
@@ -137,12 +141,15 @@ export interface ContributionDecl {
   /** 누르면 실행할 명령 (메뉴 같은 목록 슬롯). seat.menu 슬롯에서는 args로 { uid, name }을 받는다.
    *  seat.click은 캐릭터를 짧게 눌렀을 때, seat.shake는 누른 채로 흔들었을 때 순서가 가장 앞선 항목 하나만 실행하고 args로 그 좌석(SeatView)을 받는다 */
   command?: string;
-  /** 직접 그리는 화면 조각 (이름표, 상태칩, 설정 탭, 런처 같은 슬롯) */
+  /** 직접 그리는 화면 조각 (이름표, 상태칩, 설정 탭, 런처 같은 슬롯).
+   *  chip.buttons 슬롯에 그린 button은 코어가 상태칩 모양(높이 28px의 어두운 유리)으로 그린다. 모듈 CSS에는 배지 자리처럼 내용에 필요한 것만 둔다 */
   component?: ComponentType<SlotProps>;
   /** 표시 모드가 quiet이면 숨긴다 */
   quiet?: 'hide';
   /** gate id. 열리기 전에는 숨긴다 */
   gate?: string;
+  /** 방에 들어가 있어야 쓰는 메뉴 항목 (menu.main). 방 밖이면 코어가 흐리게 그리고 누르면 명령 대신 NOT_IN_ROOM을 알린다 */
+  needsRoom?: boolean;
 }
 
 export interface CommandDecl {
@@ -414,7 +421,14 @@ export interface Ctx {
   ui: {
     open(windowId: string): void;
     close(windowId: string): void;
+    /** 알림. 사용자가 방금 누르거나 키를 친 창(기능 창이나 런처) 위쪽에 뜨고 그런 창이 없으면 실행 화면에 뜬다. 한 번에 두 개까지 보인다 */
     toast(message: string): void;
+    /** 저장하지 않은 일이 있으면 떠나기 전에 묻는다. check는 물을 글(예: 저장하지 않은 그림이 있어요. 닫을까요?)이나 null을 돌려준다.
+     *  ESC, 창의 닫기 단추(제목 표시줄 ×), 설정 창 탭 바꾸기처럼 코어가 창을 닫거나 화면을 바꿀 때 그 창 안에 글과 닫기, 계속하기를 띄우고
+     *  닫기를 눌러야 떠난다. 모듈이 ctx.ui.close로 닫을 때와 앱을 끝낼 때는 묻지 않는다 */
+    guard(windowId: string, check: () => string | null): Dispose;
+    /** 모듈이 제 화면을 바꾸기 전에(창 안의 탭, 뒤로) 같은 물음을 띄운다. 물을 글이 없거나 닫기를 누르면 true */
+    confirmLeave(windowId: string): Promise<boolean>;
     /** 모듈 화면 안에서 다른 모듈이 슬롯에 넣은 조각을 그린다 (예: launcher.cards, rooms.settings) */
     Slot: ComponentType<{ name: string; seat?: SeatView }>;
     /** 캐릭터 미리보기. appearance를 빼면 내 지금 외형을 그린다 (런처, 캐릭터 만들기, 꾸미기) */

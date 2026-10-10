@@ -47,8 +47,8 @@ export default defineModule({
   bubbles: [{ id: 'play.head', priority: BUBBLE_PRIORITY.chat + 50, local: true, text: (seat, ctx) => headText(ctx, seat.key) }],
   ui: {
     contributions: [
-      { slot: 'menu.main', id: 'play.danceMenu', label: '춤추기', command: 'play.dance', order: 40, gate: 'play.dance' },
-      { slot: 'menu.main', id: 'play.rollMenu', label: '러시안룰렛', command: 'play.roll', order: 41 },
+      { slot: 'menu.main', id: 'play.danceMenu', label: '춤추기', command: 'play.dance', order: 26, gate: 'play.dance', needsRoom: true },
+      { slot: 'menu.main', id: 'play.rollMenu', label: '러시안룰렛', command: 'play.roll', order: 25, needsRoom: true },
       { slot: 'seat.menu', id: 'play.petMenu', label: '쓰다듬기', command: 'play.pet', order: 30 },
       // 캐릭터를 짧게 누르면 쓰다듬고 누른 채로 흔들면 어지러워한다 (CHR-11)
       { slot: 'seat.click', id: 'play.petClick', label: '쓰다듬기', command: 'play.pet' },

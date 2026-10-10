@@ -52,6 +52,10 @@ export const LOCAL_SEATS_MAX = 4;
 const GATE_CHECK_MS = 5_000;
 /** 파일 바이트 캐시 상한. 한 파일이 48KB 이하라 넉넉히 12MB다 */
 const FILE_CACHE_MAX = 256;
+/** 이 시간 안에 누르거나 키를 친 패널에 알림을 띄운다. 서버를 기다린 뒤에 오는 알림도 들어간다 */
+const TOAST_RECENT_MS = 30_000;
+/** 알림을 띄우자마자 그 패널이 닫히면(저장하고 닫는 창) 다른 곳으로 옮겨 띄운다. 이보다 오래 보인 뒤에 닫혔으면 함께 사라진다 */
+const TOAST_MOVE_MS = 1_000;
 
 /** 렌더러 코어 서비스 묶음과 모듈별 ctx 생성 (10.5 코어가 모듈에 주는 것) */
 export class CoreRuntime {
@@ -66,7 +70,8 @@ export class CoreRuntime {
   readonly seatsDrawn = createStore(0);
   /** 좌석 계층이 그린 뒤 알려 주는 anchor와 클릭 영역 (ctx.seats.list) */
   readonly seatGeometry = new Map<string, { anchors: Anchors; hit: Box }>();
-  readonly toasts = createStore<Array<{ id: number; text: string }>>([]);
+  /** 알림. id는 띄운 시각이고 at은 띄울 패널 id다. null이면 실행 화면 (ctx.ui.toast) */
+  readonly toasts = createStore<Array<{ id: number; text: string; at: string | null }>>([]);
   readonly mode = createStore<'launcher' | 'run'>('run');
   /** 켜진 모듈의 ctx (코어 설정 화면이 모듈 설정을 그릴 때 쓴다) */
   readonly ctxs = new Map<string, { manifest: ModuleManifest; ctx: Ctx }>();
@@ -147,6 +152,8 @@ export class CoreRuntime {
     deps.bridge.on('notify.click', ({ id }) => {
       const fn = this.notifyClicks.get(id);
       this.notifyClicks.delete(id);
+      // OS 알림을 누른 사용자는 열려 있던 창을 보고 있지 않으므로 뒤따르는 알림은 실행 화면에 띄운다
+      this.windows.touch('');
       try {
         fn?.();
       } catch (e) {
@@ -584,10 +591,20 @@ export class CoreRuntime {
     return () => clearTimeout(t);
   }
 
+  /** 사용자가 방금 쓴 패널에 띄우고 없으면 실행 화면에 띄운다. 오래 남아 쌓이지 않게 두 개까지만 둔다 */
   toast(text: string) {
     const id = Date.now() + Math.random();
-    this.toasts.set((ts) => [...ts, { id, text }]);
+    const at = this.windows.recent(TOAST_RECENT_MS);
+    this.toasts.set((ts) => [...ts, { id, text, at }].slice(-2));
     this.at(4000, () => this.toasts.set((ts) => ts.filter((t) => t.id !== id)));
+  }
+
+  /** 알림을 그릴 패널. null이면 실행 화면이고 undefined면 그리지 않는다. 런처 화면에서는 실행 화면이 작은 알림 창이라 가장 최근에 쓴 패널(런처)에 그린다.
+   *  띄울 패널이 띄우자마자 닫혔으면 그 대신 런처나 실행 화면에 그린다 */
+  toastPanel(t: { id: number; at: string | null }): string | null | undefined {
+    if (t.at !== null && this.windows.live(t.at)) return t.at;
+    if (t.at !== null && Date.now() - t.id > TOAST_MOVE_MS) return undefined;
+    return this.mode.get() === 'launcher' ? this.windows.recent(Infinity, true) : null;
   }
 
   log(level: 'info' | 'warn' | 'error', scope: string, message: string) {
@@ -602,7 +619,10 @@ export class CoreRuntime {
       // 대상을 고르는 중이면 ESC는 고르기만 끝낸다
       const pick = this.picking.get();
       if (pick) return pick(null);
-      this.windows.close(w.id);
+      // 떠날지 묻는 중이면 ESC는 계속하기다
+      const ask = this.windows.asking.get();
+      if (ask?.id === w.id) return ask.answer(false);
+      this.windows.requestClose(w.id);
       return;
     }
     const mods = { ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey, meta: e.metaKey };
@@ -817,7 +837,7 @@ export class CoreRuntime {
           this.layout.set((l) => {
             const next = { key, appearance: AppearanceSchema.parse(appearance), name };
             const has = l.local.some((x) => x.key === key);
-            if (!has && l.local.length >= LOCAL_SEATS_MAX) throw new Error(`로컬 좌석은 ${LOCAL_SEATS_MAX}개까지입니다`);
+            if (!has && l.local.length >= LOCAL_SEATS_MAX) throw new Error(`로컬 좌석은 ${LOCAL_SEATS_MAX}개까지예요`);
             return { ...l, local: has ? l.local.map((x) => (x.key === key ? next : x)) : [...l.local, next] };
           }),
         removeLocal: (key) => this.layout.set((l) => ({ ...l, local: l.local.filter((x) => x.key !== key) })),
@@ -888,6 +908,8 @@ export class CoreRuntime {
         },
         close: (wid) => this.windows.close(wid),
         toast: (text) => this.toast(text),
+        guard: (wid, check) => scope.add(this.windows.guard(wid, check)),
+        confirmLeave: (wid) => this.windows.confirm(wid),
         Slot: this.Slot,
         CharacterPreview: this.CharacterPreview,
         pickTarget: (opts) => this.pickTarget(opts?.timeoutMs),
@@ -1005,7 +1027,7 @@ export class CoreRuntime {
       // setup 전에 읽어 둔 값이 있어야 해서 preload에서 채운다
       const pre = this.preloaded.get(`${id}:${s}`);
       const { data, error } = readLocal(decl, pre);
-      if (error) this.toast(`${m.title ?? id} 데이터를 읽지 못해 처음 상태로 시작합니다. ${error}`);
+      if (error) this.toast(`${m.title ?? id} 데이터를 읽지 못해 처음 상태로 시작해요. ${error}`);
       const file = new JsonFile<{ v: number; data: unknown }>(this.deps.bridge, localPath(s), { v: decl.version, data });
       if (error && pre != null) void this.deps.bridge.invoke('store.write', { path: localPath(s).replace(/\.json$/, '.bak.json'), data: pre });
       local[s] = file;

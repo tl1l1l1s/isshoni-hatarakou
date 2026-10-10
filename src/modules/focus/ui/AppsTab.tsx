@@ -23,7 +23,7 @@ export default function AppsTab({ ctx }: SlotProps) {
           <li key={i}>
             {a ? (
               <>
-                <input value={a.label} maxLength={20} title={a.key} aria-label={`${i + 1}번 앱 이름`} onChange={(e) => save(i, { ...a, label: e.target.value })} />{' '}
+                <input value={a.label} maxLength={20} style={{ width: '22em' }} title={a.key} aria-label={`${i + 1}번 앱 이름`} onChange={(e) => save(i, { ...a, label: e.target.value })} />{' '}
                 <button onClick={() => save(i, null)}>빼기</button>
               </>
             ) : (

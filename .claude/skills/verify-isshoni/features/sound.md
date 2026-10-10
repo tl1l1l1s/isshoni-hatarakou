@@ -78,4 +78,4 @@ Preconditions:
 - 설정 창의 `combobox "백색소음"`은 `getByLabel('백색소음')`으로 찾으면 `백색소음 음량`과 겹친다. `getByRole('combobox', { name: '백색소음', exact: true })`로 찾는다.
 - 친구 사본을 다른 사용자 이름으로 쓰면 메모리 서버가 `PERMISSION_DENIED`로 막는다. 위의 `asFriend`처럼 로그인을 잠깐 바꿔 쓴다.
 - 축소 플레이어 크기 바꾸기와 실제 소리 출력은 Windows에서 확인하지 않았다.
-- 화면 숨기기(▪, Ctrl+Alt+H)로 함께 숨긴 플레이리스트 창은 `visible`로 남아 곡이 이어진다. 창을 닫아 숨길 때만 멈춘다.
+- 화면 숨기기(`숨기기` 칩, Ctrl+Alt+H)로 함께 숨긴 플레이리스트 창은 `visible`로 남아 곡이 이어진다. 창을 닫아 숨길 때만 멈춘다.
