@@ -8,9 +8,9 @@ import { expect, menu, verify, windowTitled } from './drive.ts';
 const bin = join(process.env.TMPDIR ?? '/tmp', 'isshoni-osclick');
 const src = join(import.meta.dirname, 'click.swift');
 if (!existsSync(bin) || statSync(bin).mtimeMs < statSync(src).mtimeMs) execFileSync('swiftc', ['-O', src, '-o', bin]);
-const osClick = (x: number, y: number, mode: 'move' | 'instant' | 'hover' = 'move') => execFileSync(bin, [String(Math.round(x)), String(Math.round(y)), mode]);
+/** mode가 숫자면 커서를 옮긴 뒤 그 밀리초만큼 기다렸다가 누른다 */
+const osClick = (x: number, y: number, mode: 'move' | 'instant' | 'hover' | number = 'move') => execFileSync(bin, [String(Math.round(x)), String(Math.round(y)), String(mode)]);
 const osDrag = (x: number, y: number, x2: number, y2: number) => execFileSync(bin, [x, y, 'drag', x2, y2].map((v) => String(typeof v === 'number' ? Math.round(v) : v)));
-const frontmost = () => execFileSync('osascript', ['-e', 'tell application "System Events" to get name of first application process whose frontmost is true']).toString().trim();
 type Box = { x: number; y: number; width: number; height: number };
 
 await verify('osclick', async (s) => {
@@ -60,8 +60,7 @@ await verify('osclick', async (s) => {
   await s.stage.waitForTimeout(400);
   results['빈 자리 통과 (바로 찍기)'] = (await probe()) !== t0 || (await probe()).startsWith('HIT');
 
-  // 2) 내 캐릭터 몸: 쓰다듬기 반응이 뜨고 아래 창에는 닿지 않으며 앞 앱이 바뀌지 않는다
-  const front = frontmost();
+  // 2) 내 캐릭터 몸: 쓰다듬기 반응이 뜨고 아래 창에는 닿지 않는다
   const t1 = await probe();
   await stageHits();
   osClick(...(await pt(await box('내 캐릭터 쓰다듬기'), 0.5, 0.6)));
@@ -69,8 +68,44 @@ await verify('osclick', async (s) => {
   results['캐릭터 클릭이 스테이지에 닿음'] = (await stageHits()).includes('click');
   results['캐릭터 클릭 쓰다듬기 반응'] = (await s.stage.getByText('💗').count()) > 0;
   results['캐릭터 클릭이 아래로 새지 않음'] = (await probe()) === t1;
-  results['캐릭터 클릭이 앞 앱을 바꾸지 않음'] = frontmost() === front;
   await s.shot(s.stage, 'os-body-click');
+
+  // 2-1) 캐릭터 위에 머물던 커서(펜)를 옆 빈 자리로 옮겨 20ms 뒤에 누르면 아래 창이 받는다 (클릭 통과를 커서가 가까우면 자주 본다)
+  for (const [label, at] of [['머리 위', async () => { const b = await now(); return [b.x + b.width / 2, b.y + 20] as const; }], ['몸 옆', async () => { const b = await now(); const h = await box('내 캐릭터 쓰다듬기'); return [b.x + 4, b.y + h.y + h.height / 2] as const; }]] as const) {
+    let through = 0;
+    for (let i = 0; i < 5; i++) {
+      osClick(...(await pt(await box('내 캐릭터 쓰다듬기'))), 'hover');
+      await s.stage.waitForTimeout(250);
+      await s.app.evaluate(() => (globalThis as unknown as { probe: Electron.BrowserWindow }).probe.webContents.executeJavaScript(`document.title='probe';0`));
+      osClick(...(await at()), 20);
+      await s.stage.waitForTimeout(300);
+      if ((await probe()).startsWith('HIT')) through++;
+    }
+    results[`캐릭터에서 ${label} 빈 자리로 옮겨 20ms 뒤 누름 통과 ${through}/5`] = through === 5;
+  }
+
+  // 2-2) 실제 Mac 오버레이 창(type panel, 포커스 없음)을 눌러도 앞 앱이 바뀌지 않는지. 다른 앱을 앞에 둔 뒤 누른다.
+  // Electron 44는 이 창을 눌러도 앱을 앞으로 가져온다(desktop-mac-click-activates). 고치기 전까지 참고로만 적는다
+  const pid = await s.app.evaluate(() => process.pid);
+  const frontPid = () => Number(/(\d+)/.exec(execFileSync('lsappinfo', ['info', '-only', 'pid', execFileSync('lsappinfo', ['front']).toString().trim()]).toString())?.[1] ?? -1);
+  await s.app.evaluate(async ({ BrowserWindow }, b) => {
+    const w = new BrowserWindow({ type: 'panel', frame: false, transparent: true, focusable: false, alwaysOnTop: true, hasShadow: false, resizable: false, show: false, x: b.x - 110, y: b.y + b.height - 120, width: 100, height: 100, webPreferences: { sandbox: true } });
+    await w.loadURL('data:text/html,<body style="background:rgba(120,200,120,.9);margin:0"><script>document.addEventListener("mousedown",()=>document.title="HIT")</script>');
+    w.setAlwaysOnTop(true, 'screen-saver');
+    w.showInactive();
+    (globalThis as unknown as { panel: Electron.BrowserWindow }).panel = w;
+  }, b0);
+  execFileSync('osascript', ['-e', 'tell application "Finder" to activate']);
+  await s.stage.waitForTimeout(800);
+  osClick(b0.x - 60, b0.y + b0.height - 70);
+  let activated = false;
+  for (let i = 0; i < 25; i++) {
+    if (frontPid() === pid) activated = true;
+    await s.stage.waitForTimeout(40);
+  }
+  const hit = (await s.app.evaluate(() => (globalThis as unknown as { panel: Electron.BrowserWindow }).panel.getTitle())) === 'HIT';
+  results[`실제 Mac 오버레이 창 클릭이 앞 앱을 바꾸지 않음 (참고${hit ? '' : ', 창을 누르지 못함'})`] = hit && !activated;
+  await s.app.evaluate(() => (globalThis as unknown as { panel: Electron.BrowserWindow }).panel.destroy());
 
   // 3) ▼ 칩과 메뉴 항목: 메뉴가 열리고 항목을 누르면 창이 열린다
   osClick(...(await pt(await chipBox())));
@@ -98,7 +133,9 @@ await verify('osclick', async (s) => {
   await s.stage.waitForTimeout(600);
   results['멀리서 바로 찍기 (참고)'] = (await stageHits()).includes('click') && (await probe()) === t2;
 
-  // 6) 이름표 끌기: 스테이지가 끈 만큼 옮겨지고 메뉴는 열리지 않으며 옮긴 뒤에도 빈 자리는 통과하고 캐릭터와 이름표는 눌린다
+  // 6) 이름표 끌기: 스테이지가 끈 만큼 옮겨지고 메뉴는 열리지 않으며 옮긴 뒤에도 빈 자리는 통과하고 캐릭터와 이름표는 눌린다.
+  // 3번에서 연 상태 고르기 창이 옮긴 뒤 누를 빈 자리를 덮지 않게 먼저 닫는다
+  await pick.close();
   if ((await s.stage.getByRole('menu', { name: '가짜 친구' }).count()) > 0) osClick(...(await pt(await box('가짜 친구 메뉴'))));
   await s.stage.waitForTimeout(600);
   const before = await now();
@@ -123,8 +160,20 @@ await verify('osclick', async (s) => {
   results['옮긴 뒤 이름표 짧게 누르면 메뉴'] = true;
   await s.shot(s.stage, 'os-dragged-menu');
   osClick(...(await pt(await chipBox())));
-  // 자리는 PC 데이터에 모니터마다 남는다 (저장은 1초 뒤에 몰아 쓴다)
-  await s.stage.waitForTimeout(1300);
+  await s.stage.waitForTimeout(600);
+
+  // 7) 캐릭터 몸 끌기: 이름표처럼 스테이지가 옮겨지고 쓰다듬기 반응은 뜨지 않는다
+  await expect.poll(() => s.stage.getByText('💗').count(), { timeout: 15_000 }).toBe(0);
+  const beforeBody = await now();
+  const [bx, by] = await pt(await box('내 캐릭터 쓰다듬기'), 0.5, 0.6);
+  osDrag(bx, by, bx + 120, by - 80);
+  await s.stage.waitForTimeout(800);
+  const afterBody = await now();
+  results['몸 끌기로 스테이지 이동'] = Math.abs(afterBody.x - (beforeBody.x + 120)) <= 3 && Math.abs(afterBody.y - (beforeBody.y - 80)) <= 3;
+  results['몸 끌기는 쓰다듬지 않음'] = (await s.stage.getByText('💗').count()) === 0;
+  await s.shot(s.stage, 'os-body-dragged');
+  // 자리는 PC 데이터에 모니터마다 남는다 (저장은 0.2초 뒤에 쓴다)
+  await s.stage.waitForTimeout(700);
   const userData = await s.app.evaluate(({ app }) => app.getPath('userData'));
   const places = JSON.parse(readFileSync(join(userData, 'device/stage-place.json'), 'utf8')) as Record<string, { x: number; y: number }>;
   results['옮긴 자리를 기억'] = Object.values(places).some((a) => a.y < 1);
@@ -133,8 +182,11 @@ await verify('osclick', async (s) => {
   await st.getByRole('button', { name: '화면', exact: true }).click();
   await st.getByRole('button', { name: '위치 초기화' }).click();
   await expect(st.getByText('위치를 처음으로 되돌렸어요')).toBeVisible();
+  // 방에 들어와 좌석이 늘면 왼쪽 끝을 두고 오른쪽으로 넓어지므로 처음 자리 대신 작업 영역 아래 가운데와 비교한다
+  const wa = await s.app.evaluate(({ screen }, b) => screen.getDisplayMatching(b).workArea, before);
   await expect.poll(async () => (await now()).y).toBe(before.y);
-  results['위치 초기화로 돌아옴'] = (await now()).x === before.x;
+  const reset = await now();
+  results['위치 초기화로 아래 가운데에 돌아옴'] = Math.abs(reset.x + reset.width / 2 - (wa.x + wa.width / 2)) <= 1 && reset.y + reset.height === wa.y + wa.height;
   await st.close();
 
   for (const [k, v] of Object.entries(results)) console.log(v ? 'ok  ' : 'FAIL', k);

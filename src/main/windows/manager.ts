@@ -69,6 +69,7 @@ export function chooseDisplay(id: number): void {
   if (!d) throw new Error('연결되지 않은 모니터입니다');
   chosen = remember(d);
   store?.write(DISPLAY_FILE, chosen);
+  kept = null;
   place();
 }
 
@@ -176,11 +177,13 @@ export function workArea(): { width: number; height: number } {
  *  작업 영역 크기가 마지막으로 알린 것과 다르면 렌더러에 알린다.
  *  ponytail: 위쪽에 끌어 둔 캐릭터의 메뉴를 열면 창이 작업 영역 안에 남도록 아래로 밀려 캐릭터가 메뉴를 닫을 때까지 내려간다. 거슬리면 메뉴를 아래로 연다 */
 let toldArea = '';
+/** 이번 실행에서 좌석 수가 바뀌어 왼쪽 끝을 둔 자리 (setSize). 끌어 둔 자리 파일에는 남기지 않고 끌기, 위치 초기화, 모니터 고르기가 지운다 */
+let kept: Anchor | null = null;
 export function place(): void {
   if (!stage) return;
   const d = currentDisplay();
   const wa = d.workArea;
-  applyBounds(stage, placeAt(wa, size, savedPlaces()[keyOf(d)]));
+  applyBounds(stage, placeAt(wa, size, kept ?? savedPlaces()[keyOf(d)]));
   const key = `${wa.width}x${wa.height}`;
   if (key === toldArea) return;
   toldArea = key;
@@ -199,6 +202,7 @@ export function dragStage(phase: 'start' | 'move' | 'end', dx: number, dy: numbe
   if (phase === 'start') {
     const b = stage.getBounds();
     dragFrom = { x: b.x + b.width / 2, y: b.y + b.height };
+    kept = null;
   }
   if (!dragFrom) return;
   if (phase === 'end') {
@@ -221,16 +225,15 @@ function applyBounds(w: BrowserWindow, b: Bounds): void {
   if (!same(w.getBounds(), b)) w.setBounds(b);
 }
 
-/** 좌석이 늘거나 줄어 폭만 바뀌면 왼쪽 끝을 그대로 두고 그 자리를 기억한다. 아래 가운데 점에 맞추면 맨 왼쪽의 내 캐릭터가
- *  누가 들어오고 나갈 때마다 옆으로 뛴다. 높이가 바뀌면(메뉴, 런처 화면) 기억한 자리에 다시 놓는다 */
+/** 좌석이 늘거나 줄어 폭만 바뀌면 왼쪽 끝을 그대로 두고 이번 실행 동안 그 자리를 쓴다(kept). 아래 가운데 점에 맞추면 맨 왼쪽의 내 캐릭터가
+ *  누가 들어오고 나갈 때마다 옆으로 뛴다. 높이가 바뀌면(메뉴, 런처 화면) 그 자리에 다시 놓는다 */
 export function setSize(width: number, height: number): void {
   const next = { width: Math.ceil(width), height: Math.ceil(height) };
   const widthOnly = next.height === size.height && next.width !== size.width;
   size = next;
   if (stage && widthOnly && !dragFrom) {
-    const d = currentDisplay();
-    const b = clampIn(d.workArea, { ...stage.getBounds(), ...size });
-    store?.write(PLACE_FILE, { ...savedPlaces(), [keyOf(d)]: anchorOf(d.workArea, b) });
+    const wa = currentDisplay().workArea;
+    kept = anchorOf(wa, clampIn(wa, { ...stage.getBounds(), ...size }));
   }
   place();
 }
@@ -295,6 +298,7 @@ export const toggle = () => setVisible(!shown());
 export function resetPositions(): void {
   store?.write(WINDOWS_FILE, {});
   store?.write(PLACE_FILE, {});
+  kept = null;
   for (const w of BrowserWindow.getAllWindows()) if (w !== stage) w.center();
   place();
   setVisible(true);
