@@ -14,6 +14,7 @@ describe('allowedGet', () => {
     expect(allowedGet(`https://youtube.com.evil.example/oembed?url=${video}&format=json`)).toBe(false);
     expect(allowedGet(`https://www.youtube.com:8443/oembed?url=${video}&format=json`)).toBe(false);
     expect(allowedGet(`https://user@www.youtube.com/oembed?url=${video}&format=json`)).toBe(false);
+    expect(allowedGet(`https://:pw@www.youtube.com/oembed?url=${video}&format=json`)).toBe(false);
   });
 });
 

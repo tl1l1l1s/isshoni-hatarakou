@@ -20,7 +20,7 @@ export function allowedGet(url: string): boolean {
   try {
     const u = new URL(url);
     return (
-      u.protocol === 'https:' && u.hostname === 'www.youtube.com' && !u.port && !u.username && u.pathname === '/oembed' &&
+      u.protocol === 'https:' && u.hostname === 'www.youtube.com' && !u.port && !u.username && !u.password && u.pathname === '/oembed' &&
       u.searchParams.get('format') === 'json' && !!u.searchParams.get('url')
     );
   } catch {
