@@ -5,7 +5,7 @@
 ## Sub-features
 
 - `away-auto`는 입력 없이 20분이 지나면 자리비움 말풍선이 뜨고 입력이 오면 사라지는 것이다 (CHR-06).
-- `away-pic`은 자리비움 그림을 등록하고 크기를 고르면 자리비움인 동안 캐릭터 대신 그림이 서는 것이다 (CHR-07).
+- `away-pic`은 자리비움 그림을 등록하고 크기를 고르면 자리비움인 동안 캐릭터 대신 그림이 서는 것이다. 미리보기 그림도 고른 크기로 그려지고 `그림 빼기`로 뺀다 (CHR-07).
 
 ## How to get to it (user POV)
 
@@ -19,9 +19,10 @@ Preconditions:
 - 새 `verify()` 세션에서 시작하기를 눌러 실행 화면에 있다.
 - 파일 고르기 대화상자가 시험용 그림을 돌려주도록 바꿔 둔다. 스테이지에서 `OffscreenCanvas`로 투명 배경 PNG를 만들어 `s.dir` 아래에 쓰고 `await s.app.evaluate(({ dialog }, p) => { (dialog as any).showOpenDialog = async () => ({ canceled: false, filePaths: [p] }) }, pngPath)`를 실행한다. `tests/e2e/boot.spec.ts`에 같은 예가 있다.
 
-- **탭 열기.** `const st = await menu(s, '설정', '설정')`과 `await st.getByRole('button', { name: '자리비움 그림' }).click()`을 실행한다. `자리비움이면 캐릭터 대신 이 그림이 서요. 방 사람들에게도 보여요.` 안내, `그림 없음` 미리보기, `button "그림 등록"`, 흐린 `button "기본으로"`, `combobox "크기"`(기본 `80px`)가 보인다.
-- **그림 등록.** `await st.getByRole('button', { name: '그림 등록' }).click()`을 실행한다. `그림을 등록했습니다.`가 뜨고 체크무늬 위에 `img "등록한 자리비움 그림"`이 보이며 `기본으로`가 눌린다.
-- **크기 고르기.** `await st.getByLabel('크기').selectOption('100')`을 실행한다. 설정 창을 닫고 다시 열어 같은 탭을 누르면 그림과 `100px`이 그대로다.
+- **탭 열기.** `const st = await menu(s, '설정', '설정')`과 `await st.getByRole('button', { name: '자리비움 그림' }).click()`을 실행한다. `자리비움이면 캐릭터 대신 이 그림이 서요.` 안내, `그림 없음` 미리보기, `button "그림 등록"`, 흐린 `button "그림 빼기"`, `combobox "크기"`(기본 `보통 (80px)`, 나머지는 `작게 (60px)`와 `크게 (100px)`)가 보인다.
+- **그림 등록.** `await st.getByRole('button', { name: '그림 등록' }).click()`을 실행한다. `그림을 등록했어요.`가 뜨고 체크무늬 위에 `img "등록한 자리비움 그림"`이 너비 80으로 보이며 `그림 빼기`가 눌린다.
+- **크기 고르기.** `await st.getByLabel('크기').selectOption('60')`을 실행하면 미리보기 그림 너비가 60이 된다. `selectOption('100')`을 실행하면 100이 된다. 설정 창을 닫고 다시 열어 같은 탭을 누르면 그림과 `크게 (100px)`가 그대로다.
+- **그림 빼기.** 마지막에 `그림 빼기`를 누르면 `그림 없음`과 `그림을 뺐어요. 자리비움이어도 캐릭터가 그대로 서요.`가 보이고 `그림 빼기`가 흐려진다.
 - **자리비움 만들기.** `await s.app.evaluate(() => void ((globalThis as any).fakePlatform.idle = 1300))`을 실행한다. 실행 화면에 `자리비움` 말풍선이 뜨고 캐릭터 몸 대신 `img` 하나가 이름표 위에 선다. 크기 배율 100%에서 그림 상자는 100x100이다.
 - **돌아오기.** `fakePlatform.idle`을 0으로 바꾼다. `img`와 `자리비움` 말풍선이 사라지고 캐릭터가 돌아온다.
 - **방 사람 화면.** `devdev`에 참여한 뒤 가짜 친구를 자리비움 그림을 단 자리비움 상태로 만든다(Gotchas). `가짜 친구` 이름표 위에 그림이 서고 `자리비움` 말풍선이 뜬다. 그림을 오른쪽 클릭하면 `menu "가짜 친구"`가 열린다.

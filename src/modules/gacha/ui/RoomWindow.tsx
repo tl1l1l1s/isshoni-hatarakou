@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Ctx } from '@core/types';
+import { NOT_IN_ROOM, type Ctx } from '@core/types';
 import { duration, inPeriod, odds, percent, periodText, pool, secToNext, tickets } from '../logic';
 import { canAdd, useGacha, type Drawn } from '../state';
 import { AddItem, message, Pic } from './parts';
@@ -12,7 +12,7 @@ export default function RoomWindow({ ctx }: { ctx: Ctx }) {
   const [waiting, setWaiting] = useState(false);
   const [result, setResult] = useState<Drawn | null>(null);
   const [msg, setMsg] = useState('');
-  if (!v.code) return <p>방에 들어가 있을 때만 가챠를 쓸 수 있습니다.</p>;
+  if (!v.code) return <p>{NOT_IN_ROOM}</p>;
 
   const sec = v.rec.sec + Math.floor(v.pendingSec);
   const { secPerTicket: spt } = v.cfg;
@@ -47,8 +47,8 @@ export default function RoomWindow({ ctx }: { ctx: Ctx }) {
       <p>
         <b>남은 뽑기 {left}회</b>
       </p>
-      <p className={css.muted}>다음 1회까지 작업 {duration(secToNext(sec, spt, v.rec.bonus, v.rec.spent))} 남았습니다.</p>
-      <p className={css.muted}>뽑기 1회에 작업 {duration(spt)}이 필요합니다.</p>
+      <p className={css.muted}>다음 1회까지 작업 {duration(secToNext(sec, spt, v.rec.bonus, v.rec.spent))} 남았어요.</p>
+      <p className={css.muted}>뽑기 1회에 작업 {duration(spt)}이 필요해요.</p>
       <div className={css.stage}>
         {!spinning && result ? (
           <div className={css.result}>
@@ -82,7 +82,7 @@ export default function RoomWindow({ ctx }: { ctx: Ctx }) {
           ))}
         </ul>
       ) : (
-        <p className={css.muted}>지금 뽑을 수 있는 아이템이 없습니다.</p>
+        <p className={css.muted}>지금 뽑을 수 있는 아이템이 없어요.</p>
       )}
       {later.length > 0 && (
         <>
@@ -98,7 +98,7 @@ export default function RoomWindow({ ctx }: { ctx: Ctx }) {
           </ul>
         </>
       )}
-      <p className={css.muted}>아직 뽑지 않은 아이템은 그림을 가려 둡니다.</p>
+      <p className={css.muted}>아직 뽑지 않은 아이템은 그림을 가려 둬요.</p>
       {canAdd(v) && <AddItem ctx={ctx} />}
     </div>
   );

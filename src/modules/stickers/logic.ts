@@ -24,12 +24,19 @@ const round = (v: number, digits: number) => Math.round(v * 10 ** digits) / 10 *
 const floorY = (img: Size, scale: number) => round((Math.min(4 / img.width, 5 / img.height) * img.height * (1 - scale)) / 10, 3);
 
 /** 새로 붙일 때 자리. 스티커는 가슴께(칠판은 머리 위), 소품은 책상 오른쪽, 바닥 오브제는 책상 왼쪽 바닥.
- *  바닥 오브제는 그림 크기를 알면 그림 아래가 칸 아래에 닿게 놓고 모르면 정사각 그림으로 친다 */
-export const fresh = (slot: SlotId, item: string, file: Sha256, img: Size = { width: 1, height: 1 }): Equip =>
-  slot === 'floor' ? { item, file, x: -0.3, y: floorY(img, FLOOR_SCALE), scale: FLOOR_SCALE, rot: 0 }
-  : slot === 'desk.items' ? { item, file, x: 0.25, y: 0, scale: 0.3, rot: 0 }
-  : item === BOARD_ITEM ? { item, file, x: 0, y: -0.6, scale: 0.45, rot: 0 }
-  : { item, file, x: 0, y: -0.3, scale: 0.4, rot: 0 };
+ *  바닥 오브제는 그림 크기를 알면 그림 아래가 칸 아래에 닿게 놓고 모르면 정사각 그림으로 친다.
+ *  placed에 같은 자리가 있으면 오른쪽 위로 0.06씩 비켜 4x3 칸 안에서 빈 자리를 찾는다 (칸이 CAP개라 다 차지 않는다) */
+export function fresh(slot: SlotId, item: string, file: Sha256, img: Size = { width: 1, height: 1 }, placed: Equip[] = []): Equip {
+  const e = slot === 'floor' ? { item, file, x: -0.3, y: floorY(img, FLOOR_SCALE), scale: FLOOR_SCALE, rot: 0 }
+    : slot === 'desk.items' ? { item, file, x: 0.25, y: 0, scale: 0.3, rot: 0 }
+    : item === BOARD_ITEM ? { item, file, x: 0, y: -0.6, scale: 0.45, rot: 0 }
+    : { item, file, x: 0, y: -0.3, scale: 0.4, rot: 0 };
+  for (let n = 0; n < CAP; n++) {
+    const x = round(e.x + 0.06 * (n % 4), 3), y = round(e.y - 0.06 * Math.floor(n / 4), 3);
+    if (!placed.some((p) => p.x === x && p.y === y)) return { ...e, x, y };
+  }
+  return e;
+}
 
 /** 더 붙일 수 없으면 안내 문장, 붙일 수 있으면 null */
 export const capMessage = (slot: SlotId, count: number): string | null =>

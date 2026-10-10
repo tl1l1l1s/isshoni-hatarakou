@@ -27,7 +27,7 @@ export default function InventoryWindow({ ctx }: { ctx: Ctx }) {
   }, [ctx, codes]);
 
   const need = ctx.tunables.get<number>('hueUnlockCount');
-  if (!inventory.length) return <p>아직 뽑은 아이템이 없습니다. 방에서 작업한 시간으로 그 방의 가챠를 뽑을 수 있습니다.</p>;
+  if (!inventory.length) return <p>아직 뽑은 아이템이 없어요.</p>;
   const rooms = new Map<string, InventoryItem[]>();
   for (const i of inventory) rooms.set(i.room, [...(rooms.get(i.room) ?? []), i]);
   return (
@@ -42,7 +42,7 @@ export default function InventoryWindow({ ctx }: { ctx: Ctx }) {
             {items.map((i) => (
               <div key={i.key} className={css.card}>
                 <Pic ctx={ctx} file={i.file} />
-                <span>{i.name}</span>
+                <span className={css.name} title={i.name}>{i.name}</span>
                 <span className={css.muted}>{i.n}개</span>
                 <span className={css.hue}>{i.n >= need ? '색 바꾸기 가능' : `색 ${i.n}/${need}`}</span>
               </div>

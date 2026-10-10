@@ -136,7 +136,7 @@ export function faceEdit(ctx: Ctx, a: Appearance) {
   const load = async (p: Painter, hash: string | undefined, isClosed: boolean) => {
     if (!hash) return p.setBase(defaultFace(isClosed));
     const bytes = await ctx.files.get(hash);
-    if (!bytes) throw new Error('얼굴 그림을 불러오지 못했습니다. 잠시 뒤 다시 열어 주세요.');
+    if (!bytes) throw new Error('얼굴 그림을 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.');
     p.setBase(await createImageBitmap(new Blob([bytes as Uint8Array<ArrayBuffer>])));
   };
   const ready = Promise.all([load(open, f.open, false), load(closed, f.closed, true)]).then(() => undefined);

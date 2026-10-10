@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { defineModule } from '@core/types';
 import type { FocusApi, FocusSource } from './api';
 import { live } from './live';
-import { splitDay, step, type App, type Prev } from './logic';
+import { labelOf, splitDay, step, type App, type Prev } from './logic';
 import AppsTab from './ui/AppsTab';
 
 const Settings = z.object({
@@ -42,9 +42,9 @@ export default defineModule<FocusApi>({
         label: '시간이 쌓이는 규칙',
         widget: 'select',
         options: [
-          { value: 'foregroundUntilIdle20m', label: '등록 앱 사용 중, 입력이 20분 넘게 없으면 멈춤' },
-          { value: 'foreground', label: '등록 앱이 앞에 있는 동안' },
-          { value: 'foregroundWithInput', label: '등록 앱에서 입력하는 동안' },
+          { value: 'foregroundUntilIdle20m', label: '앱이 앞에 있는 동안 (20분 쉬면 멈춤)' },
+          { value: 'foreground', label: '앱이 앞에 있는 동안 (쉬어도 계속)' },
+          { value: 'foregroundWithInput', label: '앱에서 입력하는 동안' },
         ],
       },
       figureMode: { label: '피규어 모드 (잠든 모습 숨기기)', widget: 'toggle' },
@@ -65,6 +65,18 @@ export default defineModule<FocusApi>({
   characterStates: [
     { id: 'sleep', priority: 50, when: (seat) => (seat.self ? !live.shown : seat.m.focus?.awake === false) },
     { id: 'typing', priority: 40, when: (seat) => seat.self && seat.m.focus?.typing === true },
+  ],
+  // 처음 쓰는 사람이 잠든 까닭을 알게 내 좌석에만 띄운다. 시간이 한 번 쌓이면 다시 뜨지 않고 오늘 시간 말풍선(status)보다 낮다
+  bubbles: [
+    {
+      id: 'focus.hint',
+      priority: 90,
+      text: (seat, ctx) => {
+        if (!seat.self || live.shown || (live.api?.totalSec() ?? 0) > 0) return null;
+        const first = ctx.local.get<App[]>('device').find((a) => a !== null);
+        return first ? `${first.label || labelOf(first.key)} 쓰면 일어나요` : '집중 앱을 쓰면 일어나요';
+      },
+    },
   ],
   ui: {
     windows: [

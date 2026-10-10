@@ -218,15 +218,15 @@ export function toExport(a: Appearance, files: Record<Sha256, Uint8Array>): stri
 
 /** 캐릭터 파일을 읽는다. 외형이 쓰는 그림만 돌려준다. 맞지 않으면 사용자에게 보일 문장으로 예외 */
 export function fromExport(text: string): { appearance: Appearance; files: Array<[Sha256, Uint8Array]> } {
-  if (text.length > EXPORT_MAX_CHARS) throw new Error('파일이 너무 큽니다.');
+  if (text.length > EXPORT_MAX_CHARS) throw new Error('파일이 너무 커요.');
   let raw: unknown;
   try {
     raw = JSON.parse(text);
   } catch {
-    throw new Error('캐릭터 파일이 아닙니다.');
+    throw new Error('캐릭터 파일이 아니에요.');
   }
   const r = ExportFile.safeParse(raw);
-  if (!r.success) throw new Error('캐릭터 파일이 아니거나 그림이 너무 큽니다.');
+  if (!r.success) throw new Error('캐릭터 파일이 아니거나 그림이 너무 커요.');
   try {
     const files = fileRefs(r.data.appearance).flatMap((h): Array<[Sha256, Uint8Array]> => {
       const b64 = r.data.files[h];
@@ -234,6 +234,6 @@ export function fromExport(text: string): { appearance: Appearance; files: Array
     });
     return { appearance: r.data.appearance, files };
   } catch {
-    throw new Error('캐릭터 파일의 그림이 깨졌습니다.');
+    throw new Error('캐릭터 파일의 그림이 깨졌어요.');
   }
 }

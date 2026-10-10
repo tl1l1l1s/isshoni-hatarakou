@@ -99,12 +99,12 @@ test('첫 버전 흐름이 처음부터 끝까지 동작한다', async () => {
   await wardrobe.mouse.up();
   await expect(wardrobe.getByRole('button', { name: '되돌리기' })).toBeEnabled();
   await wardrobe.screenshot({ path: 'test-results/wardrobe-face.png' });
-  await wardrobe.getByRole('button', { name: '2 책상' }).click();
+  await wardrobe.getByRole('button', { name: '책상', exact: true }).click();
   await wardrobe.getByRole('button', { name: /나무 책상/ }).click();
   await wardrobe.waitForTimeout(300);
   await wardrobe.screenshot({ path: 'test-results/wardrobe.png' });
   await wardrobe.getByRole('button', { name: '저장' }).click();
-  await expect(stage.getByText('캐릭터를 저장했습니다')).toBeVisible();
+  await expect(stage.getByText('캐릭터를 저장했어요.')).toBeVisible();
   // 얼굴 그리기로 구운 자세 그림 세 장과 다시 고칠 편집 데이터가 저장된다
   const look = await stage.evaluate(() => (window as unknown as { core: { host: { api(id: string): { appearance(): { poses: Record<string, string | null>; bodyExt?: { face?: { open?: string } } } } } } }).core.host.api('wardrobe').appearance());
   expect(Object.values(look.poses).every(Boolean)).toBe(true);
@@ -141,7 +141,7 @@ test('첫 버전 흐름이 처음부터 끝까지 동작한다', async () => {
   const roomSettings = await windowTitled(app, '방 설정');
   await roomSettings.getByLabel('이름', { exact: true }).fill('별');
   await roomSettings.getByRole('button', { name: '그림 고르고 넣기' }).click();
-  await expect(roomSettings.getByText('아이템을 넣었습니다.')).toBeVisible();
+  await expect(roomSettings.getByText('아이템을 넣었어요.')).toBeVisible();
   await roomSettings.screenshot({ path: 'test-results/room-settings.png' });
 
   // 방에서 1시간 작업한 것으로 기록하고 한 번 뽑는다 (GCH-02, GCH-03)

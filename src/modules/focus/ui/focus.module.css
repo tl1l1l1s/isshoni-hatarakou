@@ -6,3 +6,4 @@
 /* 미니 창은 패널 바깥 여백을 줄이고 표 두 줄과 단추 하나만 둔다 */
 .mini { margin: calc(var(--sp-2) - var(--sp-5)); display: flex; flex-direction: column; gap: var(--sp-1); }
 .mini .table { margin: 0; }
+.empty { color: var(--fg-subtle); }

@@ -34,7 +34,7 @@ export default function PhoneTab({ ctx }: SlotProps) {
 
   return (
     <div>
-      <p>폰이나 태블릿에서 그리는 시간도 집중 시간으로 쌓여요. PC 앱이 켜져 있을 때만 신호를 받아요.</p>
+      <p>폰에서 그린 시간도 쌓여요. PC 앱이 켜져 있어야 해요.</p>
       <p className={css.state} data-got={got} role="status">
         {got ? '신호를 받았어요.' : state === 'drawing' && sig?.app ? `연결됨. 폰에서 ${sig.app} 쓰는 중이에요.` : SAY[state]}
       </p>
@@ -43,9 +43,9 @@ export default function PhoneTab({ ctx }: SlotProps) {
           {link ? <Qr text={link} /> : <p>안내 페이지 주소가 아직 없어요. 선물한 사람에게 알려 주세요.</p>}
           {link && <p className={css.muted}>폰 카메라로 찍으면 설정 안내가 열려요.</p>}
           <ol className={css.steps}>
-            <li>폰에서 QR을 찍어 안내 페이지를 엽니다.</li>
-            <li>안내대로 그림 앱이 열릴 때와 닫힐 때 신호를 보내는 자동화를 만듭니다. iPhone과 iPad는 단축어, 갤럭시는 MacroDroid를 씁니다.</li>
-            <li>안내 페이지의 신호 보내 보기를 누르면 여기에 신호를 받았어요가 보입니다.</li>
+            <li>폰에서 QR을 찍어 안내 페이지를 열어요.</li>
+            <li>안내대로 신호를 보내는 자동화를 만들어요.</li>
+            <li>안내 페이지에서 신호 보내 보기를 누르면 여기에 표시돼요.</li>
           </ol>
           <div className={css.row}>
             {link && <button onClick={() => run(ctx.shell.copy(link).then(() => ctx.ui.toast('링크를 복사했어요.')))}>링크 복사</button>}

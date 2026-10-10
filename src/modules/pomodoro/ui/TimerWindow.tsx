@@ -36,7 +36,7 @@ export default function TimerWindow({ ctx }: { ctx: Ctx }) {
           <button onClick={() => set((x) => (x.run ? { ...x, run: next(x, x.run, ctx.clock.now()) } : x))}>건너뛰기</button>
           <button onClick={() => set((x) => ({ ...x, run: null }))}>끝</button>
         </div>
-        <p className={css.muted}>포커스 기록은 지금처럼 따로 쌓여요. 뽀모도로는 시간을 재고 알려 주기만 해요.</p>
+        <p className={css.muted}>포커스 기록과 따로 시간을 재고 알려 주기만 해요.</p>
       </div>
     );
   }
@@ -74,7 +74,7 @@ export default function TimerWindow({ ctx }: { ctx: Ctx }) {
       <button type="submit" className={css.start} onClick={() => set((x) => ({ ...x, run: start(x, ctx.clock.now()) }))}>
         시작
       </button>
-      <p className={css.muted}>포커스 기록은 지금처럼 따로 쌓여요. 뽀모도로는 시간을 재고 알려 주기만 해요. 돌고 있는 동안 머리 위에 남은 시간이 보여요.</p>
+      <p className={css.muted}>포커스 기록과 따로 시간을 재고 알려 주기만 해요.</p>
     </div>
   );
 }

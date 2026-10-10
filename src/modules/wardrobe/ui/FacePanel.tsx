@@ -28,8 +28,6 @@ export default function FacePanel({ ctx, edit, face, body, onFace, onError }: {
   const [sym, setSym] = useState(false);
   const [erase, setErase] = useState(false);
   const [stamp, setStamp] = useState<Stamp | null>(null);
-  // 저장하지 않은 그림이 있을 때 ESC를 한 번 누르면 창을 닫기 전에 묻는다
-  const [leaving, setLeaving] = useState(false);
   const board = useRef<HTMLCanvasElement>(null);
   const stroke = useRef<Op | null>(null);
   const drag = useRef<Pt | null>(null);
@@ -84,7 +82,7 @@ export default function FacePanel({ ctx, edit, face, body, onFace, onError }: {
   };
 
   // 창 안에서 Ctrl+Z 되돌리기, Ctrl+Shift+Z 다시 하기. 한글 조합 중에는 무시한다.
-  // 여기서 처리한 ESC는 창 닫기로 넘기지 않는다
+  // 이미지 찍기를 버리는 ESC는 창 닫기로 넘기지 않는다. 저장하지 않은 그림은 창(WardrobeWindow)이 닫기 전에 묻는다
   useEffect(() => {
     const doc = board.current?.ownerDocument;
     if (!doc) return;
@@ -103,9 +101,6 @@ export default function FacePanel({ ctx, edit, face, body, onFace, onError }: {
       } else if (stamp && e.key === 'Escape') {
         consume(e);
         dropStamp();
-      } else if (e.key === 'Escape' && !leaving && (edit.open.dirty() || edit.closed.dirty())) {
-        consume(e);
-        setLeaving(true);
       }
     };
     doc.addEventListener('keydown', onKey);
@@ -114,10 +109,13 @@ export default function FacePanel({ ctx, edit, face, body, onFace, onError }: {
 
   const at = (e: PointerEvent<HTMLCanvasElement>): Pt => toLocal(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect(), FACE_SIZE);
   const down = (e: PointerEvent<HTMLCanvasElement>) => {
-    if (e.button !== 0) return;
+    // 펜 뒤쪽 지우개(button 5)는 지우개 단추를 누르지 않아도 지운다
+    const tip = e.pointerType === 'pen' && e.button === 5;
+    if (e.button !== 0 && !tip) return;
+    const rub = erase || tip;
     e.currentTarget.setPointerCapture(e.pointerId);
     if (stamp) drag.current = at(e);
-    else stroke.current = { t: 'line', color: erase ? '#000000' : color, size, erase, sym, pts: [at(e)] };
+    else stroke.current = { t: 'line', color: rub ? '#000000' : color, size, erase: rub, sym, pts: [at(e)] };
     paint();
   };
   const move = (e: PointerEvent<HTMLCanvasElement>) => {
@@ -154,19 +152,12 @@ export default function FacePanel({ ctx, edit, face, body, onFace, onError }: {
       stamp?.img.close();
       setStamp({ img, base: r, r, scale: 1 });
     } catch {
-      onError('그림 파일을 읽지 못했습니다. PNG, WebP, GIF, JPG 파일인지 확인해 주세요.');
+      onError('그림 파일을 읽지 못했어요. PNG, WebP, GIF, JPG 파일인지 확인해 주세요.');
     }
   };
 
   return (
     <div>
-      {leaving && (
-        <div role="alert" className={css.tools}>
-          <span>저장하지 않은 그림이 있어요. 창을 닫을까요?</span>
-          <button onClick={() => ctx.ui.close('wardrobe.create')}>닫기</button>
-          <button onClick={() => setLeaving(false)}>계속 그리기</button>
-        </div>
-      )}
       <div className={css.tools}>
         <span>몸 색</span>
         {SKINS.map(([c, name]) => (
@@ -193,7 +184,7 @@ export default function FacePanel({ ctx, edit, face, body, onFace, onError }: {
         <button disabled={!p.canUndo()} onClick={() => act(p.undo)}>되돌리기</button>
         <button disabled={!p.canRedo()} onClick={() => act(p.redo)}>다시 하기</button>
         <button onClick={() => act(() => p.add({ t: 'clear' }))}>지우기</button>
-        <button onClick={() => void pickStamp()}>이미지</button>
+        <button onClick={() => void pickStamp()}>그림 넣기</button>
       </div>
       {stamp && (
         <div className={css.tools}>
@@ -208,7 +199,7 @@ export default function FacePanel({ ctx, edit, face, body, onFace, onError }: {
         </div>
       )}
       <p className={css.hint}>
-        {stamp ? '그림을 끌어서 옮기고 크기를 맞춘 뒤 찍기를 눌러 주세요.' : which === 'open' ? '표정은 기본 자세와 타이핑 자세에 들어갑니다.' : '감은눈은 잠든 자세에 들어갑니다.'}
+        {stamp ? '그림을 끌어서 옮기고 크기를 맞춘 뒤 찍기를 눌러 주세요.' : which === 'open' ? '표정은 기본 자세와 타이핑 자세에 들어가요.' : '감은눈은 잠든 자세에 들어가요.'}
       </p>
       <div className={css.face}>
         <canvas ref={board} width={FACE_SIZE} height={FACE_SIZE} className={css.board} aria-label="얼굴 그림판"
@@ -222,7 +213,7 @@ export default function FacePanel({ ctx, edit, face, body, onFace, onError }: {
           ))}
         </div>
       </div>
-      {POSE_IDS.some((ps) => !face.use[ps]) && <p className={css.hint}>그림을 넣은 자세는 넣은 그림을 씁니다. 자세 그림 넣기에서 바꿀 수 있습니다.</p>}
+      {POSE_IDS.some((ps) => !face.use[ps]) && <p className={css.hint}>그림을 넣은 자세는 넣은 그림을 써요. 자세 그림 넣기에서 바꿀 수 있어요.</p>}
     </div>
   );
 }

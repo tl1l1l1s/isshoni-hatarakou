@@ -33,8 +33,23 @@ export default function EditWindow({ ctx }: { ctx: Ctx }) {
   const [pad, setPad] = useState<Pad | null>(null);
   const overlay = useRef<HTMLDivElement>(null);
   const drag = useRef<Drag | null>(null);
+  const listEl = useRef<HTMLOListElement>(null);
+  // 그림판이 열려 있으면 그린 것이 있는지 그림판이 알려 준다
+  const padDirty = useRef<() => boolean>(() => false);
+  const unsaved = useRef<() => string | null>(() => null);
+  unsaved.current = () =>
+    pad && padDirty.current() ? '그린 그림이 사라져요. 닫을까요?'
+    : JSON.stringify(edit) !== JSON.stringify(editOf(base)) ? '꾸미기를 저장하지 않았어요. 닫을까요?'
+    : null;
 
   useEffect(() => wardrobe.onChange(setBase), [wardrobe]);
+  // 저장하지 않은 꾸미기나 그림판에 그린 것이 있으면 ESC와 창 닫기 단추에서 묻는다
+  useEffect(() => ctx.ui.guard('stickers.edit', () => unsaved.current()), [ctx]);
+  // 붙이거나 순서를 바꾸거나 미리보기에서 고른 줄이 목록 밖에 있으면 목록을 스크롤해서 보이게 한다
+  // 블록으로 감싼다. Electron 44의 scrollIntoView는 Promise를 돌려주는데 그 값을 effect 정리 함수로 돌려주면 React가 멈춘다
+  useEffect(() => {
+    listEl.current?.querySelector("li[data-on='true']")?.scrollIntoView({ block: 'nearest' });
+  }, [sel]);
   useEffect(() => gacha?.onInventory(setInv), [gacha]);
   useEffect(
     () =>
@@ -68,7 +83,7 @@ export default function EditWindow({ ctx }: { ctx: Ctx }) {
     const full = capMessage(tab, list.length);
     setMsg(full ?? '');
     if (full) return;
-    setList((l) => [...l, fresh(tab, item, file, img)]);
+    setList((l) => [...l, fresh(tab, item, file, img, l)]);
     setSel(list.length);
   };
   const run = async (fn: () => Promise<void>) => {
@@ -119,7 +134,7 @@ export default function EditWindow({ ctx }: { ctx: Ctx }) {
   const save = () =>
     run(async () => {
       await wardrobe.update((a) => withEdit(a, edit));
-      ctx.ui.toast('꾸미기를 저장했습니다.');
+      ctx.ui.toast('꾸미기를 저장했어요.');
       ctx.ui.close('stickers.edit');
     });
 
@@ -147,7 +162,7 @@ export default function EditWindow({ ctx }: { ctx: Ctx }) {
   const owned = cur && inv.find((x) => x.key === cur.item);
   const hueOpen = !owned || owned.n >= need;
   const look = useMemo(() => withEdit(base, edit), [base, edit]);
-  if (pad) return <DrawPanel ctx={ctx} board={pad.board} under={pad.under} onDone={drawn} onCancel={closePad} />;
+  if (pad) return <DrawPanel ctx={ctx} board={pad.board} under={pad.under} dirty={padDirty} onDone={drawn} onCancel={closePad} />;
   return (
     <div className={css.root}>
       <div className={css.left}>
@@ -191,7 +206,7 @@ export default function EditWindow({ ctx }: { ctx: Ctx }) {
             </div>
           </div>
         ) : (
-          <p className={css.hint}>붙인 것을 고르면 끌어서 옮기고 모서리 손잡이로 크기와 회전을 맞춥니다.</p>
+          <p className={css.hint}>끌어서 옮기고 손잡이로 크기와 회전을 맞춰요.</p>
         )}
       </div>
 
@@ -205,8 +220,8 @@ export default function EditWindow({ ctx }: { ctx: Ctx }) {
             }}>{label}</button>
           ))}
         </nav>
-        <h4>붙인 것 {list.length}개 <small className={css.hint}>아래쪽이 앞에 보입니다</small></h4>
-        <ol className={css.list}>
+        <h4>붙인 것 {list.length}개 <small className={css.hint}>아래쪽이 앞에 보여요</small></h4>
+        <ol ref={listEl} className={css.list}>
           {list.map((e, i) => (
             <li key={i} data-on={i === sel}>
               {/* 고르기는 버튼이라 키보드로도 고른다. 순서와 빼기 버튼은 따로 둔다 */}
@@ -223,9 +238,9 @@ export default function EditWindow({ ctx }: { ctx: Ctx }) {
           ))}
         </ol>
         <div className={css.actions}>
+          <button disabled={busy} onClick={() => void addOwn()}>그림 넣기</button>
           <button disabled={busy} onClick={() => void openPad(false, null)}>직접 그리기</button>
           <button disabled={busy} onClick={() => void openPad(true, null)}>칠판 만들기</button>
-          {tab !== 'sticker' && <button disabled={busy} onClick={() => void addOwn()}>그림 넣기</button>}
         </div>
         <h4>보관함</h4>
         {inv.length ? (
@@ -239,7 +254,7 @@ export default function EditWindow({ ctx }: { ctx: Ctx }) {
             ))}
           </div>
         ) : (
-          <p className={css.hint}>방 가챠에서 뽑은 아이템이 여기에 나옵니다.</p>
+          <p className={css.hint}>방 가챠에서 뽑은 아이템이 여기에 나와요.</p>
         )}
       </div>
 

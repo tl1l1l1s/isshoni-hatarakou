@@ -1,6 +1,6 @@
 // 가챠 상태와 동작. 상태는 ctx마다 따로 두어 시험에서 앱 여러 개를 한 프로세스에 띄워도 섞이지 않는다
 import { useCallback, useSyncExternalStore } from 'react';
-import type { Ctx } from '@core/types';
+import { NOT_IN_ROOM, type Ctx } from '@core/types';
 import type { InventoryItem } from './api';
 import {
   applyDraw, EMPTY, inventoryOf, Item, pool, readCfg, readRec, reconcile, ROOM_TOMB, sortInventory, tickets, draw,
@@ -31,7 +31,6 @@ interface Box {
   ready: boolean;
 }
 
-export const NOT_IN_ROOM = '방에 들어가 있을 때만 가챠를 쓸 수 있습니다.';
 const boxes = new WeakMap<Ctx, Box>();
 
 function box(ctx: Ctx): Box {
@@ -123,8 +122,8 @@ export async function flush(ctx: Ctx, only?: string): Promise<void> {
 export function drawReason(ctx: Ctx): string | null {
   const v = view(ctx);
   if (!v.code) return NOT_IN_ROOM;
-  if (!pool(v.items, ctx.clock.serverNow()).length) return '뽑을 아이템이 없습니다.';
-  if (tickets(v.rec.sec + Math.floor(v.pendingSec), v.cfg.secPerTicket, v.rec.bonus, v.rec.spent) < 1) return '남은 뽑기가 없습니다.';
+  if (!pool(v.items, ctx.clock.serverNow()).length) return '뽑을 아이템이 없어요.';
+  if (tickets(v.rec.sec + Math.floor(v.pendingSec), v.cfg.secPerTicket, v.rec.bonus, v.rec.spent) < 1) return '남은 뽑기가 없어요.';
   return null;
 }
 
@@ -132,7 +131,7 @@ export function drawReason(ctx: Ctx): string | null {
 export async function drawOnce(ctx: Ctx, rnd = Math.random()): Promise<Drawn> {
   const { code, items, cfg } = view(ctx);
   const pick = draw(pool(items, ctx.clock.serverNow()), rnd);
-  if (!code || !pick) throw new Error(drawReason(ctx) ?? '뽑을 아이템이 없습니다.');
+  if (!code || !pick) throw new Error(drawReason(ctx) ?? '뽑을 아이템이 없어요.');
   await flush(ctx, code);
   let drew = false;
   const res = await ctx.server.user(['r']).transaction<Rec>(code, (cur) => {
@@ -141,7 +140,7 @@ export async function drawOnce(ctx: Ctx, rnd = Math.random()): Promise<Drawn> {
     drew = !!next && next.spent > (cur?.spent ?? 0);
     return next;
   });
-  if (!res.committed || !drew) throw new Error('남은 뽑기가 없습니다.');
+  if (!res.committed || !drew) throw new Error('남은 뽑기가 없어요.');
   const rec = readRec(res.value);
   if (ctx.room.current() === code) setRoomRec(ctx, code, rec);
   return { id: pick.id, name: pick.name, file: pick.file, n: rec.got?.[pick.id]?.n ?? 1 };

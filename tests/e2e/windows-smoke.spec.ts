@@ -117,11 +117,11 @@ test('캐릭터 만들기에서 얼굴을 한 획 그리고 저장한다', async
   await wardrobe.mouse.move(board.x + board.width * 0.7, board.y + board.height * 0.3, { steps: 10 });
   await wardrobe.mouse.up();
   await expect(wardrobe.getByRole('button', { name: '되돌리기' })).toBeEnabled();
-  await wardrobe.getByRole('button', { name: '2 책상' }).click();
+  await wardrobe.getByRole('button', { name: '책상', exact: true }).click();
   await wardrobe.getByRole('button', { name: /나무 책상/ }).click();
   await shot(wardrobe, 'wardrobe');
   await wardrobe.getByRole('button', { name: '저장' }).click();
-  await expect(stage.getByText('캐릭터를 저장했습니다')).toBeVisible();
+  await expect(stage.getByText('캐릭터를 저장했어요.')).toBeVisible();
   await expect.poll(() => wardrobe.isClosed()).toBe(true);
 });
 
@@ -192,7 +192,7 @@ test('내 방을 만들어 가챠 아이템을 넣고 한 시간 기록으로 �
   const roomSettings = await windowTitled('방 설정');
   await roomSettings.getByLabel('이름', { exact: true }).fill('별');
   await roomSettings.getByRole('button', { name: '그림 고르고 넣기' }).click();
-  await expect(roomSettings.getByText('아이템을 넣었습니다.')).toBeVisible();
+  await expect(roomSettings.getByText('아이템을 넣었어요.')).toBeVisible();
   await roomSettings.close();
   await rooms.close();
 
@@ -222,7 +222,7 @@ test('꾸미기에서 스티커를 붙여 저장한다', async () => {
   await expect(deco.getByText('붙인 것 1개')).toBeVisible();
   await shot(deco, 'stickers');
   await deco.getByRole('button', { name: '저장' }).click();
-  await expect(stage.getByText('꾸미기를 저장했습니다.')).toBeVisible();
+  await expect(stage.getByText('꾸미기를 저장했어요.')).toBeVisible();
   await expect.poll(() => deco.isClosed()).toBe(true);
 });
 
