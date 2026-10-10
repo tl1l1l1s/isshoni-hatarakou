@@ -12,14 +12,19 @@ type Tab = 'box' | 'account' | 'trash';
 
 /** 런처 안의 내 정보 화면 (SCR-03). 프로필과 친구 랭킹, 자리비움 그림, 보관함과 계정과 휴지통 탭.
  *  자리비움 그림과 보관함은 awaypic과 gacha가 account.away, account.box 슬롯에 넣는다 */
-export default function MePage({ ctx }: SlotProps) {
+export default function MePage({ ctx, windowId }: SlotProps) {
   const [tab, setTab] = useState<Tab>('box');
   // 수정으로 연 계정 탭은 닉네임 칸에 바로 들어간다. 탭 줄이 창 아래에 있으면 탭 줄을 위로 올려 계정 탭이 한 화면에 보이게 한다
   const [edit, setEdit] = useState(false);
   const nav = useRef<HTMLElement>(null);
+  // 계정 탭에 저장하지 않은 닉네임이 있으면 다른 탭으로 가기 전에 묻는다
   const pick = (t: Tab) => {
-    setTab(t);
-    setEdit(false);
+    if (t === tab) return;
+    void (windowId ? ctx.ui.confirmLeave(windowId) : Promise.resolve(true)).then((ok) => {
+      if (!ok) return;
+      setTab(t);
+      setEdit(false);
+    });
   };
   const startEdit = () => {
     setTab('account');
@@ -78,7 +83,7 @@ export default function MePage({ ctx }: SlotProps) {
         <button aria-pressed={tab === 'trash'} onClick={() => pick('trash')}>휴지통 {trash?.length ?? 0}</button>
       </nav>
       {tab === 'box' && <ctx.ui.Slot name="account.box" />}
-      {tab === 'account' && <AccountTab ctx={ctx} code={false} win="launcher.main" focusName={edit} />}
+      {tab === 'account' && <AccountTab ctx={ctx} windowId={windowId} code={false} focusName={edit} />}
       {tab === 'trash' && <Trash ctx={ctx} items={trash} reload={reload} />}
     </div>
   );

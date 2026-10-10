@@ -233,7 +233,7 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
               <button onClick={addOne}>+ 스티커</button>
               <button onClick={() => setMode('preview')}>미리보기</button>
               <button onClick={close}>취소</button>
-              <button onClick={save}>저장</button>
+              <button type="submit" onClick={save}>저장</button>
             </>
           )}
           {mode === 'preview' && <button onClick={() => setMode('edit')}>미리보기 나가기</button>}

@@ -27,15 +27,17 @@ export default function LauncherWindow({ ctx }: { ctx: Ctx }) {
     try {
       await ctx.commands.run(id);
     } catch {
-      ctx.ui.toast('지금은 열 수 없습니다');
+      ctx.ui.toast('지금은 열 수 없어요');
     }
   };
+  // 내 정보에 저장하지 않은 일이 있으면 돌아가기 전에 묻는다
+  const back = () => void ctx.ui.confirmLeave('launcher.main').then((ok) => ok && setMe(false));
 
   if (me) {
     return (
       <div>
         <div className={css.back}>
-          <button aria-label="뒤로" onClick={() => setMe(false)}>◀</button>
+          <button aria-label="뒤로" onClick={back}>◀</button>
           <h3>내 정보</h3>
         </div>
         <ctx.ui.Slot name="launcher.me" />

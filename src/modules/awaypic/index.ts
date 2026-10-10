@@ -14,7 +14,7 @@ export default defineModule({
   seatImages: [{ id: 'awaypic.pic', priority: 100, image: (seat, ctx) => seatPic(seat, ctx.mode.get() === 'quiet') }],
   ui: {
     contributions: [
-      { slot: 'settings.tabs', id: 'awaypic.tab', label: '자리비움 그림', component: Tab, order: 30 },
+      { slot: 'settings.tabs', id: 'awaypic.tab', label: '자리비움 그림', component: Tab, order: 20 },
       // 런처 내 정보 화면의 자리비움 그림 칸 (SCR-03)
       { slot: 'account.away', id: 'awaypic.me', label: '자리비움 그림', component: Tab },
     ],

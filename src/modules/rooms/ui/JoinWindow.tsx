@@ -66,7 +66,7 @@ export default function JoinWindow({ ctx }: { ctx: Ctx }) {
             ))}
           </select>
         </label>
-        <button disabled={busy} onClick={() => void run(() => createRoom(ctx, cap))}>
+        <button type="submit" disabled={busy} onClick={() => void run(() => createRoom(ctx, cap))}>
           만들기
         </button>
       </div>

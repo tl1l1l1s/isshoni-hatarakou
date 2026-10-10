@@ -245,7 +245,7 @@ export default function EditWindow({ ctx }: { ctx: Ctx }) {
 
       <div className={css.foot}>
         {msg && <p role="alert" className={css.error}>{msg}</p>}
-        <button disabled={busy} onClick={() => void save()}>저장</button>
+        <button type="submit" disabled={busy} onClick={() => void save()}>저장</button>
       </div>
     </div>
   );

@@ -162,25 +162,25 @@ export function send<K extends keyof CoreEventMap>(event: K, payload: CoreEventM
   if (stage && !stage.isDestroyed()) stage.webContents.send(`core:${event}`, payload);
 }
 
-/** 렌더러가 좌석 배율과 메뉴 높이를 맞출 작업 영역 크기. above는 스테이지 아래 가운데 점 위로 남은 높이로 메뉴가 그 안에서 커진다 */
-export function workArea(): { width: number; height: number; above: number } {
-  const d = currentDisplay();
-  const { width, height } = d.workArea;
-  return { width, height, above: Math.round((savedPlaces()[d.id]?.y ?? 1) * height) };
+/** 렌더러가 좌석 배율과 메뉴 높이를 맞출 작업 영역 크기 */
+export function workArea(): { width: number; height: number } {
+  const { width, height } = currentDisplay().workArea;
+  return { width, height };
 }
 
 /** 고른 모니터(없으면 주 모니터) 작업 영역의 끌어 둔 자리, 없으면 아래 가운데. 작업 영역 밖으로 나가지 않게 맞추고 크기와 위치가 같으면 다시 적용하지 않는다.
- *  작업 영역 크기나 남은 높이가 마지막으로 알린 것과 다르면 렌더러에 알린다 */
+ *  작업 영역 크기가 마지막으로 알린 것과 다르면 렌더러에 알린다.
+ *  ponytail: 위쪽에 끌어 둔 캐릭터의 메뉴를 열면 창이 작업 영역 안에 남도록 아래로 밀려 캐릭터가 메뉴를 닫을 때까지 내려간다. 거슬리면 메뉴를 아래로 연다 */
 let toldArea = '';
 export function place(): void {
   if (!stage) return;
   const d = currentDisplay();
-  applyBounds(stage, placeAt(d.workArea, size, savedPlaces()[d.id]));
-  const area = workArea();
-  const key = JSON.stringify(area);
+  const wa = d.workArea;
+  applyBounds(stage, placeAt(wa, size, savedPlaces()[d.id]));
+  const key = `${wa.width}x${wa.height}`;
   if (key === toldArea) return;
   toldArea = key;
-  send('stage.workArea', area);
+  send('stage.workArea', { width: wa.width, height: wa.height });
 }
 
 /** 이름표를 끄는 동안 시작할 때의 창 아래 가운데 점. 렌더러가 보낸 포인터 이동만큼 옮긴다 */
@@ -189,7 +189,7 @@ let holdUntil = 0;
 /** 끄는 동안 커서가 클릭 영역을 잠깐 벗어나도 클릭 통과로 바꾸지 않는다. 렌더러가 끝을 알리지 못해도 2초 뒤에 풀린다 */
 export const dragging = () => Date.now() < holdUntil;
 
-/** 고른 모니터의 작업 영역 안에서만 옮기고 모니터마다 자리를 기억한다. 끝나면 남은 높이를 렌더러에 알린다 */
+/** 고른 모니터의 작업 영역 안에서만 옮기고 모니터마다 자리를 기억한다 */
 export function dragStage(phase: 'start' | 'move' | 'end', dx: number, dy: number): void {
   if (!stage) return;
   if (phase === 'start') {

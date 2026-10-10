@@ -76,10 +76,9 @@ export interface CoreInvokeMap {
   'pick.escape': { args: { on: boolean }; result: void };
   /** 창 밝기 (SET-05). 모든 창의 prefers-color-scheme을 바꾼다. system은 OS 설정을 따른다 */
   'theme.set': { args: { source: 'system' | 'light' | 'dark' }; result: void };
-  /** 캐릭터가 있는 모니터의 작업 영역 크기(DIP). 스테이지가 좌석 배율을 이 안에 맞춘다. above는 스테이지 아래 가운데 점 위로 남은 높이이고
-   *  메뉴가 이 안에서 커진다. 바뀌면 stage.workArea 이벤트가 온다 */
-  'stage.workArea': { args: Record<string, never>; result: { width: number; height: number; above: number } };
-  /** 이름표를 끌어 스테이지를 옮긴다. dx, dy는 start 때 포인터 자리에서 움직인 거리(DIP)다. 메인은 끄는 동안 클릭 통과를 멈추고
+  /** 캐릭터가 있는 모니터의 작업 영역 크기(DIP). 스테이지가 좌석 배율과 메뉴 높이를 이 안에 맞춘다. 바뀌면 stage.workArea 이벤트가 온다 */
+  'stage.workArea': { args: Record<string, never>; result: { width: number; height: number } };
+  /** 이름표를 끌어 스테이지를 옮긴다. dx, dy는 pointerdown 자리에서 움직인 거리(DIP)다. 메인은 끄는 동안 클릭 통과를 멈추고
    *  고른 모니터의 작업 영역 안에서만 옮기며 자리를 모니터마다 기억한다 */
   'stage.drag': { args: { phase: 'start' | 'move' | 'end'; dx: number; dy: number }; result: void };
   /** 렌더러의 처리하지 않은 오류. 메인이 로그에 적고 자동 오류 보고로 모은다 (NFR-21) */
@@ -101,8 +100,8 @@ export interface CoreEventMap {
   'update.ready': { version: string };
   'notify.click': { id: string };
   'pick.cancel': Record<string, never>;
-  /** 캐릭터가 있는 모니터의 작업 영역 크기나 스테이지 위로 남은 높이가 바뀌었다 (모니터 바꾸기, 배율과 해상도 변경, 끌어 옮기기) */
-  'stage.workArea': { width: number; height: number; above: number };
+  /** 캐릭터가 있는 모니터의 작업 영역 크기가 바뀌었다 (모니터 바꾸기, 배율과 해상도 변경) */
+  'stage.workArea': { width: number; height: number };
   /** 메인이 스테이지 창 크기를 바꿨다. 렌더러는 창의 resize 이벤트가 오지 않아도 이 크기에 맞춰 클릭 영역을 다시 보낸다 */
   'stage.resized': { width: number; height: number };
   /** keepAlive 패널을 닫아 숨겼거나(visible false) 다시 띄웠다. name은 window.open의 창 이름.

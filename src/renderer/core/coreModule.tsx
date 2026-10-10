@@ -94,7 +94,7 @@ function SettingsWindow({ core }: { core: CoreRuntime }) {
           <button key={x.decl.id} aria-pressed={tab === x.decl.id} onClick={() => go(x.decl.id)}>{x.decl.label}</button>
         ))}
       </nav>
-      {current && Tab ? <Tab ctx={current.ctx} /> : <General core={core} />}
+      {current && Tab ? <Tab ctx={current.ctx} windowId="core.settings" /> : <General core={core} />}
     </div>
   );
 }

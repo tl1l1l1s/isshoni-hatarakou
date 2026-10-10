@@ -907,6 +907,7 @@ export class CoreRuntime {
         close: (wid) => this.windows.close(wid),
         toast: (text) => this.toast(text),
         guard: (wid, check) => scope.add(this.windows.guard(wid, check)),
+        confirmLeave: (wid) => this.windows.confirm(wid),
         Slot: this.Slot,
         CharacterPreview: this.CharacterPreview,
         pickTarget: (opts) => this.pickTarget(opts?.timeoutMs),

@@ -11,7 +11,7 @@ export type { AccountPresence, Point, SceneSpec };
 export type Dispose = () => void;
 
 /** 방 밖에서 방이 필요한 일을 하려 할 때 알리는 글. 코어가 needsRoom 메뉴 항목에 쓰고 모듈도 같은 글을 쓴다 */
-export const NOT_IN_ROOM = '방에 들어가면 쓸 수 있어요.';
+export const NOT_IN_ROOM = '방에 들어가면 쓸 수 있어요. 방 만들기 / 참여하기에서 들어가요.';
 
 /** 모듈이 declare module로 넓히는 이벤트와 공개 API 타입 */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -129,8 +129,9 @@ export interface WindowDecl {
   resizable?: boolean;
 }
 
-/** 슬롯에 넣는 화면 조각이 받는 값. seat는 좌석 슬롯(seat.badge, chip.buttons)에서만 있다 */
-export interface SlotProps { ctx: Ctx; seat?: SeatView }
+/** 슬롯에 넣는 화면 조각이 받는 값. seat는 좌석 슬롯(seat.badge, chip.buttons)에서만 있다.
+ *  windowId는 조각을 그린 패널 창 id이고 실행 화면에 그린 조각에는 없다 (ctx.ui.guard에 넘긴다) */
+export interface SlotProps { ctx: Ctx; seat?: SeatView; windowId?: string }
 
 export interface ContributionDecl {
   slot: string;
@@ -426,6 +427,8 @@ export interface Ctx {
      *  ESC, 창의 닫기 단추(제목 표시줄 ×), 설정 창 탭 바꾸기처럼 코어가 창을 닫거나 화면을 바꿀 때 그 창 안에 글과 닫기, 계속하기를 띄우고
      *  닫기를 눌러야 떠난다. 모듈이 ctx.ui.close로 닫을 때와 앱을 끝낼 때는 묻지 않는다 */
     guard(windowId: string, check: () => string | null): Dispose;
+    /** 모듈이 제 화면을 바꾸기 전에(창 안의 탭, 뒤로) 같은 물음을 띄운다. 물을 글이 없거나 닫기를 누르면 true */
+    confirmLeave(windowId: string): Promise<boolean>;
     /** 모듈 화면 안에서 다른 모듈이 슬롯에 넣은 조각을 그린다 (예: launcher.cards, rooms.settings) */
     Slot: ComponentType<{ name: string; seat?: SeatView }>;
     /** 캐릭터 미리보기. appearance를 빼면 내 지금 외형을 그린다 (런처, 캐릭터 만들기, 꾸미기) */

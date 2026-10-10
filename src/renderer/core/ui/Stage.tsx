@@ -1,4 +1,6 @@
-import { Component, Fragment, Suspense, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent, type ReactNode } from 'react';
+import {
+  Component, createContext, Fragment, Suspense, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent, type ReactNode,
+} from 'react';
 import { createPortal } from 'react-dom';
 import type { CharacterView, Point } from '@render/port';
 import type { Rect } from '../../../preload/api';
@@ -100,10 +102,10 @@ export function Stage({ core }: { core: CoreRuntime }) {
   if (fit < wanted) m = measure(fit);
   const { scale, seatSize, benchStep, left, deskOf, stageW, closedH } = m;
   // ▼ 메뉴는 항목과 설정에 묶음 사이 구분선, 다른 사용자 메뉴는 이름 줄과 항목(없으면 안내 한 줄).
-  // 스테이지 위로 남은 높이까지만 커지고 나머지는 메뉴 안에서 스크롤한다
+  // 작업 영역에 남는 높이까지만 커지고 나머지는 메뉴 안에서 스크롤한다
   const breaks = target?.self ? menuBreaks(core.registry.slot('menu.main')) : 1;
   const rows = !target ? 0 : target.self ? count('menu.main') + 1 : Math.max(1, count('seat.menu')) + 1;
-  const menuRoom = area ? area.above - closedH + MENU_CLOSED_H : Infinity;
+  const menuRoom = area ? area.height - closedH + MENU_CLOSED_H : Infinity;
   const menuH = target ? Math.max(MENU_CLOSED_H, Math.min(rows * MENU_ITEM_H + 28 + (breaks - 1) * MENU_HR_H, menuRoom)) : MENU_CLOSED_H;
   const seatOf = (key: string) => seats.find((s) => s.key === key)!;
   const seatProps = (s: SeatView): SeatProps => ({
@@ -220,13 +222,16 @@ export function Stage({ core }: { core: CoreRuntime }) {
   );
 }
 
+/** 패널 portal 안에서 그 창 id. 슬롯 조각이 SlotProps.windowId로 받는다 */
+const PanelId = createContext<string | undefined>(undefined);
+
 /** 열린 패널 창의 portal. 스테이지와 따로 열린 창 목록만 구독해서 좌석이 바뀌어도 패널을 다시 그리지 않는다.
  *  창마다 위쪽에 그 창에 뜬 알림을 두고 떠날지 묻는 중이면 그 창 안에 묻는다 */
 export function Panels({ core }: { core: CoreRuntime }) {
   const open = use(core.windows.open);
   return open.map((w) =>
     createPortal(
-      <>
+      <PanelId.Provider value={w.id}>
         <Suspense fallback={null}>
           <w.Component ctx={w.ctx} />
         </Suspense>
@@ -234,7 +239,7 @@ export function Panels({ core }: { core: CoreRuntime }) {
           <Toasts core={core} at={w.id} />
         </div>
         <Ask core={core} id={w.id} />
-      </>,
+      </PanelId.Provider>,
       w.win.document.body,
       w.id,
     ),
@@ -274,9 +279,9 @@ function Ask({ core, id }: { core: CoreRuntime; id: string }) {
   );
 }
 
-/** 캐릭터가 있는 모니터의 작업 영역 크기(DIP)와 스테이지 위로 남은 높이. 모니터나 배율이 바뀌거나 스테이지를 옮기면 메인이 다시 알려 준다. 아직 모르면 null */
-function useWorkArea(core: CoreRuntime): { width: number; height: number; above: number } | null {
-  const [area, setArea] = useState<{ width: number; height: number; above: number } | null>(null);
+/** 캐릭터가 있는 모니터의 작업 영역 크기(DIP). 모니터나 배율이 바뀌면 메인이 다시 알려 준다. 아직 모르면 null */
+function useWorkArea(core: CoreRuntime): { width: number; height: number } | null {
+  const [area, setArea] = useState<{ width: number; height: number } | null>(null);
   useEffect(() => {
     const b = core.deps.bridge;
     void b.invoke('stage.workArea', {}).then(setArea);
@@ -546,7 +551,7 @@ const groupOf = (c: { decl: ContributionDecl }) => Math.floor((c.decl.order ?? 0
 /** 묶음 수 */
 const menuBreaks = (items: Array<{ decl: ContributionDecl }>) => items.filter((c, i) => i > 0 && groupOf(c) !== groupOf(items[i - 1]!)).length + 1;
 
-/** ▼ 메뉴. 묶음 사이에 구분선을 넣고 방이 필요한 항목은 방 밖에서 흐리게 둔다. maxHeight는 스테이지 위로 남은 높이이고 넘치는 항목은 스크롤한다 */
+/** ▼ 메뉴. 묶음 사이에 구분선을 넣고 방이 필요한 항목은 방 밖에서 흐리게 둔다. maxHeight는 작업 영역에 남는 높이이고 넘치는 항목은 스크롤한다 */
 function Menu({ core, maxHeight, onClose }: { core: CoreRuntime; maxHeight: number; onClose: () => void }) {
   use(core.registry.contributions);
   const main = core.registry.slot('menu.main');
@@ -610,6 +615,7 @@ const STATE_LABEL = { online: '접속 중', away: '자리비움', busy: '바쁨'
 /** 모듈이 슬롯에 넣은 화면 조각을 그린다. 한 조각의 오류가 좌석을 멈추지 않게 각각 감싼다 */
 export function SlotItems({ core, slot, seat }: { core: CoreRuntime; slot: string; seat?: SeatView }) {
   use(core.registry.contributions);
+  const windowId = useContext(PanelId);
   return (
     <>
       {core.registry
@@ -619,7 +625,7 @@ export function SlotItems({ core, slot, seat }: { core: CoreRuntime; slot: strin
           const C = x.decl.component!;
           return (
             <Guard key={x.decl.id} id={x.decl.id} core={core}>
-              <C ctx={x.ctx} seat={seat} />
+              <C ctx={x.ctx} seat={seat} windowId={windowId} />
             </Guard>
           );
         })}

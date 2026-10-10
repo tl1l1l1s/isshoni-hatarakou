@@ -47,7 +47,7 @@
 /* 패널 창 위쪽에 뜨는 알림. 창 내용이 스크롤해도 그 자리에 있다 */
 .panelToasts { position: fixed; top: 8px; z-index: 10; }
 .toast {
-  max-width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: var(--radius-l); font-size: 12px; line-height: 1.4;
+  max-width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: var(--radius-l); font-size: 12px; line-height: 1.4; word-break: keep-all; overflow-wrap: anywhere;
   background: var(--glass-solid); color: var(--fg); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
   box-shadow: var(--shadow-md), inset 0 0 0 1px var(--glass-edge), 0 0 0 0.5px rgb(0 0 0 / 10%);
 }

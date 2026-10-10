@@ -194,7 +194,7 @@ export default function WardrobeWindow({ ctx }: { ctx: Ctx }) {
           e.target.value = '';
           if (f) void importFile(f);
         }} />
-        <button disabled={busy} onClick={() => void save()}>저장</button>
+        <button type="submit" disabled={busy} onClick={() => void save()}>저장</button>
       </div>
     </div>
   );
