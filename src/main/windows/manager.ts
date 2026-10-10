@@ -108,16 +108,25 @@ export function setPanelVisible(name: string, show: boolean): void {
     if (!visible(w.getBounds())) w.center();
     raise(w);
     if (w.isFocusable()) w.focus();
+    send('win.visibility', { name, visible: true });
     return;
   }
-  saveBounds(name, w);
-  w.hide();
+  hidePanel(name, w);
 }
 
 /** Windows에서 포커스를 받지 않는 창은 눌러도 위로 오지 않고 focus()도 듣지 않아 다른 앱 뒤에 남는다. 다시 보일 때마다 맨 위로 올린다 */
 function raise(w: BrowserWindow): void {
   w.showInactive();
   w.moveTop();
+}
+
+/** 닫아서 숨기는 keepAlive 패널. about:blank 패널은 스테이지의 backgroundThrottling: false를 그대로 물려받아 창을 숨겨도 문서가
+ *  visible로 남으므로(webContents.setBackgroundThrottling(true)로도 바뀌지 않는다) 렌더러에 알려 문서에 숨김을 반영하게 한다.
+ *  화면 숨기기(setVisible)로 함께 숨는 패널은 알리지 않아 소리가 이어진다 */
+function hidePanel(name: string, w: BrowserWindow): void {
+  saveBounds(name, w);
+  w.hide();
+  send('win.visibility', { name, visible: false });
 }
 
 /** 대상 고르기 동안만 ESC를 전역으로 받는다. 렌더러가 풀지 못해도 10초 뒤나 스테이지가 다시 읽히거나 다시 만들어질 때 푼다 */
@@ -222,6 +231,8 @@ export function createStage(): void {
       sandbox: true,
       nodeIntegration: false,
       backgroundThrottling: false,
+      // 맞춤법 검사는 쓰지 않는다. Windows에서는 켜 두면 Hunspell 사전을 내려받아 올린다. about:blank 패널과 효과 창도 이 값을 물려받는다
+      spellcheck: false,
     },
   });
   stage = win;
@@ -282,10 +293,9 @@ export function createStage(): void {
     // keepAlive 패널은 사용자가 닫아도 숨기기만 해서 렌더러의 portal(재생 중인 플레이어)을 남긴다.
     // 렌더러의 window.close()는 이 이벤트 없이 닫히므로 모듈을 내릴 때는 실제로 닫힌다
     child.on('close', (e) => {
-      saveBounds(frameName, child);
-      if (!keepAlive || quitting) return;
+      if (!keepAlive || quitting) return void saveBounds(frameName, child);
       e.preventDefault();
-      child.hide();
+      hidePanel(frameName, child);
     });
     child.on('closed', () => panels.get(frameName) === child && panels.delete(frameName));
   });

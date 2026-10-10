@@ -93,6 +93,9 @@ export interface CoreEventMap {
   'stage.workArea': { width: number; height: number };
   /** 메인이 스테이지 창 크기를 바꿨다. 렌더러는 창의 resize 이벤트가 오지 않아도 이 크기에 맞춰 클릭 영역을 다시 보낸다 */
   'stage.resized': { width: number; height: number };
+  /** keepAlive 패널을 닫아 숨겼거나(visible false) 다시 띄웠다. name은 window.open의 창 이름.
+   *  about:blank 패널은 스테이지의 backgroundThrottling: false를 물려받아 숨겨도 문서가 visible로 남으므로 코어가 이 이벤트로 문서에 반영한다 */
+  'win.visibility': { name: string; visible: boolean };
 }
 
 export type Dispose = () => void;

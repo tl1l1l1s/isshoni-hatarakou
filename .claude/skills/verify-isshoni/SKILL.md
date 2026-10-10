@@ -72,6 +72,16 @@ Playwright `_electron` API로 조작한다. `verify()` 본문이 받는 `Session
 - 동작과 결과 상태를 함께 남긴다. 저장이나 등록 같은 변경은 다른 창이나 다시 연 창에서 한 번 더 읽어서 확인한다.
 - 이 하네스는 메모리 서버와 가짜 플랫폼 위에서 돈다. Firebase 보안 규칙(`npm run test:emulator`), 실제 활성 창 감지, Windows 전용 동작(`docs/checklists/`)은 이 하네스로 증명할 수 없으니 확인하지 않은 항목으로 보고한다.
 
+## Measure
+
+`node .claude/skills/verify-isshoni/measure.ts`는 앱을 켜고 상태마다 메모리와 CPU를 잰다 (NFR-10). 빌드와 doctor 조건은 Launch와 같고 한 번 도는 데 9분쯤 걸린다. `--soak 60`처럼 소크 시간을 초로 주면 짧게 돈다.
+
+- 재는 값은 프로세스마다 `/usr/bin/footprint`의 phys_footprint(활성 상태 보기의 메모리 열), `app.getAppMetrics()`의 workingSetSize, 스테이지의 `performance.memory`와 CDP로 GC를 한 번 돌린 뒤의 힙, `ps`의 CPU 시간 차이로 구한 15초 평균 CPU(코어 하나 기준 퍼센트, 프로세스별로도 남긴다), 열린 창, 메모리 서버 구독 수, 측정을 시작한 뒤 스테이지에 새로 생겨 아직 살아 있는 타이머 수다.
+- 상태는 런처, 혼자 실행 화면, 방 2좌석과 10좌석에서 깨어 있을 때(앞 앱 clipstudiopaint.exe, 유휴 0초)와 잠들었을 때(유휴 600초), 설정과 캐릭터 만들기와 마이홈과 대화하기를 열었을 때와 닫은 뒤(1회와 3회), 플레이리스트에 유튜브 영상을 띄웠을 때와 창을 닫아 숨겼을 때, 방에서 20초마다 춤 효과를 돌리는 소크(기본 5분, 30초마다 표본)다. 10좌석은 가짜 친구 기록을 복제한 멤버 8명으로 채운다.
+- 결과는 표로 찍고 증거 폴더에 `measure.json`으로 남긴다. 소크 줄은 처음 표본과 마지막 표본의 차이로 증가를 보여 준다.
+- 이 하네스로 재지 못하는 것은 Windows의 private bytes와 실제 Firebase 리스너 수다. 메모리 서버 구독 수가 Firebase 빌드의 onValue 수와 같다.
+- 유튜브 영상은 실제로 불러오므로 네트워크가 필요하다. 없으면 플레이어가 검게 보이고 그 두 상태의 값만 달라진다.
+
 ## Cleanup
 
 `verify()`가 끝날 때 그 실행이 켠 앱을 닫고 임시 데이터 폴더를 지운다. 앱이 닫히지 않으면 그 실행이 띄운 프로세스만 종료한다. 사용자가 켠 개발판도 같은 Electron 프로세스 이름으로 떠 있을 수 있으니 정리는 항상 이 방식으로만 한다. 증거 폴더는 남긴다. 쌓인 증거는 사용자가 원할 때 `rm -rf $TMPDIR/isshoni-verify`로 지운다.
@@ -84,6 +94,7 @@ Playwright `_electron` API로 조작한다. `verify()` 본문이 받는 `Session
 - `menu(s, item, title)`은 ▼ 메뉴 항목을 눌러 열린 창을 돌려준다.
 - `windowTitled(app, title)`은 제목으로 창을 찾는다. 5초 안에 없으면 예외를 던진다.
 - `doctor()`는 문제 목록을 돌려준다. 빈 배열이면 정상이다.
+- `measure.ts`는 내보내는 것 없이 실행만 한다. Measure 절을 본다.
 - `evidenceRoot`는 증거 폴더의 상위 경로다.
 - `expect`는 `@playwright/test`의 `expect`를 그대로 내보낸 것이다. 테스트 러너 밖에서도 자동 대기와 `expect.poll`, `toPass`가 동작한다.
 

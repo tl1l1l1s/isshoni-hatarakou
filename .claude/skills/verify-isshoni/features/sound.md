@@ -61,7 +61,7 @@ Preconditions:
 - **친구 마이홈.** 프로필 줄의 `button "마이홈 보기"`(사진)나 `getByRole('button', { name: '가짜 친구', exact: true })`(이름)를 누르면 `await windowTitled(s.app, '마이홈')`이 열리고 `가짜 친구님의 마이홈에 놀러 왔어요.`가 보인다.
 - **친구가 마이홈 공개를 끔.** 가짜 친구 사본을 `home: false`로 다시 쓰고 `내 플리로`를 누른 뒤 친구를 다시 고른다. 사진과 이름은 보이지만 `button "마이홈 보기"`와 이름 버튼이 없다.
 - **파도타기.** `내 플리로`를 누른 뒤 `파도타기`를 누른다. 창 제목이 다시 `가짜 친구님의 플리`가 된다. 가짜 친구 사본을 `locked: true`로 다시 쓰고 내 플리로 돌아가 `파도타기`를 누르면 `들을 수 있는 친구 플리가 없어요`가 보인다.
-- **닫았다 다시 열기.** `await s.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((w) => w.getTitle() === '플레이리스트')?.close())`로 제목 줄 ×와 같은 동작을 한다. 상태칩 `♫`를 누르면 같은 창이 다시 보이고 소개글이 남아 있다.
+- **닫았다 다시 열기.** `await s.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((w) => w.getTitle() === '플레이리스트')?.close())`로 제목 줄 ×와 같은 동작을 한다. 닫은 동안 `p.evaluate(() => document.visibilityState)`가 `hidden`이고 재생 중이던 곡은 멈춘다. `p.frames()` 가운데 주소에 `youtube`가 든 프레임에서 `document.querySelector('video')?.paused`가 true다. 상태칩 `♫`를 누르면 같은 창이 다시 보이고 `visible`로 돌아오며 소개글이 남아 있다.
 - **알림음 세기.** 소리는 화면에 남지 않으므로 스테이지의 `OscillatorNode`와 `AudioBufferSourceNode`를 만들 때마다 수를 세는 하위 클래스로 바꿔 둔다. 알림음 1은 음 하나, 알림음 2는 둘, 알림음 3은 셋을 만든다.
 - **알림음.** 대화하기 창을 닫은 채 가짜 친구 메시지를 쓰면 실행 화면 말풍선이 뜨고 `OscillatorNode`가 1 늘어난다. `menu(s, '대화하기', '대화하기')`로 창을 연 동안의 친구 메시지와 내가 보낸 메시지에는 늘지 않는다.
 - **알림음 고르기.** `설정` 창 일반 탭에서 `await settings.getByLabel('채팅 알림음').selectOption({ label: '알림음 3' })`을 실행하면 3 늘어난다. `끄기`로 두면 메시지가 와도 늘지 않는다.
@@ -78,3 +78,4 @@ Preconditions:
 - 설정 창의 `combobox "백색소음"`은 `getByLabel('백색소음')`으로 찾으면 `백색소음 음량`과 겹친다. `getByRole('combobox', { name: '백색소음', exact: true })`로 찾는다.
 - 친구 사본을 다른 사용자 이름으로 쓰면 메모리 서버가 `PERMISSION_DENIED`로 막는다. 위의 `asFriend`처럼 로그인을 잠깐 바꿔 쓴다.
 - 축소 플레이어 크기 바꾸기와 실제 소리 출력은 Windows에서 확인하지 않았다.
+- 화면 숨기기(▪, Ctrl+Alt+H)로 함께 숨긴 플레이리스트 창은 `visible`로 남아 곡이 이어진다. 창을 닫아 숨길 때만 멈춘다.

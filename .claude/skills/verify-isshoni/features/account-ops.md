@@ -58,3 +58,5 @@ Preconditions:
 - 회사원 모드에서는 ✉와 확성기 말풍선이 보이지 않는다. 새 세션은 회사원 모드가 꺼져 있다.
 - 기간 이벤트를 동물 캐릭터 만들기 단추로 확인하지 않는다. 해금 레벨에 한 번 닿으면 그 PC에서는 다시 잠기지 않는다(GRW-03).
 - 실제 Firebase에서 두 PC로 고르기 창이 뜨는지는 이 하네스로 확인할 수 없다.
+- **디스코드 웹훅.** 메인에서 `net.fetch`를 가로채 기록하고 스테이지에서 `core.deps.server.docs({ scope: 'global', module: 'report' }).set('tunables', { webhook: 'https://discord.com/api/webhooks/123/abc' })`을 쓴 뒤 버그제보를 보내면 기록된 POST 하나의 본문이 `[버그 제보] 이름 (v버전)` 머리줄과 글을 담은 JSON이다. `ctx.net.post`에 다른 호스트를 주면 `보낼 수 없는 주소입니다` 예외가 난다. 실제 디스코드로는 보내지 않는다.
+
