@@ -28,7 +28,7 @@ Preconditions:
 - 새 `verify()` 세션에서 시작하기를 눌러 실행 화면에 있다.
 
 - **방 창 열기.** `const rooms = await menu(s, '방 만들기 / 참여하기', '방 만들기 / 참여하기')`를 실행한다. ARIA에 `heading "새 방 만들기"`, `combobox "정원"`, `heading "코드로 참여하기"`, `textbox "예: 7Q2K9M"`이 있다.
-- **코드로 참여.** `await rooms.getByPlaceholder('예: 7Q2K9M').fill('devdev')`와 `await rooms.getByRole('button', { name: '참여' }).click()`을 실행한다. 실행 화면에 `가짜 친구` 이름표가 보이고 방 창에 `DEVDEV`와 `2명 / 정원 10명`이 보인다.
+- **코드로 참여.** `await rooms.getByPlaceholder('예: 7Q2K9M').fill('devdev')`와 `await rooms.getByRole('button', { name: '참여' }).click()`을 실행한다. 실행 화면에 `가짜 친구` 이름표가 보이고 방 창에 `DEVDEV`와 `2명 / 정원 5명`이 보인다.
 - **다른 사용자 메뉴 열기.** `await s.stage.getByRole('button', { name: '가짜 친구 메뉴' }).click()`을 실행한다. 이 버튼은 `가짜 친구` 이름표다. `menu "가짜 친구"`가 나타나고 그 안에 `menuitem "친구 신청"`이 있다. 누르기 전에 잰 실행 화면 높이 `h0`보다 커진다. `await expect.poll(() => s.stage.evaluate(() => window.innerHeight)).toBeGreaterThan(h0)`로 확인한다.
 - **다른 사용자 메뉴 닫기.** 같은 버튼을 다시 누른다. `menu "가짜 친구"`가 사라진다.
 - **오른쪽 클릭.** `await s.stage.getByRole('button', { name: '가짜 친구 쓰다듬기' }).click({ button: 'right' })`를 실행한다. 같은 메뉴가 열리고 한 번 더 오른쪽 클릭하면 닫힌다.

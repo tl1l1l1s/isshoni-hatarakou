@@ -1045,7 +1045,7 @@
               ".write": "auth != null && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists())",
               ".validate": "newData.hasChildren(['cap', 'v'])",
               "cap": {
-                ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 2 && newData.val() <= 10"
+                ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 2 && newData.val() <= 5"
               }
             }
           }

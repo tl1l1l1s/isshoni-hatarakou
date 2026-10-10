@@ -8,7 +8,8 @@ import css from './chat.module.css';
 /** 상태칩의 💬와 안 읽은 수 (COM-02). 방에 있고 채팅이 켜져 있을 때만 보인다 */
 export function ChatChip({ ctx, seat }: SlotProps) {
   const v = useChat(ctx);
-  if (!seat?.self || !v.code || !v.on) return null;
+  // 안 읽은 글이 있을 때만 보인다. 창 열기는 ▼ 메뉴에 있다
+  if (!seat?.self || !v.code || !v.on || v.unread === 0) return null;
   return (
     <button className={css.pill} title="대화하기" onClick={() => ctx.ui.open(WINDOW)}>
       💬{v.unread > 0 && <span className={css.count}>{badge(v.unread)}</span>}

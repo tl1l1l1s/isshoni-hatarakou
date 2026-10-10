@@ -14,7 +14,7 @@ export const DAY_BOUNDARY_MS = 6 * 3_600_000;
 
 /** 방 정원 (9.3 OUR-01) */
 export const ROOM_CAP_MIN = 2;
-export const ROOM_CAP_MAX = 10;
+export const ROOM_CAP_MAX = 5;
 export const ROOM_CODE_LENGTH = 6;
 /** 0, 1, I, O를 뺀 32자 (5장 ROM-06) */
 export const CODE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
