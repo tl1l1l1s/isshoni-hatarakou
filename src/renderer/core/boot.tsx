@@ -13,12 +13,14 @@ import { JsonFile, emptySettings, isSettingsFile } from './persist';
 import { CoreRuntime } from './runtime';
 import type { ModuleManifest } from './types';
 import { coreModule } from './coreModule';
-import { CharacterPreview, Panels, SlotItems, Stage } from './ui/Stage';
+import { CharacterPreview, Guard, Panels, SlotItems, Stage } from './ui/Stage';
 import { standardsMode } from './ui/windows';
 
 type Profile = { name?: string; friendCode?: string };
 /** 부팅 중 서버 읽기를 기다리는 시간. 오프라인이면 Firebase 읽기는 연결될 때까지 끝나지 않는다 */
 const BOOT_READ_MS = 3_000;
+/** 문서를 연 지 이만큼 지난 뒤의 실행 화면 렌더 오류만 다시 읽어 고친다. 켜자마자 깨지면 다시 읽어도 같아서 되풀이하지 않는다 */
+const STAGE_RELOAD_AFTER_MS = 15_000;
 
 /** 부팅 순서 (10.4). 단계마다 앞 단계가 끝난 뒤 시작하고 고정 지연은 쓰지 않는다 */
 export async function boot(root: HTMLElement): Promise<void> {
@@ -72,7 +74,10 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   createRoot(root).render(
     <>
-      <Stage core={core} />
+      {/* 실행 화면이 렌더 오류로 비면 앱이 보이지 않으므로 다시 읽는다. 켜자마자 다시 깨지면 되풀이하지 않고 보고만 한다 */}
+      <Guard id="stage" core={core} type="renderer.stage" onError={() => performance.now() > STAGE_RELOAD_AFTER_MS && void bridge.invoke('stage.reload', {})}>
+        <Stage core={core} />
+      </Guard>
       <Panels core={core} />
     </>,
   );

@@ -20,6 +20,23 @@ export function pushKeyTime(ms: number): string {
   return s;
 }
 
+/** push 키 앞 8글자에 담긴 만든 시각. 보낸 앱이 어림한 서버 시각이다 */
+export function keyTime(key: string): number {
+  let ms = 0;
+  for (const ch of key.slice(0, 8)) ms = ms * 64 + PUSH_CHARS.indexOf(ch);
+  return ms;
+}
+
+/** 서버가 거부한 쓰기의 안내. 메모리 서버도 같은 글을 써서 시험이 같은 글을 본다 */
+export const WRITE_DENIED = '권한이 없어 저장하지 못했어요. 방이 지워졌거나 계정 설정이 바뀌었을 수 있어요.';
+
+/** 쓰기 실패를 사용자에게 보일 글로 바꾼다. 모듈은 e.message를 그대로 띄우므로 원래 오류는 cause와 code에 남긴다 */
+export function writeError(e: unknown): Error {
+  const code = (e as { code?: unknown } | null)?.code;
+  const text = code === 'PERMISSION_DENIED' ? WRITE_DENIED : '저장하지 못했어요. 인터넷 연결을 확인하고 다시 해 주세요.';
+  return Object.assign(new Error(text), { cause: e, code });
+}
+
 /** Firebase가 빈 m을 저장하지 않으므로 빈 값을 채운다 */
 export function toPresence(v: unknown): AccountPresence | null {
   if (typeof v !== 'object' || v === null) return null;
@@ -37,7 +54,7 @@ export const isInc = (v: unknown): v is { $inc: number } =>
 /** files/{sha256}에 올릴 해시와 base64. base64로 64KB를 넘으면 받지 않는다 */
 export async function encodeFile(bytes: Uint8Array): Promise<{ hash: string; b64: string }> {
   if (Math.ceil(bytes.length / 3) * 4 > FILE_MAX_BASE64_BYTES) {
-    throw new Error(`파일이 너무 큽니다. 약 ${Math.floor(FILE_MAX_RAW_BYTES / 1024)}KB까지 올릴 수 있습니다.`);
+    throw new Error(`파일이 너무 커요. 약 ${Math.floor(FILE_MAX_RAW_BYTES / 1024)}KB까지 올릴 수 있어요.`);
   }
   let bin = '';
   for (const b of bytes) bin += String.fromCharCode(b);

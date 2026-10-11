@@ -154,7 +154,8 @@ export function coreRules(): RuleNode {
           '.read': `${AUTH} && data.child(auth.uid).exists()`,
           $uid: {
             '.read': OWN,
-            '.write': `${OWN} && !data.exists() && ${ROOM('meta')}.exists() && ${NOT_DELETED}`,
+            // 본인 칸을 지우지 않은 방에 만들기만 하고 스스로 나갈 때 지운다. 지우면 그 방 기록을 더 읽지 못한다 (0031)
+            '.write': `${OWN} && (!newData.exists() || (!data.exists() && ${ROOM('meta')}.exists() && ${NOT_DELETED}))`,
             '.validate': 'newData.isNumber()',
           },
         },

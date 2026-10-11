@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { defineModule, type SlotProps } from '@core/types';
 import { Sha256 } from '@shared/schemas';
 import type { AccountApi } from './api';
+import { pickPhoto } from './logic';
 import AccountTab from './ui/AccountTab';
 import { photoFor } from './ui/Photo';
 
@@ -35,6 +36,6 @@ export default defineModule<AccountApi>({
     const keep = () => void (ctx.self.name() !== local() && ctx.local.update('account', () => ({ name: ctx.self.name() })));
     keep();
     ctx.self.onChange(keep);
-    return { Photo: photoFor(ctx) };
+    return { Photo: photoFor(ctx), pickPhoto: () => pickPhoto(ctx) };
   },
 });

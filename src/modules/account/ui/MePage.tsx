@@ -37,7 +37,7 @@ export default function MePage({ ctx, windowId }: SlotProps) {
   const [trash, reload] = useTrash(ctx);
   const code = ctx.self.friendCode();
   const level = ctx.modules.get('growth')?.levelText();
-  const copy = () => ctx.shell.copy(code ?? '').then(() => ctx.ui.toast('친구 코드를 복사했어요'), () => ctx.ui.toast('복사하지 못했어요'));
+  const copy = () => ctx.shell.copy(code ?? '').then(() => ctx.ui.toast('친구 코드를 복사했어요.'), () => ctx.ui.toast('복사하지 못했어요. 코드를 직접 알려 주세요.'));
   // 친구가 있을 때만 왕관을 씌운다. 혼자서 1위는 뜻이 없다
   const first = rank !== null && rank.of > 1 && rank.at === 1;
 
@@ -50,16 +50,20 @@ export default function MePage({ ctx, windowId }: SlotProps) {
         </span>
         <div className={css.who}>
           <div className={css.line}>
-            <strong className={css.name}>{name || '이름 없음'}</strong>
+            <strong className={css.name} title={name || '이름 없음'}>{name || '이름 없음'}</strong>
             {level !== undefined && <span className={css.lv}>{level}</span>}
             <button className={css.small} onClick={startEdit}>수정</button>
           </div>
-          {code && (
-            <div className={css.line}>
-              <span className={css.hint}>친구 코드 {code}</span>
-              <button className={css.small} onClick={() => void copy()}>복사</button>
-            </div>
-          )}
+          <div className={css.line}>
+            {code ? (
+              <>
+                <span className={css.hint}>친구 코드 {code}</span>
+                <button className={css.small} onClick={() => void copy()}>코드 복사</button>
+              </>
+            ) : (
+              <span className={css.hint}>연결되면 친구 코드가 보여요.</span>
+            )}
+          </div>
         </div>
         <div className={css.rank} aria-label="친구 랭킹">
           <small>친구 랭킹</small>

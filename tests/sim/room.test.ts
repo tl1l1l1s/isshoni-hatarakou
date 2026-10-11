@@ -91,6 +91,19 @@ describe('방 시뮬레이터', () => {
     expect(hub.read(`rooms/${code}/members/carol_pc`)).toBeNull();
   });
 
+  it('방에 있는 동안 최소 프로토콜이 올라가면 옛 앱은 다음 seenAt 쓰기에서 나가며 업데이트를 알린다', async () => {
+    const a = await client('alice', 'pc', PROTO + 1);
+    const b = await client('bob');
+    const code = await a.session.create();
+    expect(await a.session.join(code)).toEqual({ ok: true });
+    expect(await b.session.join(code)).toEqual({ ok: true });
+    hub.write('config/minProtocol', PROTO + 1);
+    await vi.advanceTimersByTimeAsync(2 * 60_000);
+    expect(b.session.current()).toBeNull();
+    expect(b.kicked).toEqual(['앱을 새 버전으로 업데이트해야 방에 들어갈 수 있어요.']);
+    expect(a.sees()).toEqual(['alice']);
+  });
+
   it('주인이 방을 지우면 멤버가 나가고 다시 들어가지 못한다', async () => {
     const { a, b, code } = await room();
     await expect(b.session.remove(code)).rejects.toThrow('방 주인만');
@@ -98,8 +111,8 @@ describe('방 시뮬레이터', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(a.session.current()).toBeNull();
     expect(b.session.current()).toBeNull();
-    expect(b.kicked).toEqual(['주인이 방을 지웠습니다.']);
-    expect(await b.session.join(code)).toEqual({ ok: false, reason: '주인이 지운 방입니다.', kind: 'gone' });
+    expect(b.kicked).toEqual(['주인이 방을 지웠어요.']);
+    expect(await b.session.join(code)).toEqual({ ok: false, reason: '주인이 지운 방이에요.', kind: 'gone' });
     // meta와 roster는 남는다
     expect(hub.read(`rooms/${code}/meta/owner`)).toBe('alice');
     expect(hub.read(`rooms/${code}/roster/bob`)).not.toBeNull();

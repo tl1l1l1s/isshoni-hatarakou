@@ -50,15 +50,22 @@ function draw(pose: PoseId): ImageBitmap {
     blob(60, 172, 13, 9, paw);
     blob(100, 172, 13, 9, paw);
   } else {
-    // 감은 눈과 z
+    // 감은 눈과 z. z는 머리 오른쪽 옆에 두어 머리 위 말풍선(서 있는 몸 위)과 겹치지 않게 하고
+    // 어두운 바탕화면에서도 보이게 흰 테두리를 먼저 그린다
     arc(62, 124, 6);
     arc(98, 124, 6);
     blob(80, 146, 2.5, 2, ink, false);
-    g.fillStyle = ink;
-    g.font = 'bold 22px sans-serif';
-    g.fillText('z', 124, 76);
-    g.font = 'bold 15px sans-serif';
-    g.fillText('z', 142, 58);
+    const z = (size: number, x: number, y: number) => {
+      g.font = `bold ${size}px sans-serif`;
+      g.lineJoin = 'round';
+      g.lineWidth = 4;
+      g.strokeStyle = '#fff';
+      g.strokeText('z', x, y);
+      g.fillStyle = ink;
+      g.fillText('z', x, y);
+    };
+    z(22, 131, 104);
+    z(15, 147, 88);
   }
   return c.transferToImageBitmap();
 }

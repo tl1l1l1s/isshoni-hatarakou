@@ -239,13 +239,14 @@ function fakeEffectDom() {
   return { canvases: () => made.filter((t) => t === 'canvas').length };
 }
 
-it('효과: detach 두 개가 모두 끝나야 좌석에 돌아오고 끝난 효과와 타이머는 모듈 정리 목록에서 빠지며 canvas는 쓸 때만 만든다', async () => {
+it('효과: 한 좌석에는 마지막 detach 효과 하나만 돌고 끝난 효과와 타이머는 모듈 정리 목록에서 빠지며 canvas는 쓸 때만 만든다', async () => {
   const dom = fakeEffectDom();
   let runs = 0;
+  let disposed = 0;
   const demo = defineModule({
     id: 'demo',
     effects: [
-      { id: 'demo.fly', detach: true, loop: true, run: () => (runs++, () => {}) },
+      { id: 'demo.fly', detach: true, loop: true, run: () => (runs++, () => void disposed++) },
       { id: 'demo.pop', durationMs: 20, run: () => (runs++, () => {}) },
       { id: 'demo.draw', durationMs: 20, run: (s) => (runs++, s.canvas.getContext('2d'), () => {}) },
     ],
@@ -261,12 +262,17 @@ it('효과: detach 두 개가 모두 끝나야 좌석에 돌아오고 끝난 효
   const base = scoped();
 
   const one = ctx.render.playEffect('alice_pc', 'demo.fly');
+  await vi.waitFor(() => expect(runs).toBe(1));
+  expect(core.away.get().has('alice_pc')).toBe(true);
+  // 같은 좌석에 detach 효과가 또 오면 앞의 것을 끝내서 같은 캐릭터가 둘로 보이지 않는다
   const two = ctx.render.playEffect('alice_pc', 'demo.fly');
   await vi.waitFor(() => expect(runs).toBe(2));
+  expect(disposed).toBe(1);
   expect(core.away.get().has('alice_pc')).toBe(true);
   one();
   expect(core.away.get().has('alice_pc')).toBe(true);
   two();
+  expect(disposed).toBe(2);
   expect(core.away.get().has('alice_pc')).toBe(false);
   expect(dom.canvases()).toBe(0);
 
@@ -312,6 +318,64 @@ it('패널 ESC: 모듈이 이미 처리한 ESC(defaultPrevented)는 창을 닫�
   dirty = true;
   off();
   expect(await core.windows.confirm('demo.w')).toBe(true);
+});
+
+it('ask는 정한 글과 단추로 묻고 창이 보이지 않으면 묻지 않고 false. confirmLeave도 글과 단추를 바꾼다', async () => {
+  const { core } = await boot([]);
+  const ui = core.ctxs.get('core')!.ctx.ui;
+  core.windows.live = () => false;
+  expect(await ui.ask('demo.w', { text: '지울까요?', ok: '지우기' })).toBe(false);
+  core.windows.live = () => true;
+  const asked = ui.ask('demo.w', { text: '지울까요?', ok: '지우기' });
+  expect(core.windows.asking.get()).toMatchObject({ id: 'demo.w', text: '지울까요?', ok: '지우기', cancel: '취소' });
+  core.windows.asking.get()!.answer(true);
+  expect(await asked).toBe(true);
+  ui.guard('demo.w', () => '캐릭터를 저장하지 않았어요. 닫을까요?');
+  const leave = ui.confirmLeave('demo.w', { text: '캐릭터를 저장하지 않았어요. 바꿀까요?', ok: '바꾸기' });
+  expect(core.windows.asking.get()).toMatchObject({ text: '캐릭터를 저장하지 않았어요. 바꿀까요?', ok: '바꾸기', cancel: '계속하기' });
+  core.windows.asking.get()!.answer(false);
+  expect(await leave).toBe(false);
+});
+
+it('회사원 모드에서는 OS 알림을 띄우지 않는다', async () => {
+  const { core, invoked } = await boot([]);
+  const ctx = core.ctxs.get('core')!.ctx;
+  ctx.mode.set('quiet');
+  ctx.notify({ title: '가짜 친구', body: '회사 비밀', onClick: () => {} });
+  ctx.mode.set('normal');
+  ctx.notify({ title: '가짜 친구', body: '보통', onClick: () => {} });
+  await Promise.resolve();
+  expect(invoked.filter(([ch]) => ch === 'notify.show').map(([, a]) => (a as { body: string }).body)).toEqual(['보통']);
+});
+
+it('연결: 끊긴 지 5초가 지나야 offline이 켜지고 다시 연결되면 한 번 알린다. 끊긴 동안 닉네임 저장과 방 이벤트는 바로 실패한다', async () => {
+  vi.useFakeTimers();
+  const demo = defineModule({ id: 'demo', roomEvents: { wave: { schema: z.object({}) } }, setup: () => undefined });
+  const { core } = await boot([demo]);
+  const ctx = core.ctxs.get('demo')!.ctx;
+  const server = core.deps.server as MemoryServer;
+  const seen: boolean[] = [];
+  ctx.connection.onChange((on) => seen.push(on));
+  await ctx.room.join(await ctx.room.create());
+  server.goOffline({ abrupt: true });
+  expect(ctx.connection.online()).toBe(false);
+  expect(ctx.room.emit('wave', {})).toBe(false);
+  await expect(ctx.self.setName('끊긴 이름')).rejects.toThrow('연결이 끊겨서');
+  await vi.advanceTimersByTimeAsync(4_000);
+  expect(core.offline.get()).toBe(false);
+  await vi.advanceTimersByTimeAsync(1_500);
+  expect(core.offline.get()).toBe(true);
+  server.goOnline();
+  expect(core.offline.get()).toBe(false);
+  expect(core.toasts.get().map((t) => t.text)).toEqual(['다시 연결됐어요.']);
+  expect(seen).toEqual([false, true]);
+  // 짧게 끊겼다 이어지면 보이지 않는다
+  server.goOffline({ abrupt: true });
+  await vi.advanceTimersByTimeAsync(1_000);
+  server.goOnline();
+  await vi.advanceTimersByTimeAsync(10_000);
+  expect(core.offline.get()).toBe(false);
+  vi.useRealTimers();
 });
 
 it('알림은 방금 쓴 패널에 뜨고 그 패널이 닫히면 런처 화면에서는 런처에, 실행 화면에서는 스테이지에 뜬다. 두 개까지만 남는다', async () => {

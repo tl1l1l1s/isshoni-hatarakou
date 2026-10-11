@@ -57,11 +57,11 @@ Preconditions:
 - **회사원 모드.** 설정 창 `화면` 탭의 `회사원 모드`를 체크한다([설정 창](./settings.md)). 흐르던 효과 창이 닫히고 대화하기 창에서 `날리기`가 사라진다. ▼ 메뉴 `러시안룰렛`은 `회사원 모드에서는 쓸 수 없어요.` 안내를 띄우고 다른 사용자 메뉴에 `폭탄 던지기`가 없다. 체크를 풀어 되돌린다.
 - **💣와 캐릭터 고르기.** 대화하기 창 `chat.getByTitle('폭탄')`(글자는 `💣 폭탄 던지기`)을 누르면 실행 화면에 `누구에게 할지 캐릭터를 눌러 주세요`가 뜬다. `button "가짜 친구 고르기"`를 누르면 쓰다듬지 않고 효과 창이 열리며 가짜 친구가 날아간다.
 - **춤 명령과 깜짝쇼.** 날리기를 끄고 `/80`을 보낸다. 내 캐릭터가 춤추고 대화 기록에 `/80`이 없다. 춤 사이에는 5초를 기다려야 하므로 `expect.poll(() => s.stage.evaluate(() => core.registry.reason('play.dance'))).toBeNull()`로 기다린 뒤 두 번 더 보낸다. 세 번째에 `이름 없음님의 깜짝쇼예요`가 뜨고 가짜 친구가 날아간다. `/150`도 같은 방법으로 보낸다.
-- **받은 신호.** 가짜 친구는 신호를 보내지 못해서 서버가 준 것처럼 세션에 넣는다. 30초가 지난 신호는 버리고 새 신호만 보인다.
+- **받은 신호.** 가짜 친구는 신호를 보내지 못해서 서버가 준 것처럼 세션에 넣는다. 30초가 지난 신호는 버리고 새 신호만 보인다. 키는 `devHub.pushKey()`로 만든다. 세션은 키에 담긴 보낸 시각보다 서버 시각 `at`이 60초 넘게 늦은 신호를 버리므로 아무 글자로 만든 키는 버려진다.
   ```ts
   await s.stage.evaluate(([t, p, ago]) => {
-    const c = (window as any).core;
-    c.session.onEvents([{ key: `fake-${Math.random()}`, t, uid: 'devfriend', at: c.deps.server.time.serverNow() - ago, p: JSON.stringify(p) }]);
+    const w = window as any;
+    w.core.session.onEvents([{ key: w.devHub.pushKey(), t, uid: 'devfriend', at: w.core.deps.server.time.serverNow() - ago, p: JSON.stringify(p) }]);
   }, ['play.pet', { to: me }, 0] as const);
   ```
   `play.hit`을 `{ from: 'devfriend_dev', to: me, seed: 5 }`로 넣으면 내 캐릭터가 납작해지고 `💫`가 뜬다. `play.shake`를 `{ to: me }`로 넣으면 `💫`만 뜨고 31초 전 시각으로 넣은 `play.shake`는 아무것도 띄우지 않는다.

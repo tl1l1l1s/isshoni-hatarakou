@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react';
 import type { Bridge } from '../../../preload/api';
-import type { Ctx, Dispose, WindowDecl } from '../types';
+import type { AskQuestion, Ctx, Dispose, WindowDecl } from '../types';
 import { createStore } from '../store';
 
 export interface OpenWindow {
@@ -20,8 +20,8 @@ const USER_OPEN_MS = 5_000;
  *  모듈은 ctx.ui.open만 부르므로 창마다 렌더러를 따로 두는 방식으로 바꿔도 모듈 코드는 그대로다. */
 export class WindowClient {
   readonly open = createStore<OpenWindow[]>([]);
-  /** 떠나기 전에 묻는 중인 창과 글 (ctx.ui.guard). 패널 portal이 그 창 안에 그린다 */
-  readonly asking = createStore<{ id: string; text: string; answer: (leave: boolean) => void } | null>(null);
+  /** 묻는 중인 창과 글, 단추 이름 (ctx.ui.guard, ask). 패널 portal이 그 창 안에 그린다. answer(true)는 ok 단추다 */
+  readonly asking = createStore<{ id: string; text: string; ok: string; cancel: string; answer: (ok: boolean) => void } | null>(null);
   private styleObserver: MutationObserver | null = null;
   /** 여는 중인 창 id. 빠르게 두 번 열면 같은 창에 keydown이 두 번 붙는다 */
   private opening = new Set<string>();
@@ -124,17 +124,23 @@ export class WindowClient {
     return () => void set.delete(check);
   }
 
-  /** 떠나도 되는지. 물을 글이 있으면 그 창 안에 묻고 닫기를 누르면 true */
-  confirm(id: string): Promise<boolean> {
+  /** 떠나도 되는지. 물을 글이 있으면 그 창 안에 묻고 닫기를 누르면 true. q로 글과 단추 이름을 바꾼다 */
+  confirm(id: string, q: Partial<AskQuestion> = {}): Promise<boolean> {
     const text = this.question(id);
     if (!text || !this.live(id)) return Promise.resolve(true);
+    return this.ask(id, { text: q.text ?? text, ok: q.ok ?? '닫기', cancel: q.cancel ?? '계속하기' });
+  }
+
+  /** ctx.ui.ask. 창이 보이지 않으면 묻지 않고 false */
+  ask(id: string, q: AskQuestion): Promise<boolean> {
+    if (!this.live(id)) return Promise.resolve(false);
     this.asking.get()?.answer(false);
     return new Promise((resolve) => {
-      const answer = (leave: boolean) => {
+      const answer = (ok: boolean) => {
         if (this.asking.get()?.answer === answer) this.asking.set(null);
-        resolve(leave);
+        resolve(ok);
       };
-      this.asking.set({ id, text, answer });
+      this.asking.set({ id, text: q.text, ok: q.ok, cancel: q.cancel ?? '취소', answer });
     });
   }
 

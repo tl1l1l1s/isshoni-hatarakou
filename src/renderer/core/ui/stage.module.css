@@ -56,9 +56,26 @@
   background: var(--glass-solid); color: var(--fg); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
   box-shadow: var(--shadow-md), inset 0 0 0 1px var(--glass-edge), 0 0 0 0.5px rgb(0 0 0 / 10%);
 }
-.state { width: 7px; height: 7px; border-radius: 50%; background: var(--state-online); flex: none; box-shadow: 0 0 0 2px rgb(255 255 255 / 14%); }
-.state[data-state='away'] { background: var(--state-away); }
+.state { position: relative; width: 9px; height: 9px; box-sizing: border-box; border-radius: 50%; background: var(--state-online); flex: none; box-shadow: 0 0 0 2px rgb(255 255 255 / 14%); }
+/* 색을 가리기 어려워도 모양으로 나눈다. 자리비움은 속이 빈 고리, 바쁨은 가로 막대가 든 점이고 이름 뒤에 글도 붙는다 */
+.state[data-state='away'] { background: transparent; border: 2px solid var(--state-away); }
 .state[data-state='busy'] { background: var(--state-busy); }
+.state[data-state='busy']::after { content: ''; position: absolute; left: 2px; right: 2px; top: 3.5px; height: 2px; border-radius: 1px; background: #fff; }
+.stateText { flex: none; font-size: 11px; }
+/* 올라탄 캐릭터의 이름 (COM-16). 이름표는 제자리에 남으므로 몸에 붙인다 */
+.towerName {
+  position: absolute; transform-origin: 100% 50%; max-width: 80px; height: 18px; padding: 0 6px; box-sizing: border-box; border-radius: 9px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; line-height: 18px; pointer-events: none; z-index: 1;
+  background: var(--chip-bg); color: var(--chip-fg); box-shadow: inset 0 0 0 1px var(--chip-edge);
+}
+/* 서버 연결 끊김 (0031). 상태칩 줄의 칩과 창 위쪽 띠 */
+:where(.chipBox) > button.offline { box-shadow: inset 0 0 0 1.5px var(--chip-fg); font-weight: 600; }
+.offlineBand {
+  position: sticky; top: calc(-1 * var(--sp-5)); z-index: 5; margin: calc(-1 * var(--sp-5)) calc(-1 * var(--sp-5)) var(--sp-3); padding: 6px var(--sp-5);
+  background: var(--accent); color: var(--on-accent); font-size: 12px; font-weight: 500;
+}
+/* 읽지 않은 수 배지 ([data-unread], theme.css)를 상태칩 단추 오른쪽 위에 붙인다 */
+:where(.chipBox) > button > [data-unread] { position: absolute; top: -6px; right: -6px; box-shadow: 0 0 0 1.5px var(--chip-bg); }
 /* 메뉴 칩이 첫째 줄 오른쪽 끝에 머물도록 오른쪽부터 채운다. 칩 사이 빈 곳을 끌어도 스테이지를 옮긴다 */
 .chipBox { display: flex; flex-direction: row-reverse; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; width: 160px; touch-action: none; }
 .chipBox:not(.chipCol) > .menuChip { order: -1; }
@@ -72,7 +89,7 @@
 .seat[data-side='left'] > .chipCol { align-items: flex-end; }
 /* 머리 위 말풍선. 글은 두 줄까지 보이고 넘치면 줄인다. 좌석 칸 오른쪽 끝에 눌려 좁아지지 않게 폭을 글 길이로 둔다 */
 .bubble {
-  position: absolute; transform-origin: 50% 100%; width: max-content; max-width: 150px; box-sizing: border-box; padding: 5px 10px; border-radius: 12px;
+  position: absolute; transform-origin: 50% 100%; width: max-content; max-width: var(--bubble-max, 150px); box-sizing: border-box; padding: 5px 10px; border-radius: 12px;
   background: var(--glass-solid); color: var(--fg); font-size: 11px; font-weight: 500; line-height: 1.3;
   pointer-events: none; z-index: 1;
   -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);

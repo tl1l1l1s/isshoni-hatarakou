@@ -1,5 +1,5 @@
 import {
-  Component, createContext, Fragment, Suspense, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent, type ReactNode,
+  Component, createContext, Fragment, Suspense, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type PointerEvent, type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
 import type { CharacterView, Point } from '@render/port';
@@ -115,10 +115,13 @@ export function Stage({ core }: { core: CoreRuntime }) {
   const menuRoom = area ? area.height - closedH + MENU_CLOSED_H : Infinity;
   const menuH = target ? Math.max(MENU_CLOSED_H, Math.min(rows * MENU_ITEM_H + 28 + breaks * MENU_HR_H, menuRoom)) : MENU_CLOSED_H;
   const seatOf = (key: string) => seats.find((s) => s.key === key)!;
+  // 벤치에 겹쳐 앉은 좌석(겹친 좌석과 그 바로 앞 좌석)은 말풍선을 좌석 간격 안으로 줄인다
+  const benched = new Set(row.flatMap((s, i) => (joined.has(s.key) ? [s.key, row[i - 1]!.key] : [])));
   const seatProps = (s: SeatView): SeatProps => ({
     core, seat: s, size: seatSize, scale, showHead, paused: display === 'hidden',
     // 회사원 모드에서는 머리 위 말풍선을 숨긴다 (SET-03)
     showBubble: showHead && display === 'normal', pixel: pixel ? PIXEL : undefined, chipSide: side,
+    bubbleMax: benched.has(s.key) ? benchStep - 6 : undefined,
     onHide: display === 'quiet' ? () => core.setDisplayMode('hidden') : undefined,
     riders: () => [...on].filter(([, under]) => under === s.key).map(([k]) => seatProps(seatOf(k))),
     onToggle: () => toggle(s.key),
@@ -236,12 +239,21 @@ const PanelId = createContext<string | undefined>(undefined);
  *  창마다 위쪽에 그 창에 뜬 알림을 두고 떠날지 묻는 중이면 그 창 안에 묻는다 */
 export function Panels({ core }: { core: CoreRuntime }) {
   const open = use(core.windows.open);
+  const offline = use(core.offline);
   return open.map((w) =>
     createPortal(
       <PanelId.Provider value={w.id}>
-        <Suspense fallback={null}>
-          <w.Component ctx={w.ctx} />
-        </Suspense>
+        {offline && (
+          <div role="status" className={css.offlineBand}>
+            연결이 끊겼어요. 다시 연결하는 중이에요.
+          </div>
+        )}
+        {/* 한 창의 렌더 오류가 실행 화면과 다른 창까지 지우지 않게 창마다 감싼다 */}
+        <Guard id={w.id} core={core} type="renderer.window" fallback={<Broken core={core} id={w.id} />}>
+          <Suspense fallback={null}>
+            <w.Component ctx={w.ctx} />
+          </Suspense>
+        </Guard>
         <div className={`${css.toasts} ${css.panelToasts}`}>
           <Toasts core={core} at={w.id} />
         </div>
@@ -267,7 +279,7 @@ function Toasts({ core, at }: { core: CoreRuntime; at: string | null }) {
     ));
 }
 
-/** 저장하지 않은 일이 있을 때 창을 떠날지 묻는다 (ctx.ui.guard) */
+/** 창 안에서 묻는다 (ctx.ui.guard, confirmLeave, ask). 기본 포커스는 물러나는 단추다 */
 function Ask({ core, id }: { core: CoreRuntime; id: string }) {
   const ask = use(core.windows.asking);
   if (ask?.id !== id) return null;
@@ -276,12 +288,22 @@ function Ask({ core, id }: { core: CoreRuntime; id: string }) {
       <div role="alertdialog" aria-label={ask.text} className={css.ask}>
         <p>{ask.text}</p>
         <div className={css.askRow}>
-          <button onClick={() => ask.answer(true)}>닫기</button>
+          <button onClick={() => ask.answer(true)}>{ask.ok}</button>
           <button className={css.primary} autoFocus onClick={() => ask.answer(false)}>
-            계속하기
+            {ask.cancel}
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** 렌더 오류로 내용을 그리지 못한 창. 닫으면 다시 열 때 새로 그린다 */
+function Broken({ core, id }: { core: CoreRuntime; id: string }) {
+  return (
+    <div role="alert">
+      <p>이 창에 문제가 생겼어요. 닫고 다시 열어 주세요.</p>
+      <button onClick={() => core.windows.close(id, true)}>닫기</button>
     </div>
   );
 }
@@ -311,6 +333,8 @@ function useUpdate(core: CoreRuntime): string | null {
 interface SeatProps {
   core: CoreRuntime; seat: SeatView; size: { width: number; height: number }; scale: number; showHead: boolean; paused: boolean;
   showBubble: boolean; pixel?: number; chipSide: 'right' | 'left' | null;
+  /** 벤치에 겹쳐 앉은 좌석의 말풍선 최대 폭(화면 픽셀). 이웃 말풍선을 덮지 않게 한다 */
+  bubbleMax?: number;
   /** 회사원 모드의 숨기기 칩 (SET-03) */
   onHide?: () => void;
   /** 이 좌석 머리 위에 올라탄 좌석 */
@@ -345,6 +369,7 @@ function Seat(props: SeatProps & { riding: boolean; away: boolean; joinedOffset:
   // 메뉴 칩은 첫째 줄 오른쪽 끝에 두고 모듈 칩이 그 왼쪽으로 이어진다
   const chipBox = seat.self && !seat.local && (
     <div data-interactive className={side ? `${css.chipBox} ${css.chipCol}` : css.chipBox} style={side ? { zoom: scale } : undefined} {...band}>
+      <OfflineChip core={core} />
       <SlotItems core={core} slot="chip.buttons" seat={seat} />
       {onHide && (
         <button onClick={onHide} title="화면 숨기기">
@@ -360,7 +385,8 @@ function Seat(props: SeatProps & { riding: boolean; away: boolean; joinedOffset:
   const beside = chipBox ? side : null;
   return (
     <div className={css.seat} data-side={beside ?? undefined} style={{ width: beside ? undefined : width, marginLeft: -joinedOffset }}>
-      <div ref={box} className={css.view} style={{ width, height }}>
+      {/* 말풍선은 scale로 커지므로 화면 폭을 배율로 나눈 값을 최대 폭으로 준다 */}
+      <div ref={box} className={css.view} style={{ width, height, ...(props.bubbleMax && ({ '--bubble-max': `${props.bubbleMax / scale}px` } as CSSProperties)) }}>
         {!hidden && <Body {...props} hit={hit} anchors={anchors} />}
         {cover && <Cover {...props} file={cover.file} side={Math.round(cover.size * scale)} feet={anchors.feet} />}
         {/* 이 좌석이 남의 머리 위에 올라타 있으면 위에 탄 좌석은 그쪽 Rider가 그린다 */}
@@ -368,9 +394,17 @@ function Seat(props: SeatProps & { riding: boolean; away: boolean; joinedOffset:
       </div>
       {/* 이름표와 칩은 모듈 조각까지 함께 키우도록 zoom을 쓴다 */}
       <div className={css.plates} style={{ zoom: scale }}>
-        <button data-interactive className={css.nameplate} aria-label={seat.self ? '내 메뉴' : `${name} 메뉴`} title={name} {...plate}>
+        <button
+          data-interactive
+          className={css.nameplate}
+          aria-label={`${seat.self ? '내 메뉴' : `${name} 메뉴`}${seat.state === 'online' ? '' : `, ${STATE_LABEL[seat.state]}`}`}
+          title={name}
+          {...plate}
+        >
           <span className={css.state} data-state={seat.state} title={STATE_LABEL[seat.state]} />
           <span className={css.name}>{name}</span>
+          {/* 점 색만으로는 바쁨과 자리비움을 가리기 어려워 글로도 적는다 */}
+          {seat.state !== 'online' && <span className={css.stateText}>{STATE_LABEL[seat.state]}</span>}
           {showHead && <SlotItems core={core} slot="seat.badge" seat={seat} />}
           {/* 다른 사람 이름표는 누르면 메뉴가 열린다는 것을 보여 준다 (ROM-11) */}
           {!seat.self && <span aria-hidden>▾</span>}
@@ -382,13 +416,17 @@ function Seat(props: SeatProps & { riding: boolean; away: boolean; joinedOffset:
   );
 }
 
-/** 다른 좌석 머리 위에 올라탄 캐릭터 (COM-16, HOM-17). 책상과 바닥 없이 몸만 그리고 발을 아래 좌석 머리에 맞춘다 */
+/** 다른 좌석 머리 위에 올라탄 캐릭터 (COM-16, HOM-17). 책상과 바닥 없이 몸만 그리고 발을 아래 좌석 머리에 맞춘다.
+ *  이름표는 제자리에 남으므로 몸 오른쪽 가운데에 이름을 붙여 탑에서 누가 누구인지 보이게 한다 */
 function Rider(props: SeatProps & { head: Point }) {
-  const { size, head } = props;
+  const { size, head, scale } = props;
   const { box, hit, anchors } = useView(props, true, true);
   return (
     <div ref={box} className={css.rider} style={{ width: size.width, height: size.height, left: head.x - anchors.feet.x, top: head.y - anchors.feet.y }}>
       <Body {...props} hit={hit} anchors={anchors} />
+      <span className={css.towerName} style={{ right: size.width - hit.x - hit.width, top: hit.y + hit.height / 2, transform: `translateY(-50%) scale(${scale})` }}>
+        {props.seat.name || '이름 없음'}
+      </span>
       {props.riders().map((r) => <Rider key={r.seat.key} {...r} head={anchors.head} />)}
     </div>
   );
@@ -637,6 +675,16 @@ function SeatMenu({ core, seat, left, maxHeight, onClose }: { core: CoreRuntime;
 
 const STATE_LABEL = { online: '접속 중', away: '자리비움', busy: '바쁨' } as const;
 
+/** 서버 연결이 끊긴 지 5초가 지나면 상태칩 줄에 보인다 (0031). 펜으로는 title을 보기 어려워 누르면 알림으로 풀어 준다 */
+function OfflineChip({ core }: { core: CoreRuntime }) {
+  if (!use(core.offline)) return null;
+  return (
+    <button className={css.offline} onClick={() => core.toast('인터넷 연결이 끊겼어요. 다시 연결하는 중이에요. 그동안은 보내거나 저장할 수 없어요.')}>
+      연결 끊김
+    </button>
+  );
+}
+
 /** 모듈이 슬롯에 넣은 화면 조각을 그린다. 한 조각의 오류가 좌석을 멈추지 않게 각각 감싼다 */
 export function SlotItems({ core, slot, seat }: { core: CoreRuntime; slot: string; seat?: SeatView }) {
   use(core.registry.contributions);
@@ -658,17 +706,19 @@ export function SlotItems({ core, slot, seat }: { core: CoreRuntime; slot: strin
   );
 }
 
-class Guard extends Component<{ id: string; core: CoreRuntime; children: ReactNode }, { failed: boolean }> {
+/** 감싼 화면의 렌더 오류를 그 안에서 멈춘다. type은 보고 종류(기본 renderer.slot)이고 실패하면 fallback을 그리고 onError를 부른다 */
+export class Guard extends Component<{ id: string; core: CoreRuntime; type?: string; fallback?: ReactNode; onError?: () => void; children: ReactNode }, { failed: boolean }> {
   override state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
   }
   override componentDidCatch(e: Error) {
     // 메인이 로그에 적고 자동 오류 보고로 모은다 (NFR-21)
-    reportError(this.props.core.deps.bridge, 'renderer.slot', e, `${this.props.id}: `);
+    reportError(this.props.core.deps.bridge, this.props.type ?? 'renderer.slot', e, `${this.props.id}: `);
+    this.props.onError?.();
   }
   override render() {
-    return this.state.failed ? null : this.props.children;
+    return this.state.failed ? (this.props.fallback ?? null) : this.props.children;
   }
 }
 

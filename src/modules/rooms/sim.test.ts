@@ -93,7 +93,7 @@ describe('rooms 시뮬레이터', () => {
     // bob이 앱을 다시 켠다. 파일에는 지운 방이 마지막 방으로 남아 있다
     await b.core.flush();
     const b2 = await app('bob');
-    expect(b2.toasts()).toContain('주인이 지운 방입니다.');
+    expect(b2.toasts()).toContain('주인이 지운 방이에요.');
     expect(b2.local()).toEqual({ lastRoom: null, recent: [] });
   });
 

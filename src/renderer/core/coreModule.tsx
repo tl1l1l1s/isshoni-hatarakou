@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { z } from 'zod';
-import type { Ctx, ModuleManifest, SettingsDecl } from './types';
+import type { Ctx, ModuleManifest, SettingField, SettingsDecl } from './types';
 import type { CoreRuntime } from './runtime';
 import { coreSettings, SCALE, useCoreSettings, type CoreSettings } from './coreSettings';
 
@@ -90,10 +90,12 @@ function SettingsWindow({ core }: { core: CoreRuntime }) {
   const go = (id: string) => id !== tab && void core.windows.confirm('core.settings').then((ok) => ok && setTab(id));
   return (
     <div>
-      <nav style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
-        <button aria-pressed={tab === 'general'} onClick={() => go('general')}>일반</button>
+      {/* 탭이 한 줄에 다 들어가지 않으면(글자가 넓은 글꼴) 줄을 바꾸지 않고 긴 탭 이름을 단추 안에서 두 줄로 접는다.
+          줄을 바꾸면 마지막 탭 하나만 둘째 줄에 남는다 */}
+      <nav style={{ display: 'flex', flexWrap: 'nowrap', gap: 4, marginBottom: 12 }}>
+        <button style={TAB} aria-pressed={tab === 'general'} onClick={() => go('general')}>일반</button>
         {tabs.map((x) => (
-          <button key={x.decl.id} aria-pressed={tab === x.decl.id} onClick={() => go(x.decl.id)}>{x.decl.label}</button>
+          <button key={x.decl.id} style={TAB} aria-pressed={tab === x.decl.id} onClick={() => go(x.decl.id)}>{x.decl.label}</button>
         ))}
       </nav>
       {current && Tab ? <Tab ctx={current.ctx} windowId="core.settings" /> : <General core={core} />}
@@ -101,7 +103,9 @@ function SettingsWindow({ core }: { core: CoreRuntime }) {
   );
 }
 
-/** 일반 탭: 모듈 설정, 시스템(자동 실행, 펜 입력 보호 앱, 버전, 진단 기록). 화면 항목은 화면 탭에 있다 */
+const TAB = { flex: '0 1 auto', minWidth: 0 };
+
+/** 일반 탭: 모듈 설정, 펜 입력 보호 앱, 시스템(자동 실행, 버전, 진단 기록). 화면 항목은 화면 탭에 있다 */
 function General({ core }: { core: CoreRuntime }) {
   const entries = [...core.ctxs.values()].filter((e) => e.manifest.settings && e.manifest.id !== 'core');
   const coreCtx = core.ctxs.get('core')?.ctx;
@@ -115,10 +119,15 @@ function General({ core }: { core: CoreRuntime }) {
           ))}
         </section>
       ))}
+      {coreCtx && (
+        <section>
+          <h4>펜 입력 보호 앱</h4>
+          <PenApps core={core} ctx={coreCtx} />
+        </section>
+      )}
       <section>
         <h4>시스템</h4>
         {coreCtx && <Field ctx={coreCtx} decl={coreSettings} name="autoStart" />}
-        {coreCtx && <PenApps core={core} ctx={coreCtx} />}
         <p>버전 {core.deps.appVersion}</p>
         <details>
           <summary>개인정보 처리방침</summary>
@@ -164,19 +173,23 @@ function PenApps({ core, ctx }: { core: CoreRuntime; ctx: Ctx }) {
   const add = () => {
     const key = ctx.activity.lastForeignApp();
     if (!key) return ctx.ui.toast('펜 입력 보호 앱을 먼저 잠깐 쓰고 이 창으로 돌아와 다시 눌러 주세요');
-    if (!apps.includes(key)) save([...apps, key]);
+    if (apps.includes(key)) return ctx.ui.toast('이미 들어 있는 앱이에요.');
+    save([...apps, key]);
   };
+  // 기본 목록은 메인에 있어 여기에는 사용자가 더한 앱만 보인다
   return (
     <div>
       <p>펜 입력 보호 목록의 앱이 앞에 있으면 자동으로 방에서 내보내지 않아요.</p>
       <p>기본 목록 외에도 사용하는 앱을 추가할 수 있어요. 집중 기록 대상은 집중 앱 탭에서 따로 골라요.</p>
-      <ul>
-        {apps.map((k) => (
-          <li key={k}>
-            {k.slice(4)} <button onClick={() => save(apps.filter((x) => x !== k))}>빼기</button>
-          </li>
-        ))}
-      </ul>
+      {apps.length > 0 && (
+        <ul>
+          {apps.map((k) => (
+            <li key={k}>
+              {k.slice(4)} <button onClick={() => save(apps.filter((x) => x !== k))}>빼기</button>
+            </li>
+          ))}
+        </ul>
+      )}
       <button onClick={add}>직전에 쓴 앱을 펜 입력 보호 목록에 넣기</button>
     </div>
   );
@@ -232,9 +245,10 @@ function DisplayTab({ core, ctx }: { core: CoreRuntime; ctx: Ctx }) {
   );
 }
 
+/** 설정 항목 하나. SettingField.hint가 있으면 항목 아래에 설명 줄을 둔다 (화면 탭의 회사원 모드와 같은 모양) */
 function Field({ ctx, decl, name }: { ctx: Ctx; decl: SettingsDecl; name: string }) {
   const [value, setValue] = useState(() => ctx.settings.get()[name]);
-  const hint = (decl.fields as Record<string, { label?: string; min?: number; max?: number; options?: Array<{ value: string; label: string }> }> | undefined)?.[name];
+  const hint = (decl.fields as Record<string, SettingField | undefined> | undefined)?.[name];
   const label = hint?.label ?? name;
   const save = (v: unknown) => {
     ctx.settings.set({ [name]: v });
@@ -242,11 +256,19 @@ function Field({ ctx, decl, name }: { ctx: Ctx; decl: SettingsDecl; name: string
   };
   const field = (decl.schema.shape as Record<string, z.ZodType>)[name];
   const inner = field instanceof z.ZodDefault ? (field.def.innerType as z.ZodType) : field;
-  if (inner instanceof z.ZodBoolean) return <label>{label}<input type="checkbox" checked={Boolean(value)} onChange={(e) => save(e.target.checked)} /></label>;
-  if (inner instanceof z.ZodNumber) return <label>{label}<input type="number" min={hint?.min} max={hint?.max} value={Number(value)} onChange={(e) => save(Number(e.target.value))} /></label>;
-  if (inner instanceof z.ZodEnum) {
-    const opts = hint?.options ?? (inner.options as string[]).map((o) => ({ value: o, label: o }));
-    return <label>{label}<select value={String(value)} onChange={(e) => save(e.target.value)}>{opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select></label>;
-  }
-  return <label>{label}<input value={String(value ?? '')} onChange={(e) => save(e.target.value)} /></label>;
+  const input =
+    inner instanceof z.ZodBoolean ? <input type="checkbox" checked={Boolean(value)} onChange={(e) => save(e.target.checked)} />
+    : inner instanceof z.ZodNumber ? <input type="number" min={hint?.min} max={hint?.max} value={Number(value)} onChange={(e) => save(Number(e.target.value))} />
+    : inner instanceof z.ZodEnum ? (
+      <select value={String(value)} onChange={(e) => save(e.target.value)}>
+        {(hint?.options ?? (inner.options as string[]).map((o) => ({ value: o, label: o }))).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    )
+    : <input value={String(value ?? '')} onChange={(e) => save(e.target.value)} />;
+  return (
+    <>
+      <label>{label}{input}</label>
+      {hint?.hint && <p>{hint.hint}</p>}
+    </>
+  );
 }

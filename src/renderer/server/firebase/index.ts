@@ -32,10 +32,12 @@ import {
   set,
   startAt,
   update,
+  type DataSnapshot,
+  type Query,
 } from 'firebase/database';
 import type { MemberRecord, RoomMeta } from '@shared/schemas';
 import { ROOM_EVENT_WINDOW, type AccountPresence, type Dispose, type DocHandle, type Namespace, type RoomEvent, type RoomTransport, type ServerPort } from '../port';
-import { decodeFile, encodeFile, isInc, nsPath, pushKeyTime, toPresence } from './layout';
+import { decodeFile, encodeFile, isInc, nsPath, pushKeyTime, toPresence, writeError } from './layout';
 import { decodeSetupCode } from './setup-code';
 
 export interface FirebaseConfig {
@@ -53,6 +55,15 @@ export type FirebaseServer = ServerPort & { goOffline(): void; goOnline(): void;
 
 const withInc = (patch: Record<string, unknown>) =>
   Object.fromEntries(Object.entries(patch).map(([k, v]) => [k, isInc(v) ? increment(v.$inc) : v]));
+
+/** 쓰기 실패를 사용자에게 보일 글로 바꾼다 (PERMISSION_DENIED 같은 SDK 글을 그대로 띄우지 않는다) */
+const friendly = <T>(p: Promise<T>): Promise<T> =>
+  p.catch((e: unknown) => {
+    throw writeError(e);
+  });
+
+/** 읽기를 거부당해 SDK가 끊은 구독을 다시 거는 간격. ponytail: 5초, 15초, 1분, 그 뒤로 5분마다 */
+const RESUBSCRIBE_MS = [5_000, 15_000, 60_000, 300_000];
 
 /** 'm/focus/awake' 같은 다중 경로 키를 기록 사본에 넣는다 */
 function setIn(obj: Record<string, unknown>, path: string, value: unknown): void {
@@ -102,9 +113,41 @@ export function createFirebaseServer(cfg: FirebaseConfig, appName?: string): Fir
       // 실패하면(지운 방 등) RoomSession이 자기 기록이 없는 것을 보고 처리한다
       if (online) for (const [path, rec] of joined) register(path, rec).catch(() => {});
       if (online && presence) registerPresence(presence.uid, presence.m).catch(() => {});
+      if (online) for (const sub of [...cancelled]) sub();
       for (const fn of listeners) fn(online);
     });
   }
+
+  // 읽기를 거부당해 끊긴 구독. 다시 연결되면 기다리지 않고 바로 다시 건다
+  const cancelled = new Set<() => void>();
+  /** onValue와 같다. 서버가 읽기를 거부해 SDK가 구독을 끊으면(규칙 배포 실수 같은 잠깐의 거부) 기다렸다가 다시 건다 */
+  const listen = (q: Query, onData: (s: DataSnapshot) => void): Dispose => {
+    let stop: Dispose = () => {};
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let tries = 0;
+    const sub = () => {
+      clearTimeout(timer);
+      cancelled.delete(sub);
+      stop = onValue(
+        q,
+        (s) => {
+          tries = 0;
+          onData(s);
+        },
+        (e) => {
+          console.warn(`구독이 끊겨 다시 걸어요: ${q.toString()} ${e.message}`);
+          cancelled.add(sub);
+          timer = setTimeout(sub, RESUBSCRIBE_MS[Math.min(tries++, RESUBSCRIBE_MS.length - 1)]);
+        },
+      );
+    };
+    sub();
+    return () => {
+      clearTimeout(timer);
+      cancelled.delete(sub);
+      stop();
+    };
+  };
 
   // 들어가 있는 멤버 기록의 사본. 다시 연결될 때마다 지우기 예약과 기록을 다시 쓴다
   const joined = new Map<string, Record<string, unknown>>();
@@ -127,9 +170,9 @@ export function createFirebaseServer(cfg: FirebaseConfig, appName?: string): Fir
     const at = (key: string) => r(`${base}/${key}`);
     return {
       get: async <T>(key: string) => (await get(at(key))).val() as T | null,
-      set: (key, value) => set(at(key), value),
-      update: (key, patch) => update(at(key), withInc(patch)),
-      remove: (key) => remove(at(key)),
+      set: (key, value) => friendly(set(at(key), value)),
+      update: (key, patch) => friendly(update(at(key), withInc(patch))),
+      remove: (key) => friendly(remove(at(key))),
       list: async <T>({ limit }: { limit: number }) => {
         const out: Array<{ key: string; value: T }> = [];
         (await get(query(r(base), orderByKey(), limitToFirst(limit)))).forEach((c) => {
@@ -137,9 +180,9 @@ export function createFirebaseServer(cfg: FirebaseConfig, appName?: string): Fir
         });
         return out;
       },
-      watch: <T>(key: string, fn: (value: T | null) => void) => onValue(at(key), (s) => fn(s.val() as T | null)),
+      watch: <T>(key: string, fn: (value: T | null) => void) => listen(at(key), (s) => fn(s.val() as T | null)),
       watchList: <T>(key: string, { limit, last }: { limit: number; last?: boolean }, fn: (items: Array<{ key: string; value: T }>) => void) =>
-        onValue(query(at(key), orderByKey(), last ? limitToLast(limit) : limitToFirst(limit)), (s) => {
+        listen(query(at(key), orderByKey(), last ? limitToLast(limit) : limitToFirst(limit)), (s) => {
           const out: Array<{ key: string; value: T }> = [];
           s.forEach((c) => {
             out.push({ key: c.key as string, value: c.val() as T });
@@ -147,7 +190,7 @@ export function createFirebaseServer(cfg: FirebaseConfig, appName?: string): Fir
           fn(out);
         }),
       transaction: async <T>(key: string, fn: (current: T | null) => T | undefined) => {
-        const res = await runTransaction(at(key), (cur: T | null) => fn(cur ?? null));
+        const res = await friendly(runTransaction(at(key), (cur: T | null) => fn(cur ?? null)));
         return { committed: res.committed, value: res.snapshot.val() as T | null };
       },
       removeOnDisconnect: (key, on = true) => (on ? onDisconnect(at(key)).remove() : onDisconnect(at(key)).cancel()),
@@ -158,13 +201,14 @@ export function createFirebaseServer(cfg: FirebaseConfig, appName?: string): Fir
   const room: RoomTransport = {
     getMeta: async (code) => (await get(r(`rooms/${code}/meta`))).val() as RoomMeta | null,
     createMeta: async (code, meta) =>
-      (await runTransaction(r(`rooms/${code}/meta`), (cur) => (cur === null ? meta : undefined), { applyLocally: false })).committed,
+      (await friendly(runTransaction(r(`rooms/${code}/meta`), (cur) => (cur === null ? meta : undefined), { applyLocally: false }))).committed,
     // 삭제 표시와 멤버 기록, 방 이벤트 지우기를 한 번에 쓴다. meta와 roster는 남긴다 (10.7.2)
-    markDeleted: (code, at) => update(r(`rooms/${code}`), { 'meta/deletedAt': at, members: null, ev: null }),
+    markDeleted: (code, at) => friendly(update(r(`rooms/${code}`), { 'meta/deletedAt': at, members: null, ev: null })),
     ensureRoster: async (code, uid, at) => {
       const p = r(`rooms/${code}/roster/${uid}`);
       if (!(await get(p)).exists()) await set(p, at);
     },
+    removeRoster: (code, uid) => friendly(remove(r(`rooms/${code}/roster/${uid}`))),
     join: async (code, key, record) => {
       const path = member(code, key);
       joined.set(path, { ...record });
@@ -179,6 +223,9 @@ export function createFirebaseServer(cfg: FirebaseConfig, appName?: string): Fir
       const path = member(code, key);
       const rec = joined.get(path);
       if (rec) for (const [k, v] of Object.entries(patch)) setIn(rec, k, v);
+      // 끊긴 동안은 사본에만 둔다. SDK가 끊길 때의 삭제 예약을 이 PC 캐시에 먼저 적용해서 지금 쓰면 seenAt만 든 조각 기록이
+      // 남의 좌석(이름 없음)으로 보인다. 다시 연결되면 register가 사본 전체를 다시 쓴다
+      if (rec && !online) return;
       await update(r(path), patch);
     },
     leave: async (code, key) => {
@@ -189,7 +236,7 @@ export function createFirebaseServer(cfg: FirebaseConfig, appName?: string): Fir
     },
     removeStale: (code, key) => remove(r(member(code, key))),
     watchMembers: (code, fn) =>
-      onValue(r(`rooms/${code}/members`), (s) => fn((s.val() as Record<string, MemberRecord> | null) ?? {})),
+      listen(r(`rooms/${code}/members`), (s) => fn((s.val() as Record<string, MemberRecord> | null) ?? {})),
     // 규칙이 이미 있는 기록에만 지우기 예약을 받으므로 먼저 쓴다
     emit: async (code, ev) => {
       const p = push(r(`rooms/${code}/ev`));
@@ -203,7 +250,7 @@ export function createFirebaseServer(cfg: FirebaseConfig, appName?: string): Fir
       await remove(p);
     },
     watchEvents: (code, fn, since = 0) =>
-      onValue(query(r(`rooms/${code}/ev`), orderByKey(), startAt(pushKeyTime(since)), limitToLast(ROOM_EVENT_WINDOW)), (s) => {
+      listen(query(r(`rooms/${code}/ev`), orderByKey(), startAt(pushKeyTime(since)), limitToLast(ROOM_EVENT_WINDOW)), (s) => {
         const out: RoomEvent[] = [];
         s.forEach((c) => {
           out.push({ ...(c.val() as Omit<RoomEvent, 'key'>), key: c.key as string });
@@ -222,14 +269,14 @@ export function createFirebaseServer(cfg: FirebaseConfig, appName?: string): Fir
       },
       signIn: async (setupCode) => {
         const c = decodeSetupCode(setupCode);
-        if (!c) throw new Error('설정 코드 형식이 맞지 않습니다. 받은 코드를 그대로 붙여 넣어 주세요.');
+        if (!c) throw new Error('설정 코드 형식이 맞지 않아요. 받은 코드를 그대로 붙여 넣어 주세요.');
         try {
           const { user } = await signInWithEmailAndPassword(auth, c.email, c.password);
           if (!started) start();
           return user.uid;
         } catch (e) {
-          if ((e as { code?: string }).code === 'auth/network-request-failed') throw new Error('인터넷 연결을 확인한 뒤 다시 시도해 주세요.');
-          throw new Error('설정 코드로 로그인하지 못했습니다. 코드를 새로 받았다면 새 코드를 넣어 주세요.');
+          if ((e as { code?: string }).code === 'auth/network-request-failed') throw new Error('인터넷 연결을 확인한 뒤 다시 해 주세요.');
+          throw new Error('설정 코드로 로그인하지 못했어요. 코드를 새로 받았다면 새 코드를 넣어 주세요.');
         }
       },
       current: () => auth.currentUser?.uid ?? null,
@@ -242,14 +289,14 @@ export function createFirebaseServer(cfg: FirebaseConfig, appName?: string): Fir
         const { hash, b64 } = await encodeFile(bytes);
         await set(r(`files/${hash}`), b64).catch(async (e: unknown) => {
           // 규칙은 있는 파일을 같은 값으로만 다시 쓰게 한다. 다른 값이 먼저 있으면 그 해시로는 올리지 못한다
-          if ((await get(r(`files/${hash}`))).val() !== b64) throw e;
+          if ((await get(r(`files/${hash}`))).val() !== b64) throw writeError(e);
         });
         return hash;
       },
       get: async (hash) => decodeFile(hash, (await get(r(`files/${hash}`))).val()),
     },
     profile: {
-      write: (uid, patch) => update(r(`users/${uid}/public`), withInc(patch)),
+      write: (uid, patch) => friendly(update(r(`users/${uid}/public`), withInc(patch))),
       read: async (uid) => (await get(r(`users/${uid}/public`))).val() as Record<string, unknown> | null,
     },
     presence: {
@@ -287,8 +334,8 @@ export function createFirebaseServer(cfg: FirebaseConfig, appName?: string): Fir
       },
     },
     userPrivate: {
-      set: (uid, path, value) => set(r(`users/${uid}/private/${path}`), value),
-      watch: <T>(uid: string, path: string, fn: (value: T | null) => void) => onValue(r(`users/${uid}/private/${path}`), (s) => fn(s.val() as T | null)),
+      set: (uid, path, value) => friendly(set(r(`users/${uid}/private/${path}`), value)),
+      watch: <T>(uid: string, path: string, fn: (value: T | null) => void) => listen(r(`users/${uid}/private/${path}`), (s) => fn(s.val() as T | null)),
     },
     codes: {
       lookup: async (code) => {

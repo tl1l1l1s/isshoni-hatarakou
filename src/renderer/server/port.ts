@@ -47,6 +47,8 @@ export interface RoomTransport {
   markDeleted(code: string, at: number): Promise<void>;
   /** roster/{uid}가 없으면 만든다 */
   ensureRoster(code: string, uid: Uid, at: number): Promise<void>;
+  /** 내 roster/{uid}를 지운다. 그 뒤로는 그 방을 읽지 못하고 다시 들어오면 ensureRoster가 다시 만든다 (스스로 나갈 때) */
+  removeRoster(code: string, uid: Uid): Promise<void>;
   /** members/{uid}_{deviceId}에 쓰고 연결이 끊기면 지우도록 예약한다. 다시 연결되면 다시 예약한다 */
   join(code: string, key: string, record: MemberRecord): Promise<void>;
   /** 바뀐 필드만 쓴다. seenAt에 SERVER_TIME을 넣으면 서버 시각으로 쓴다 */
