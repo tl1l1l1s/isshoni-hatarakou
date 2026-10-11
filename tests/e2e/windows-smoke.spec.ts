@@ -299,7 +299,7 @@ test('혼자 스티커 사진을 한 컷 찍어 PNG로 저장한다', async () =
   await expect(rooms.getByRole('button', { name: '만들기', exact: true })).toBeVisible();
   await rooms.close();
   const photo = await menu('스티커 사진', '스티커 사진');
-  await expect(photo.getByText('함께 찍는 사람 이름 없음', { exact: true })).toBeVisible();
+  await expect(photo.getByText('혼자 찍어요. 방에 들어가면 같이 찍을 수 있어요.', { exact: true })).toBeVisible();
   await photo.getByRole('button', { name: '1컷' }).click();
   await photo.getByRole('button', { name: '촬영 시작' }).click();
   await expect(photo.getByRole('status')).toBeVisible();
