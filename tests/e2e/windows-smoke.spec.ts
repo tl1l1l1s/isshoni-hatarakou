@@ -190,6 +190,8 @@ test('내 방을 만들어 가챠 아이템을 넣고 한 시간 기록으로 �
   await rooms.getByRole('button', { name: '만들기', exact: true }).click();
   await rooms.getByRole('button', { name: '방 설정' }).click();
   const roomSettings = await windowTitled('방 설정');
+  // 방 설정의 아이템 넣기는 접혀 있어서 펼친다
+  await roomSettings.getByText('아이템 넣기', { exact: true }).click();
   await roomSettings.getByLabel('이름', { exact: true }).fill('별');
   await roomSettings.getByRole('button', { name: '그림 고르고 넣기' }).click();
   await expect(roomSettings.getByText('아이템을 넣었어요.')).toBeVisible();

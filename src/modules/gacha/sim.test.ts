@@ -45,7 +45,7 @@ async function app(name: string, deviceId = 'pc') {
   await vi.advanceTimersByTimeAsync(0);
   const ctx = core.ctxs.get('gacha')!.ctx;
   const tick = (sec: number) => core.bus.emit('focus.tick', { sec, dayKey: '2026-10-09', appKey: 'win:app', source: 'pc' });
-  return { core, ctx, rooms: core.ctxs.get('rooms')!.ctx, api: core.host.api('gacha') as GachaApi, revoked, tick };
+  return { core, server, ctx, rooms: core.ctxs.get('rooms')!.ctx, api: core.host.api('gacha') as GachaApi, revoked, tick };
 }
 
 const addItem = (ctx: Awaited<ReturnType<typeof app>>['ctx'], code: string, id: string) =>
@@ -171,6 +171,29 @@ describe('gacha 시뮬레이터', () => {
     await flush(a.ctx);
     expect(hub.read(`mod/gacha/u/alice/r/${first}`)).toMatchObject({ sec: 3600, earned: 1 });
     expect(hub.read(`mod/gacha/u/alice/r/${second}`)).toMatchObject({ sec: 900, earned: 0.25 });
+  });
+
+  it('끊긴 동안 센 방 작업 초는 끊긴 채 앱을 꺼도 같은 PC의 다음 실행이 보낸다 (F2)', async () => {
+    const a = await app('alice');
+    await createRoom(a.rooms, 4);
+    const code = a.ctx.room.current()!;
+    a.tick(600);
+    await flush(a.ctx);
+    a.server.goOffline();
+    a.tick(3000);
+    void flush(a.ctx);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(view(a.ctx)).toMatchObject({ pendingSec: 0 });
+    // 끊긴 채 끈다. 방에서 나가기는 연결을 기다리므로 끝나지 않는다
+    void a.core.quit();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(hub.read(`mod/gacha/u/alice/r/${code}/sec`)).toBe(600);
+
+    const a2 = await app('alice');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(hub.read(`mod/gacha/u/alice/r/${code}`)).toMatchObject({ sec: 3600, earned: 1 });
+    expect((disk.get('accounts/alice/modules/gacha.json') as { data: { pending: object } }).data.pending).toEqual({});
+    expect(view(a2.ctx).pendingSec).toBe(0);
   });
 
   it('주인이 함께 지우기로 지운 아이템은 보관함 창을 열 때 빠지고 남기기는 남는다', async () => {

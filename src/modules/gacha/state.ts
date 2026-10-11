@@ -1,6 +1,6 @@
 // 가챠 상태와 동작. 상태는 ctx마다 따로 두어 시험에서 앱 여러 개를 한 프로세스에 띄워도 섞이지 않는다
 import { useCallback, useSyncExternalStore } from 'react';
-import { NOT_IN_ROOM, type Ctx } from '@core/types';
+import { NOT_IN_ROOM, OFFLINE, type Ctx } from '@core/types';
 import type { InventoryItem } from './api';
 import {
   applyDraw, earnedOf, EMPTY, inventoryOf, Item, pool, readCfg, readRec, reconcile, ROOM_TOMB, sortInventory, tickets, draw,
@@ -23,14 +23,27 @@ export interface View {
 
 export interface Drawn { id: string; name: string; file: string; n: number }
 
+/** 작업 초와 그때 기준으로 얻은 횟수 */
+export interface Amount { sec: number; earned: number }
+/** PC에 남기는 계정 데이터. pending은 방 코드별로 서버가 아직 받지 않은 초 */
+export interface Local { inv: InventoryItem[]; pending: Record<string, Amount> }
+
 interface Box {
   view: View;
   subs: Set<() => void>;
   inv: Set<(items: InventoryItem[]) => void>;
-  /** 방 코드별로 아직 쓰지 않은 초 */
-  pending: Map<string, { sec: number; earned: number }>;
+  /** 방 코드별로 서버가 아직 받지 않은 초. 보내는 중인 것도 들어 있다 */
+  pending: Map<string, Amount>;
+  /** 그 가운데 지금 보내는 중인 것 */
+  flying: Map<string, Amount>;
   ready: boolean;
 }
+
+const ZERO: Amount = { sec: 0, earned: 0 };
+const plus = (a: Amount | undefined, b: Amount | undefined, k = 1): Amount => ({
+  sec: (a ?? ZERO).sec + k * (b ?? ZERO).sec,
+  earned: (a ?? ZERO).earned + k * (b ?? ZERO).earned,
+});
 
 const boxes = new WeakMap<Ctx, Box>();
 
@@ -38,7 +51,7 @@ function box(ctx: Ctx): Box {
   let b = boxes.get(ctx);
   if (!b) {
     const view: View = { code: null, owner: false, cfg: readCfg(null), items: [], rec: EMPTY, pendingSec: 0, pendingEarned: 0, inventory: [] };
-    boxes.set(ctx, (b = { view, subs: new Set(), inv: new Set(), pending: new Map(), ready: false }));
+    boxes.set(ctx, (b = { view, subs: new Set(), inv: new Set(), pending: new Map(), flying: new Map(), ready: false }));
   }
   return b;
 }
@@ -66,9 +79,10 @@ export function onInventory(ctx: Ctx, fn: (items: InventoryItem[]) => void): () 
   return () => void b.inv.delete(fn);
 }
 
-/** 로컬 사본에서 보관함을 채운다 (setup) */
-export function start(ctx: Ctx, cached: InventoryItem[]): void {
-  patch(ctx, { inventory: sortInventory(cached) });
+/** 로컬 사본에서 보관함과 지난 실행에 보내지 못한 초를 채운다 (setup) */
+export function start(ctx: Ctx, l: Local): void {
+  box(ctx).pending = new Map(Object.entries(l.pending));
+  patch(ctx, { inventory: sortInventory(l.inv) });
 }
 
 /** 보관함을 바꾸고 빠진 항목을 알린다. stickers가 setup을 마친 뒤(ready)부터 알린다 */
@@ -79,7 +93,7 @@ function commit(ctx: Ctx, next: InventoryItem[]): void {
   const keys = new Set(next.map((i) => i.key));
   const removed = prev.filter((i) => !keys.has(i.key)).map((i) => i.key);
   patch(ctx, { inventory: next });
-  ctx.local.update<InventoryItem[]>('account', () => next);
+  ctx.local.update<Local>('account', (l) => ({ ...l, inv: next }));
   if (removed.length && b.ready) ctx.bus.emit('gacha.revoked', { keys: removed });
   b.inv.forEach((fn) => fn(next));
 }
@@ -94,38 +108,58 @@ export function setRoomRec(ctx: Ctx, code: string, rec: Rec): void {
 
 export function addSec(ctx: Ctx, code: string, sec: number): void {
   const b = box(ctx);
-  const prev = b.pending.get(code) ?? { sec: 0, earned: 0 };
-  const next = { sec: prev.sec + sec, earned: prev.earned + sec / b.view.cfg.secPerTicket };
-  b.pending.set(code, next);
-  if (code === b.view.code) patch(ctx, { pendingSec: next.sec, pendingEarned: next.earned });
+  b.pending.set(code, plus(b.pending.get(code), { sec, earned: sec / b.view.cfg.secPerTicket }));
+  if (code === b.view.code) showPending(ctx);
 }
 
-/** 작업 당시 기준으로 얻은 횟수와 초를 함께 더하고 기존 기록은 한 번만 환산한다 */
+/** 화면의 아직 쓰지 않은 초. 보내는 중인 것은 내 기록 구독에 먼저 들어오므로 뺀다 */
+function showPending(ctx: Ctx): void {
+  const b = box(ctx);
+  const code = b.view.code;
+  const left = code ? plus(b.pending.get(code), b.flying.get(code), -1) : ZERO;
+  patch(ctx, { pendingSec: left.sec, pendingEarned: left.earned });
+}
+
+/** 서버가 받지 않은 초를 PC에 남긴다. 끊긴 채 앱을 꺼도 다음 실행이 보낸다 */
+function keep(ctx: Ctx): void {
+  const pending = Object.fromEntries([...box(ctx).pending].filter(([, a]) => a.sec > 1e-6));
+  if (JSON.stringify(ctx.local.get<Local>('account').pending) !== JSON.stringify(pending)) {
+    ctx.local.update<Local>('account', (l) => ({ ...l, pending }));
+  }
+}
+
+/** 작업 당시 기준으로 얻은 횟수와 초를 함께 더하고 기존 기록은 한 번만 환산한다.
+ *  보내기 전에 PC에 남기고 서버가 받은 뒤에 뺀다. 종료와 절전 때도 불러서 남긴다 */
+// ponytail: 서버가 받았는데 응답을 받기 전에 앱이 꺼지면 다음 실행이 같은 초를 한 번 더 보낸다. 막아야 하면 기록에 기기별 순번을 둔다
 export async function flush(ctx: Ctx, only?: string): Promise<void> {
   const b = box(ctx);
+  keep(ctx);
   const writes: Array<Promise<void>> = [];
-  for (const [code, pending] of b.pending) {
-    if ((only && code !== only) || pending.sec < 1) continue;
-    b.pending.delete(code);
+  for (const code of b.pending.keys()) {
+    const send = plus(b.pending.get(code), b.flying.get(code), -1);
+    if ((only && code !== only) || send.sec < 1) continue;
+    b.flying.set(code, plus(b.flying.get(code), send));
     writes.push(
       (async () => {
         const cfg = readCfg(await ctx.server.room(code).get('cfg'));
         const res = await ctx.server.user(['r']).transaction<Rec>(code, (cur) => {
           const rec = readRec(cur);
-          return { ...rec, sec: rec.sec + pending.sec, earned: earnedOf(rec, cfg) + pending.earned };
+          return { ...rec, sec: rec.sec + send.sec, earned: earnedOf(rec, cfg) + send.earned };
         });
         if (!res.committed) throw new Error('작업 시간 저장이 취소됐어요.');
+        b.pending.set(code, plus(b.pending.get(code), send, -1));
+        b.flying.set(code, plus(b.flying.get(code), send, -1));
+        keep(ctx);
       })().catch((e: Error) => {
-        const rest = b.pending.get(code) ?? { sec: 0, earned: 0 };
-        b.pending.set(code, { sec: rest.sec + pending.sec, earned: rest.earned + pending.earned });
+        // 남긴 초는 그대로 두고 다음 flush가 다시 보낸다
+        b.flying.set(code, plus(b.flying.get(code), send, -1));
         ctx.log.warn(`작업 시간을 쓰지 못했습니다: ${e.message}`);
       }),
     );
   }
-  const code = b.view.code;
-  if (code) patch(ctx, { pendingSec: b.pending.get(code)?.sec ?? 0, pendingEarned: b.pending.get(code)?.earned ?? 0 });
+  showPending(ctx);
   await Promise.all(writes);
-  if (b.view.code) patch(ctx, { pendingSec: b.pending.get(b.view.code)?.sec ?? 0, pendingEarned: b.pending.get(b.view.code)?.earned ?? 0 });
+  showPending(ctx);
 }
 
 // ---- 뽑기 ------------------------------------------------------------------
@@ -133,6 +167,8 @@ export async function flush(ctx: Ctx, only?: string): Promise<void> {
 export function drawReason(ctx: Ctx): string | null {
   const v = view(ctx);
   if (!v.code) return NOT_IN_ROOM;
+  // 끊긴 채 뽑으면 연결될 때까지 결과가 오지 않으므로 미리 막는다 (0033 오프라인 쓰기 정책)
+  if (!ctx.connection.online()) return OFFLINE;
   if (!pool(v.items, ctx.clock.serverNow()).length) return '뽑을 아이템이 없어요.';
   if (tickets(earnedOf(v.rec, v.cfg) + v.pendingEarned, v.rec.bonus, v.rec.spent) < 1) return '남은 뽑기가 없어요.';
   return null;

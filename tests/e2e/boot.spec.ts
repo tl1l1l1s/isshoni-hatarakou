@@ -139,6 +139,8 @@ test('첫 버전 흐름이 처음부터 끝까지 동작한다', async () => {
   await rooms2.getByRole('button', { name: '만들기', exact: true }).click();
   await rooms2.getByRole('button', { name: '방 설정' }).click();
   const roomSettings = await windowTitled(app, '방 설정');
+  // 방 설정의 아이템 넣기는 접혀 있어서 펼친다
+  await roomSettings.getByText('아이템 넣기', { exact: true }).click();
   await roomSettings.getByLabel('이름', { exact: true }).fill('별');
   await roomSettings.getByRole('button', { name: '그림 고르고 넣기' }).click();
   await expect(roomSettings.getByText('아이템을 넣었어요.')).toBeVisible();
