@@ -31,7 +31,7 @@ export default function AccountTab({ ctx, windowId, code: showCode = true, focus
       .then(
         () => {
           setName(r.name);
-          setMsg('저장했어요');
+          setMsg('저장했어요.');
         },
         (e: Error) => setMsg(ctx.connection.online() ? '닉네임을 저장하지 못했어요. 잠시 뒤에 다시 눌러 주세요.' : e.message),
       )
@@ -50,9 +50,9 @@ export default function AccountTab({ ctx, windowId, code: showCode = true, focus
       if (!ctx.connection.online()) return setMsg(OFFLINE);
       if (!pick) {
         await ctx.server.user().remove('photo');
-        return setMsg('사진을 뺐어요');
+        return setMsg('사진을 뺐어요.');
       }
-      if (await pickPhoto(ctx)) setMsg('사진을 바꿨어요');
+      if (await pickPhoto(ctx)) setMsg('사진을 바꿨어요.');
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
     } finally {

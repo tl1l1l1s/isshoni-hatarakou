@@ -39,8 +39,8 @@ export default defineModule<GrowthApi>({
       const xp = Math.floor(xpOf(total) * 100);
       // 같은 값이면 좌석을 다시 그리지 않도록 setMine을 부르지 않는다
       if (r.level === shown.level && r.round === shown.round && xp === shown.xp) return;
-      if (r.round > shown.round) ctx.ui.toast(`${r.round}회차가 시작됐어요. 레벨이 1부터 다시 올라요`);
-      else if (r.level > shown.level) ctx.ui.toast(`레벨이 올랐어요. 이제 ${levelText(r.round, r.level)}`);
+      if (r.round > shown.round) ctx.ui.toast(`${r.round}회차가 시작됐어요. 레벨이 1부터 다시 올라요.`);
+      else if (r.level > shown.level) ctx.ui.toast(`레벨이 올랐어요. 이제 ${levelText(r.round, r.level)}.`);
       const lv = levelOf(total);
       if (lv !== level) ctx.self.setProfile({ level: lv });
       level = lv;
@@ -62,7 +62,7 @@ export default defineModule<GrowthApi>({
       for (const g of rewards()) {
         if (opened.has(g.id)) continue;
         opened.add(g.id);
-        ctx.ui.toast(`새 보상이 열렸어요. ${g.label ?? g.id}`);
+        ctx.ui.toast(`새 보상이 열렸어요. ${g.label ?? g.id}.`);
       }
     });
     return {

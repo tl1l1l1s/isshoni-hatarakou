@@ -224,7 +224,7 @@ export default function EditWindow({ ctx }: { ctx: Ctx }) {
             }}>{label}</button>
           ))}
         </nav>
-        <h4>붙인 것 {list.length}개 <small className={css.hint}>아래쪽이 앞에 보여요</small></h4>
+        <h4>붙인 것 {list.length}개 <small className={css.hint}>아래쪽이 앞에 보여요.</small></h4>
         <ol ref={listEl} className={css.list}>
           {list.map((e, i) => (
             <li key={i} data-on={i === sel}>

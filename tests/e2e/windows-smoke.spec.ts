@@ -100,7 +100,7 @@ test('설정 창의 일반, 계정, 집중 앱, 화면 탭이 열린다', async 
   await settings.getByRole('button', { name: '계정', exact: true }).click();
   await expect(settings.getByLabel('닉네임')).toBeVisible();
   await settings.getByRole('button', { name: '집중 앱', exact: true }).click();
-  await expect(settings.getByText('등록한 앱이 앞에 있을 때만 집중 시간이 쌓여요.')).toBeVisible();
+  await expect(settings.getByText('집중 앱이 앞에 있을 때만 집중 시간이 쌓여요.')).toBeVisible();
   await settings.getByRole('button', { name: '화면', exact: true }).click();
   await expect(settings.getByLabel('회사원 모드')).toBeVisible();
   await shot(settings, 'settings');

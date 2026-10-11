@@ -81,7 +81,7 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
   /** 친구 목록으로 바꾸고 첫 곡부터 튼다 (SND-06, SND-07) */
   const listen = (g: Guest | null) => {
     setPicking(null);
-    if (!g) return setError('들을 수 있는 친구 플리가 없어요');
+    if (!g) return setError('들을 수 있는 친구 플리가 없어요.');
     setError(null);
     setGuest(g);
     const t = g.shared.presets[g.preset]!.tracks;
@@ -176,7 +176,7 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
   const add = (e: FormEvent) => {
     e.preventDefault();
     const v = youTubeId(link);
-    if (!v) return setError('유튜브 영상 링크를 넣어 주세요');
+    if (!v) return setError('유튜브 영상 링크를 넣어 주세요.');
     const k = ctx.clock.now().toString(36);
     saveTracks([...tracks, { k, v, title: '' }]);
     setLink('');

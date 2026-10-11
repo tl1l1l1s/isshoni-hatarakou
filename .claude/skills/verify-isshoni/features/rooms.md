@@ -49,7 +49,7 @@ Preconditions:
 절전과 깨어남(`room-resume`)은 화면에서 만들 수 없어서 메인이 스테이지에 lifecycle 이벤트를 보낸다. `const lifecycle = (type: 'suspend' | 'resume') => s.app.evaluate(({ BrowserWindow }, t) => BrowserWindow.getAllWindows().find((w) => !w.webContents.getURL().startsWith('about:'))!.webContents.send('core:lifecycle', { type: t }), type)`를 만들어 쓴다. `devdev`에 참여한 상태에서 시작한다.
 
 - **절전과 깨어남.** `await lifecycle('suspend')`를 실행하면 `가짜 친구`가 사라지고 `await lifecycle('resume')`을 실행하면 다시 보인다.
-- **지운 방.** 다시 `await lifecycle('suspend')`를 실행하고 `await s.stage.evaluate(() => devHub.write('rooms/DEVDEV/meta/deletedAt', Date.now()))`로 방을 지운 뒤 `await lifecycle('resume')`을 실행한다. 실행 화면에 `주인이 지운 방입니다.`가 뜨고 `DEVDEV` 칩이 없다. 끝나면 같은 경로에 `null`을 써서 되돌린다.
+- **지운 방.** 다시 `await lifecycle('suspend')`를 실행하고 `await s.stage.evaluate(() => devHub.write('rooms/DEVDEV/meta/deletedAt', Date.now()))`로 방을 지운 뒤 `await lifecycle('resume')`을 실행한다. 실행 화면에 `주인이 지운 방이에요.`가 뜨고 `DEVDEV` 칩이 없다. 끝나면 같은 경로에 `null`을 써서 되돌린다.
 
 다른 기기(`room-elsewhere`)도 `devdev`에 참여한 상태에서 시작한다. 계정 접속 상태는 `const presence = () => s.stage.evaluate(() => devHub.read('users/' + core.deps.uid + '/presence'))`로 읽는다.
 

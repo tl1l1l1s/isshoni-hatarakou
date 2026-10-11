@@ -4,8 +4,8 @@ import { NAME_MAX_LENGTH } from '@shared/constants';
 /** 닉네임 검사. 앞뒤 공백을 지우고 1자부터 20자까지 받는다 */
 export function cleanName(raw: string): { ok: true; name: string } | { ok: false; reason: string } {
   const name = raw.trim();
-  if (!name) return { ok: false, reason: '닉네임을 적어 주세요' };
-  if (name.length > NAME_MAX_LENGTH) return { ok: false, reason: `닉네임은 ${NAME_MAX_LENGTH}자까지 쓸 수 있어요` };
+  if (!name) return { ok: false, reason: '닉네임을 적어 주세요.' };
+  if (name.length > NAME_MAX_LENGTH) return { ok: false, reason: `닉네임은 ${NAME_MAX_LENGTH}자까지 쓸 수 있어요.` };
   return { ok: true, name };
 }
 

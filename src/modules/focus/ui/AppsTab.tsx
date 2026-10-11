@@ -13,13 +13,13 @@ export default function AppsTab({ ctx }: SlotProps) {
   const fill = (i: number) => {
     const key = ctx.activity.lastForeignApp();
     if (!key) return ctx.ui.toast('넣을 앱을 먼저 잠깐 쓰고 이 창으로 돌아와 다시 눌러 주세요.');
-    if (apps.some((a) => a?.key === key)) return ctx.ui.toast('이미 등록한 앱이에요.');
+    if (apps.some((a) => a?.key === key)) return ctx.ui.toast('이미 들어 있는 앱이에요.');
     save(i, { key, label: labelOf(key).slice(0, 20) });
   };
   const firstEmpty = apps.findIndex((a) => !a);
   return (
     <div>
-      <p>등록한 앱이 앞에 있을 때만 집중 시간이 쌓여요.</p>
+      <p>집중 앱이 앞에 있을 때만 집중 시간이 쌓여요.</p>
       <ol>
         {apps.map((a, i) => (
           <li key={i}>

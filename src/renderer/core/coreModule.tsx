@@ -236,7 +236,7 @@ function DisplayTab({ core, ctx }: { core: CoreRuntime; ctx: Ctx }) {
       <p>영상, 게임, 발표를 전체 화면으로 띄우는 동안 캐릭터를 숨겨요. 펜 입력 보호 앱 위에서는 숨기지 않아요.</p>
       <hr />
       <p>이름표를 끌어서 캐릭터를 옮길 수 있어요.</p>
-      <button onClick={() => void core.registry.run('core.resetPositions').then(() => ctx.ui.toast('위치를 처음으로 되돌렸어요'), (e: Error) => ctx.ui.toast(e.message))}>
+      <button onClick={() => void core.registry.run('core.resetPositions').then(() => ctx.ui.toast('위치를 처음으로 되돌렸어요.'), (e: Error) => ctx.ui.toast(e.message))}>
         위치 초기화
       </button>
     </div>

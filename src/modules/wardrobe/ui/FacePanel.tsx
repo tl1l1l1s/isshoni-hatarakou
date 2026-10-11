@@ -12,7 +12,7 @@ const POSE_LABEL: Record<PoseId, string> = { idle: '기본', typing: '타이핑'
 
 interface Stamp { img: ImageBitmap; base: Rect; r: Rect; scale: number }
 
-/** 얼굴 그리기 (AVT-03, AVT-04). 몸과 몸 색을 고르고 표정과 감은눈을 512px 그림판에 그린다 */
+/** 얼굴 그리기 (AVT-03, AVT-04). 몸과 몸 색을 고르고 표정과 감은 눈을 512px 그림판에 그린다 */
 export default function FacePanel({ ctx, edit, face, body, onFace, onError }: {
   ctx: Ctx;
   edit: FaceEdit;

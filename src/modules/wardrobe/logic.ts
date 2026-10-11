@@ -124,7 +124,7 @@ const same = (a: Appearance, b: Appearance) => JSON.stringify(a) === JSON.string
 export const animalUnlocked = (unlockedAt: number | null, level: number | null, need: number): boolean =>
   unlockedAt !== null || (level !== null && level >= need);
 
-export const lockedText = (need: number) => `${need}레벨이 되면 동물 캐릭터를 만들 수 있어요`;
+export const lockedText = (need: number) => `${need}레벨이 되면 동물 캐릭터를 만들 수 있어요.`;
 
 // ---- 서버 기록 (10.7.3 perItemMtime, trash) -------------------------------------
 

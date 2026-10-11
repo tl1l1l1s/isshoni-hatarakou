@@ -7,7 +7,7 @@ import { askRun, pickImage, putImage, removeBook, removeGift, run, saveMallangi,
 import css from './home.module.css';
 
 const when = (at: number) => new Date(at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-const FULL = `말랑이는 ${MALLANGI_MAX}개까지 둘 수 있어요. 하나를 지우고 다시 해 주세요.`;
+const FULL = `말랑이는 ${MALLANGI_MAX}개까지 둘 수 있어요. 하나를 지우고 다시 눌러 주세요.`;
 
 function Head({ title, onClose }: { title: string; onClose: () => void }) {
   return (
@@ -56,7 +56,7 @@ export function BookPanel({ ctx, owner, mine, book, more, onMore, onClose }: {
           ))}
         </ul>
       ) : (
-        <p className={css.hint}>아직 방명록이 없어요.</p>
+        <p className={css.hint}>아직 친구가 남긴 글이 없어요.</p>
       )}
       {more && <button onClick={onMore}>이전 글 더 보기</button>}
     </>
@@ -106,7 +106,7 @@ export function GiftPanel({ ctx, home, gifts, onClose }: { ctx: Ctx; home: Home;
           })}
         </ul>
       ) : (
-        <p className={css.hint}>아직 받은 선물이 없어요.</p>
+        <p className={css.hint}>아직 친구가 보낸 선물이 없어요.</p>
       )}
     </>
   );
