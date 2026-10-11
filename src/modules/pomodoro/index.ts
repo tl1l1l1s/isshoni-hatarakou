@@ -13,7 +13,9 @@ function chime(): void {
     const o = ac.createOscillator();
     const g = ac.createGain();
     o.frequency.value = hz;
-    g.gain.setValueAtTime(0.2, t);
+    // 음 머리에 딸깍 소리가 나지 않게 10ms 동안 키운다
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.2, t + 0.01);
     g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
     o.connect(g).connect(ac.destination);
     o.start(t);
@@ -40,7 +42,7 @@ function announce(ctx: Ctx, l: Local, ended: Phase, n: Run): void {
   }
 }
 
-// 뽀모도로 (FOC-07). 포커스 기록 창 서랍에서 열고 남은 시간을 머리 위에 보낸다 (FOC-06)
+// 뽀모도로 (FOC-07). ▼ 메뉴와 포커스 기록 창 서랍에서 열고 남은 시간을 머리 위에 보낸다 (FOC-06)
 export default defineModule({
   id: 'pomodoro',
   title: '뽀모도로',
@@ -61,8 +63,12 @@ export default defineModule({
   ],
   ui: {
     windows: [{ id: 'pomodoro.timer', title: '뽀모도로', width: 300, height: 420, focusable: true, component: () => import('./ui/TimerWindow') }],
-    contributions: [{ slot: 'focus.drawer', id: 'pomodoro.drawer', label: '뽀모도로', component: DrawerButton, order: 10 }],
+    contributions: [
+      { slot: 'focus.drawer', id: 'pomodoro.drawer', label: '뽀모도로', component: DrawerButton, order: 10 },
+      { slot: 'menu.main', id: 'pomodoro.menu', label: '뽀모도로', command: 'pomodoro.open', order: 13 },
+    ],
   },
+  commands: [{ id: 'pomodoro.open', run: (ctx) => ctx.ui.open('pomodoro.timer') }],
   setup(ctx) {
     let sent = '';
     const tick = () => {
