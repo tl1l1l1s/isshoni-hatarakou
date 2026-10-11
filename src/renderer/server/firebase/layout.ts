@@ -30,11 +30,13 @@ export function keyTime(key: string): number {
 /** 서버가 거부한 쓰기의 안내. 메모리 서버도 같은 글을 써서 시험이 같은 글을 본다 */
 export const WRITE_DENIED = '권한이 없어 저장하지 못했어요. 방이 지워졌거나 계정 설정이 바뀌었을 수 있어요.';
 
-/** 쓰기 실패를 사용자에게 보일 글로 바꾼다. 모듈은 e.message를 그대로 띄우므로 원래 오류는 cause와 code에 남긴다 */
+/** 쓰기 실패를 사용자에게 보일 글로 바꾼다. 모듈은 e.message를 그대로 띄우므로 원래 오류는 cause와 code에 남긴다.
+ *  set과 update의 거부는 code가 PERMISSION_DENIED이고 transaction의 거부는 code 없이 message만 permission_denied다 */
 export function writeError(e: unknown): Error {
-  const code = (e as { code?: unknown } | null)?.code;
-  const text = code === 'PERMISSION_DENIED' ? WRITE_DENIED : '저장하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.';
-  return Object.assign(new Error(text), { cause: e, code });
+  const o = e as { code?: unknown; message?: unknown } | null;
+  const denied = o?.code === 'PERMISSION_DENIED' || /permission_denied/i.test(String(o?.message));
+  const text = denied ? WRITE_DENIED : '저장하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.';
+  return Object.assign(new Error(text), { cause: e, code: denied ? 'PERMISSION_DENIED' : o?.code });
 }
 
 /** Firebase가 빈 m을 저장하지 않으므로 빈 값을 채운다 */

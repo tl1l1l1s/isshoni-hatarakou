@@ -16,6 +16,9 @@ export const Ok = z.object({ at: z.number() });
 export const Inv = z.object({ room: z.string(), name: z.string().max(NAME_MAX_LENGTH), at: z.number() });
 /** 받은 기록에서 보낸 사람 한 명의 칸 in/{senderUid} */
 export const Slot = z.object({ req: Req.optional(), ok: Ok.optional(), inv: Inv.optional() });
+/** 이 PC에 남기는 친구 이름 (uid → 이름). 끊긴 채로 친구 창을 열면 프로필을 읽기 전까지 이 이름을 보인다 */
+export const Local = z.object({ names: z.record(z.string(), z.string()) });
+export type Local = z.infer<typeof Local>;
 export type Entry = z.infer<typeof Entry>;
 export type Req = z.infer<typeof Req>;
 export type Inv = z.infer<typeof Inv>;

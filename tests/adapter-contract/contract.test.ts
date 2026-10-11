@@ -10,6 +10,7 @@ import { encodeFile, WRITE_DENIED } from '@server/firebase/layout';
 import { encodeSetupCode } from '@server/firebase/setup-code';
 import { createMemoryServer, MemoryHub } from '@server/memory';
 import { SERVER_TIME, type AccountPresence, type RoomEvent, type ServerPort } from '@server/port';
+import { RoomSession } from '@core/room/session';
 import { buildRules } from '../../rules/build';
 
 interface Client { server: ServerPort; uid: string; goOffline(): void; goOnline(): void; close?(): Promise<void> }
@@ -108,6 +109,9 @@ function contract(make: (name: string) => Promise<Client>, seed: Seed) {
 
   it('docs: 남의 사용자 범위에는 쓰지 못하고 거부는 사용자에게 보일 글로 온다', async () => {
     await expect(b.server.docs({ scope: 'user', module: 'contract', uid: a.uid }).set('x', 1)).rejects.toThrow(WRITE_DENIED);
+    // transaction의 거부는 SDK가 code 없이 message로만 알린다
+    await expect(b.server.docs({ scope: 'user', module: 'contract', uid: a.uid }).transaction('x', () => 1)).rejects.toMatchObject({ message: WRITE_DENIED, code: 'PERMISSION_DENIED' });
+    await expect(b.server.room.createMeta(randomCode(), { kind: 'work', owner: a.uid, createdAt: 1 })).rejects.toThrow(WRITE_DENIED);
   });
 
   it('docs: removeOnDisconnect는 끊기면 지우고 거둔 예약은 지우지 않는다', async () => {
@@ -441,6 +445,72 @@ describe.skipIf(!DB || !AUTH)('firebase emulator', () => {
       await c.close();
     }
   });
+
+  // firebase 12는 연결된 채로 거부당한 query 구독에 cancel을 부르지 않아 그 구독이 다시 연결될 때까지 멈췄다 (RES-3).
+  // 연결을 끊지 않고 규칙만 되돌려도 값, 목록, 방 이벤트, 접속 상태 구독이 다시 걸리고 자동 재입장이 다시 들어간다
+  it('연결된 채로 잠깐 거부당한 구독과 자동 재입장은 규칙이 돌아오면 다시 걸린다', async () => {
+    const c = await make('resub2');
+    const put = async (path: string, body: unknown) => {
+      const res = await fetch(`http://${DB}/${path}?ns=${ns}`, { method: 'PUT', headers: { Authorization: 'Bearer owner' }, body: JSON.stringify(body) });
+      expect(res.ok).toBe(true);
+    };
+    const d = c.server.docs({ scope: 'user', module: 'contract', uid: c.uid });
+    await d.set('l/a', 1);
+    const code = randomCode();
+    expect(await c.server.room.createMeta(code, { kind: 'work', owner: c.uid, createdAt: c.server.time.serverNow() })).toBe(true);
+    await c.server.room.ensureRoster(code, c.uid, c.server.time.serverNow());
+    await c.server.presence.start(c.uid, { rooms: { code: 'BEFORE' } });
+    const seen = { w: [] as unknown[], l: [] as string[][], ev: [] as string[], p: [] as unknown[] };
+    const stops = [
+      d.watch('w', (v) => seen.w.push(v)),
+      d.watchList('l', { limit: 5, last: true }, (items) => seen.l.push(items.map((i) => i.key))),
+      c.server.room.watchEvents(code, (evs) => seen.ev.push(...evs.map((e) => e.p)), 0),
+      c.server.presence.watch(c.uid, (p) => seen.p.push(p?.m.rooms)),
+    ];
+    await until(() => expect([seen.l.at(-1), seen.p.at(-1)]).toEqual([['a'], { code: 'BEFORE' }]));
+    const session = new RoomSession({
+      server: c.server, deviceId: 'pc', proto: PROTO, mods: () => ({}), core: () => ({ name: 'n', look: null, state: 'online' }), presence: {},
+      clock: { now: () => Date.now() },
+      timers: {
+        every: (ms, fn) => {
+          const t = setInterval(fn, ms);
+          return () => clearInterval(t);
+        },
+        at: (ms, fn) => {
+          const t = setTimeout(fn, ms);
+          return () => clearTimeout(t);
+        },
+      },
+    });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      await put('.settings/rules.json', { rules: { '.read': false, '.write': false } });
+      // 값 구독의 cancel이 오면 서버는 같은 규칙 평가에서 query 구독도 끊었다
+      await until(() => expect(warn.mock.calls.join()).toContain('/w '));
+      expect(await session.join(code, { retry: true })).toMatchObject({ ok: false, kind: 'network' });
+      await put('.settings/rules.json', rules);
+      // 이 클라이언트가 쓰면 SDK가 자기 캐시로 바로 알려 서버가 구독을 끊었는지 보이지 않으므로 규칙 밖에서 쓴다
+      await put(`mod/contract/u/${c.uid}/w.json`, 2);
+      await put(`mod/contract/u/${c.uid}/l/b.json`, 1);
+      await put(`rooms/${code}/ev/-Zafter.json`, { t: 'x.hi', uid: c.uid, p: '"after"', at: { '.sv': 'timestamp' } });
+      await put(`users/${c.uid}/presence/m/rooms.json`, { code: 'AFTER1' });
+      // 첫 다시 걸기는 5초 뒤다
+      await vi.waitFor(() => {
+        expect(seen.w.at(-1)).toBe(2);
+        expect(seen.l.at(-1)).toEqual(['a', 'b']);
+        expect(seen.ev).toContain('"after"');
+        expect(seen.p.at(-1)).toEqual({ code: 'AFTER1' });
+        expect(session.current()).toBe(code);
+      }, { timeout: 15_000, interval: 100 });
+    } finally {
+      warn.mockRestore();
+      await put('.settings/rules.json', rules);
+      await session.leave();
+      for (const stop of stops) stop();
+      await c.server.presence.stop();
+      await c.close();
+    }
+  }, 40_000);
 
   // 로그인 전에 연결을 열면 그 연결이 로그인하지 않은 채로 남는다 (firebase/index.ts의 start)
   it('로그인 직후 연결이 로그인한 상태다', async () => {

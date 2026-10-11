@@ -462,6 +462,13 @@ it('로컬 파일: 새 버전 앱이 쓴 파일은 덮지 않고 알리며 검�
   expect(broken.invoked).toContainEqual(['store.write', { path: 'device/modules/demo.bak.json', data: { v: 1, data: { n: 'x' } } }]);
 });
 
+it('서버가 거부한 프로필 쓰기는 로그에만 남고 처리하지 않은 거부(오류 보고)가 되지 않는다 (RES-3)', async () => {
+  const { core, invoked } = await boot([defineModule({ id: 'demo', setup: () => undefined })]);
+  vi.spyOn(core.deps.server.profile, 'write').mockRejectedValueOnce(new Error('권한이 없어 저장하지 못했어요.'));
+  core.ctxs.get('demo')!.ctx.self.setProfile({ level: 2 });
+  await vi.waitFor(() => expect(invoked).toContainEqual(['log.write', expect.objectContaining({ scope: 'demo', message: '프로필 쓰기 실패: 권한이 없어 저장하지 못했어요.' })]));
+});
+
 it('모듈 이벤트 처리 오류와 모듈을 내릴 때의 정리 오류는 모듈 이름과 함께 메인에 보고한다 (OPS-4)', async () => {
   const demo = defineModule({
     id: 'demo',

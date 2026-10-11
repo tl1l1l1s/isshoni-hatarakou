@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { defineModule } from '@core/types';
 import type { FriendsApi } from './api';
-import { Entry, Slot } from './logic';
+import { Entry, Local, Slot } from './logic';
 import { isFriend, request, snap, start, subscribe } from './state';
 
 const Target = z.object({ uid: z.string().min(1), name: z.string() });
@@ -17,6 +17,7 @@ export default defineModule<FriendsApi>({
     schema: z.object({ appearOffline: z.boolean().default(false) }),
     fields: { appearOffline: { label: '친구에게 오프라인으로 보이기', widget: 'toggle' } },
   },
+  local: { account: { version: 1, schema: Local, initial: () => ({ names: {} }) } },
   // 오프라인으로 보이기 (FRD-06). 코어는 online을 그대로 쓰고 친구 앱이 이 표시를 보고 오프라인으로 그린다.
   // online을 끄면 폰 신호 규칙(keyedWrite)이 PC가 꺼진 것으로 보고 거부한다 (ADR 0016)
   accountPresence: { hidden: z.boolean() },

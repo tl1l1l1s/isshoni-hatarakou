@@ -235,12 +235,12 @@ await verify('measure', async (s) => {
   await expect(s.stage.locator('[data-tier="5"]')).toHaveCount(EXTRA_SEATS + 1);
   await at(`방 ${ROOM_CAP_MAX}좌석 깨어 있음 티어 5`);
   await seatsM(s, null);
-  // 집중 시간 규칙(입력 없이 20분 지나면 멈춤)을 넘겨야 내 좌석도 잠든다
+  // 집중 시간 규칙(입력 없이 20분 지나면 멈춤)을 넘겨야 내 좌석도 잠든다. 잠들기까지 5초 남짓(5032ms) 걸려 기본 5초 대기로는 절반쯤 실패했다
   await fake(s, { idle: 1201 });
   await expect.poll(() => s.stage.evaluate(() => {
     const c = (window as unknown as { core: { self: { get(): { m: { focus?: { awake?: boolean } } } } } }).core;
     return c.self.get().m.focus?.awake;
-  })).toBe(false);
+  }), { timeout: 15_000 }).toBe(false);
   await at(`방 ${ROOM_CAP_MAX}좌석 잠듦`);
   await fake(s, { idle: 0 });
 

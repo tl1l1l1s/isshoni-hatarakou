@@ -118,6 +118,30 @@ describe('RoomSession', () => {
     expect(await session.owner('BBBBBB')).toBe('alice');
   });
 
+  // RES-3. 연결된 채로 서버가 잠깐 거부하면 online이 오지 않으므로 시간으로 다시 들어간다
+  it('retry 입장은 network로 실패하면 5초, 15초 뒤에 다시 들어가고 나가기가 오면 멈춘다', async () => {
+    const { server, session } = await setup();
+    const code = await session.create();
+    const denied = () => Promise.reject(new Error('permission_denied'));
+    const proto = vi.spyOn(server.config, 'minProtocol').mockImplementationOnce(denied).mockImplementationOnce(denied);
+    expect(await session.join(code, { retry: true })).toMatchObject({ ok: false, kind: 'network' });
+    await vi.advanceTimersByTimeAsync(4_999);
+    expect(proto).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect([proto.mock.calls.length, session.current()]).toEqual([2, null]);
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(session.current()).toBe(code);
+
+    // retry 없는 입장은 다시 들어가지 않고 기다리는 다시 시도는 나가기가 멈춘다
+    await session.leave();
+    proto.mockImplementation(denied);
+    expect((await session.join(code)).ok).toBe(false);
+    expect((await session.join(code, { retry: true })).ok).toBe(false);
+    await session.leave();
+    await vi.advanceTimersByTimeAsync(400_000);
+    expect(proto).toHaveBeenCalledTimes(5);
+  });
+
   it('beforeJoin 거부 이유를 그대로 돌려준다', async () => {
     const { session } = await setup();
     const code = await session.create();

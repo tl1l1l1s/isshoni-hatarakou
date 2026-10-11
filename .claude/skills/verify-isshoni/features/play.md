@@ -18,7 +18,7 @@
 - `play-others-fx`는 설정 일반 탭 놀이 묶음의 `친구가 보낸 화면 연출 보기`를 끄면 친구가 날린 글이 보이지 않고 친구가 던진 폭탄은 캐릭터를 날리지 않고 💫만 띄우며 친구의 깜짝쇼에도 아무도 날아가지 않는 것이다 (D2). 내가 보낸 연출은 그대로 보인다.
 - `play-sender`는 친구가 내 캐릭터를 때리거나 폭탄을 던지거나 쓰다듬거나 흔들면 `가짜 친구님이 때렸어요` 같은 알림이 뜨는 것이다. 같은 사람의 알림은 10초에 한 번이다.
 - `play-same-head`는 두 사람이 같은 때에 한 캐릭터를 쓰다듬고 흔들어도 모든 PC에 늦게 보낸 쪽의 반응이 남는 것이다.
-- `play-offline`은 연결이 끊긴 동안 누른 장난을 보내지 않고 `연결이 끊겨서 보내지 못했어요. 연결되면 다시 해 주세요.`를 띄우며 내 화면에서도 재생하지 않고 하루 횟수도 쓰지 않는 것이다.
+- `play-offline`은 연결이 끊긴 동안 누른 장난을 보내지 않고 `연결이 끊겨서 보내지 못했어요. 연결되면 다시 눌러 주세요.`를 띄우며 내 화면에서도 재생하지 않고 하루 횟수도 쓰지 않는 것이다.
 - `play-reduced-motion`은 OS의 동작 줄이기를 켜면 춤은 한 번만 움직이고 날아가기는 제자리에서 한 번 움찔하며 폭탄은 공 없이 터지기만 하고 날리는 글은 가운데에서 나타났다 사라지는 것이다.
 - `play-emoji`는 이모티콘 창에서 내 그림을 등록하고 누르면 내 캐릭터 머리 위에 그 그림이 뜨며 `빼기`로 지우는 것이다 (COM-18).
 
@@ -76,7 +76,7 @@ Preconditions:
 - **같은 때의 반응.** 키 두 개를 차례로 만든다(`const [k1, k2] = await s.stage.evaluate(() => [devHub.pushKey(), devHub.pushKey()])`). 같은 좌석에 `k2`로 `play.shake`를 먼저 넣고 `k1`으로 `play.pet`을 넣는다. 늦게 보낸 흔들기의 `💫`가 그대로 남고 `💗`는 뜨지 않는다. 순서를 바꿔 넣어도 결과가 같다.
 - **날리는 글 줄 수.** 가짜 친구로 `play.text`를 10개 넣는다(`{ key: 'devfriend_dev', text, size: 'l', seed }`). 효과 창의 글 줄(`document.body.innerText`의 줄)이 5개다.
 - **친구 연출 끄기.** 설정 창 일반 탭 놀이 묶음의 `settings.getByLabel('친구가 보낸 화면 연출 보기').uncheck()`를 실행한다. 바로 아래에 `끄면 날리는 글이 보이지 않아요. 폭탄과 깜짝쇼에도 캐릭터가 날아가지 않아요.`가 있다. `play.bomb`을 `{ from: 'devfriend_dev', to: me, seed: 7 }`로 넣으면 `효과` 창이 열리지 않고 내 머리 위에 `💫`가 뜬다. `play.text`를 넣어도 `효과` 창이 열리지 않는다. 내가 ▼ 메뉴 `춤추기`를 누르면 `효과` 창이 열린다. 끝나면 다시 체크한다.
-- **끊긴 동안.** `core.deps.server.goOffline()` 뒤 `가짜 친구 쓰다듬기`를 누르면 `💗`가 뜨지 않고 `연결이 끊겨서 보내지 못했어요. 연결되면 다시 해 주세요.`가 뜬다. 다른 사용자 메뉴 `때리기`도 같은 안내가 뜨고 `효과` 창이 열리지 않으며 `local.get('account').hit`이 그대로다. `goOnline()`으로 되돌린다.
+- **끊긴 동안.** `core.deps.server.goOffline()` 뒤 `가짜 친구 쓰다듬기`를 누르면 `💗`가 뜨지 않고 `연결이 끊겨서 보내지 못했어요. 연결되면 다시 눌러 주세요.`가 뜬다. 다른 사용자 메뉴 `때리기`도 같은 안내가 뜨고 `효과` 창이 열리지 않으며 `local.get('account').hit`이 그대로다. `goOnline()`으로 되돌린다.
 - **동작 줄이기.** 가짜 친구로 8초짜리 `play.text`를 넣어 `효과` 창을 붙잡고 `const fx = await windowTitled(s.app, '효과')`와 `await fx.emulateMedia({ reducedMotion: 'reduce' })`를 실행한다. 그 뒤 ▼ 메뉴 `춤추기`를 누르면 `fx.evaluate(() => document.getAnimations())`에서 캔버스 애니메이션의 `iterations`가 1이다. 그 뒤 넣은 `play.text`는 `transform` 대신 `opacity` 키프레임이고 `play.bomb`은 200ms짜리 터짐 하나만, 이어지는 날아가기는 3200ms에 키프레임 4개다.
 - **반응 끄기.** 내 머리 위에 `💗`가 떠 있을 때 ▼ 메뉴 `설정`을 열고 `settings.getByLabel('머리 위에 하트와 어지러움 반응 보이기').uncheck()`를 실행한다. `💗`가 바로 사라진다.
 - **내 이모티콘.** 그림 고르기 대화상자를 시험용 PNG로 바꾼다 (`tests/e2e/boot.spec.ts`의 `showOpenDialog` 예). `const emoji = await menu(s, '이모티콘', '이모티콘')` 뒤 `emoji.getByRole('button', { name: '＋ 내 이모티콘 넣기' }).click()`을 하면 `emoji.getByTitle('내 이모티콘')`이 보인다. 그것을 누르면 실행 화면에 `img[class*="bubbleImage"]` 말풍선이 뜬다. 창을 닫고 다시 열어도 그림이 남아 있다. `빼기` 다음 `emoji.getByTitle('이모티콘 빼기')`를 누르면 사라진다.

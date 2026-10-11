@@ -228,7 +228,7 @@ export class CoreRuntime {
     this.startPresence();
     const code = this.elsewhereRoom;
     this.elsewhereRoom = null;
-    if (code) void this.session.join(code).then((r) => this.toastFailed(r));
+    if (code) void this.session.join(code, { retry: true }).then((r) => this.toastFailed(r));
   }
 
   /** 입장 실패 안내. 다른 입장이나 나가기로 취소된 입장은 알리지 않는다 */
@@ -273,7 +273,7 @@ export class CoreRuntime {
   /** ctx.self.setName. 사용자가 저장을 눌렀을 때만 부르므로 끊겨 있으면 쓰지 않고 바로 알린다 (0033).
    *  서버가 받은 뒤에 이 PC의 이름을 바꿔서 실패한 이름이 이 PC에만 남지 않게 한다 */
   private async saveName(name: string, owner: string): Promise<void> {
-    if (!this.deps.server.connection.online()) throw new Error('연결이 끊겨서 저장하지 못했어요. 연결되면 다시 해 주세요.');
+    if (!this.deps.server.connection.online()) throw new Error('연결이 끊겨서 저장하지 못했어요. 연결되면 다시 눌러 주세요.');
     await this.writeName(name, owner);
     this.nameEdited = true;
     this.setSelfName(name);
@@ -754,7 +754,7 @@ export class CoreRuntime {
       room: {
         current: () => this.session.current(),
         onChange: (fn) => scope.add(this.session.onChange(fn)),
-        join: (code) => this.session.join(code),
+        join: (code, opts) => this.session.join(code, opts),
         // 모듈이 부르는 나가기는 사용자가 스스로 나가는 것이라 roster에서도 뺀다 (0033)
         leave: () => this.session.leave(true),
         create: () => this.session.create(),
@@ -764,7 +764,7 @@ export class CoreRuntime {
         },
         remove: async (code) => {
           // 끊긴 채로 지우면 이 PC에서만 지워진 것처럼 보이므로 시작하지 않는다 (0033)
-          if (!server.connection.online()) throw new Error('연결이 끊겨서 방을 지우지 못했어요. 연결되면 다시 해 주세요.');
+          if (!server.connection.online()) throw new Error('연결이 끊겨서 방을 지우지 못했어요. 연결되면 다시 눌러 주세요.');
           for (const fn of this.beforeRemove) await fn(code);
           // 주인 앱이 deleteWithRoom 컬렉션을 먼저 지우고 deletedAt을 쓴다 (10.7.2 방 주인과 방 보존)
           for (const mm of this.manifests) {
@@ -826,7 +826,8 @@ export class CoreRuntime {
           this.session.setCore({ look });
         },
         setStatus: (sourceId, value, priority) => this.setStatus(`${id}.${sourceId}`, value, priority),
-        setProfile: (fields) => void server.profile.write(uid, { [`m/${id}`]: fields }),
+        // 백그라운드 쓰기라 거부돼도(규칙 배포 실수 같은 잠깐의 거부) 로그에만 남긴다. 처리하지 않은 거부는 오류 보고가 된다
+        setProfile: (fields) => void server.profile.write(uid, { [`m/${id}`]: fields }).catch((e: Error) => this.log('warn', id, `프로필 쓰기 실패: ${e.message}`)),
         setPresence: (fields) => {
           for (const [k, v] of Object.entries(fields)) {
             const schema = m.accountPresence?.[k];

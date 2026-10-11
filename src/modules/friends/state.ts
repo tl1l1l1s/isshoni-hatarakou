@@ -2,7 +2,7 @@
 import { useCallback, useSyncExternalStore } from 'react';
 import type { z } from 'zod';
 import { NOT_IN_ROOM, type Ctx, type Dispose } from '@core/types';
-import { Entry, FRIEND_CODE_LENGTH, FRIEND_MAX, friendCodeOf, INBOX_MAX, plan, profileView, Slot, type Effect } from './logic';
+import { Entry, FRIEND_CODE_LENGTH, FRIEND_MAX, friendCodeOf, INBOX_MAX, plan, profileView, Slot, type Effect, type Local } from './logic';
 
 export interface Snap {
   /** 처음 받기 전에는 null */
@@ -63,6 +63,16 @@ async function apply(ctx: Ctx, e: Effect): Promise<void> {
 }
 
 const nameOf = async (ctx: Ctx, uid: string) => profileView(await ctx.users.profile(uid).catch(() => null)).name ?? '친구';
+
+/** 프로필에서 읽은 친구 이름을 이 PC에 남긴다. 이름이 없어졌으면 지운다 */
+export function rememberName(ctx: Ctx, uid: string, name: string | null): void {
+  const { names } = ctx.local.get<Local>('account');
+  if ((names[uid] ?? null) === name) return;
+  const next = { ...names };
+  if (name) next[uid] = name;
+  else delete next[uid];
+  ctx.local.update<Local>('account', (s) => ({ ...s, names: next }));
+}
 
 /** 받은 기록을 칸마다 plan대로 처리한다. 목록과 받은 기록을 둘 다 받은 뒤에만 돈다 */
 async function syncInbox(ctx: Ctx): Promise<void> {
