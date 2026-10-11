@@ -1,7 +1,7 @@
 .window { display: flex; flex-direction: column; gap: 10px; }
 .tabs { display: flex; align-items: center; gap: 4px; margin: 0; }
 .hint { font-size: 12px; color: var(--fg-muted); margin: 8px 0; }
-.count { font-size: 12px; font-weight: normal; opacity: 0.6; }
+.count { font-size: 12px; font-weight: normal; color: var(--fg-muted); }
 .pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0; }
 .grow { flex: 1; }
 .row { display: flex; align-items: center; gap: 6px; }
@@ -16,11 +16,14 @@
 }
 .profile { display: flex; flex-direction: column; gap: 4px; min-height: 0; padding-right: 12px; border-right: 1px solid var(--line); }
 .profile h3 { margin: 0 0 8px; }
+/* 주인 보기 화면의 사진 칸과 편집의 사진 넣기 (HOM-03) */
+.profile .photo { align-self: flex-start; min-height: 0; padding: 0; border-radius: 50%; background: none; }
+.photoPick { align-self: flex-start; }
 .profile p { flex: 1; overflow: auto; }
 .profile textarea { flex: 1; resize: none; font: inherit; }
 .main { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; }
 .bar { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
-.badge { margin-left: 4px; padding: 0 5px; border-radius: 8px; background: var(--state-busy); color: #fff; font-size: 11px; }
+.bar [data-unread] { margin-left: 4px; }
 .desk { position: relative; flex: 1; min-height: 160px; border-radius: 8px; border: 1px solid var(--line); background: center / cover no-repeat; }
 .deskTools { position: absolute; left: 8px; bottom: 8px; display: flex; gap: 6px; align-items: center; padding: 6px 10px; border-radius: var(--radius-l); background: var(--glass); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: var(--shadow-md), inset 0 0 0 1px var(--glass-edge); }
 .deskTools label { margin: 0; gap: 4px; }
@@ -60,6 +63,10 @@
 .walker[data-hop='true'] { animation: hop 0.3s ease-out 2; }
 .walker[data-held='true'] { cursor: grabbing; animation: none; }
 @keyframes hop { 50% { transform: translateY(-24px); } }
+/* 동작 줄이기를 켜면 되풀이하는 움직임을 멈춘다. 누를 때 한 번 뛰는 것은 둔다 */
+@media (prefers-reduced-motion: reduce) {
+  .bob, .spin, .walker { animation: none; }
+}
 
 /* 웹박수 이모지와 말랑이 하트. --dx --dy만큼 흩어지며 사라진다 */
 .sparks { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
@@ -100,7 +107,6 @@
 .bgm { display: flex; align-items: center; gap: 6px; min-height: 26px; padding: 0 4px 0 8px; border-radius: var(--radius-m); background: var(--fill); font-size: 12px; }
 .bgm button { min-height: 22px; padding: 0 8px; background: transparent; }
 .bgmTitle { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.player { width: 200px; height: 200px; flex: none; border: 0; border-radius: var(--radius-l); background: #000; }
 
 /* 바탕화면 아이콘 (HOM-11) */
 .icon {
@@ -108,7 +114,7 @@
   background: transparent; color: #fff; font-size: 11px;
 }
 .icon span { font-size: 28px; line-height: 1.1; }
-.icon small { padding: 0 5px; border-radius: 4px; background: rgb(0 0 0 / 40%); font-size: 11px; }
+.icon small { padding: 0 5px; border-radius: 4px; background: rgb(0 0 0 / 55%); font-size: 11px; }
 .icon[aria-pressed='true'] { background: rgb(0 0 0 / 22%); color: #fff; box-shadow: none; }
 
 /* 북마크 책장 */

@@ -1,7 +1,7 @@
 // 마이홈 상태와 동작. 상태는 ctx마다 따로 두어 시험에서 앱 여러 개를 한 프로세스에 띄워도 섞이지 않는다
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { useBlobUrls } from '@shared/blobUrl';
-import type { Ctx, Dispose } from '@core/types';
+import { OFFLINE, type AskQuestion, type Ctx, type Dispose } from '@core/types';
 import type {} from '@modules/friends/api';
 import type { HomeTab } from './api';
 import { BOOK_PAGE, CLAP_KEY, fitsFile, GIFT_KEY, GIFT_PENDING_MAX, lastAt, mergeInbox, parseHome, parseShelf, SENDERS_MAX, type Book, type Gift, type Home, type Inbox, type Item, type Local, type Mark } from './logic';
@@ -49,11 +49,13 @@ async function backfillSenders(ctx: Ctx): Promise<void> {
 /** owner 마이홈의 받은 기록을 보낸 사람마다 마지막 limit + 2개만 구독해 합친다 (HOM-09, HOM-14, HOM-15).
  *  방명록 글 키는 보낸 시각 13자리라 clap과 gift보다 앞에 놓여서 최근 글 limit개와 박수 수와 남은 선물이 함께 온다.
  *  보낸 사람은 주인의 친구만 될 수 있어서 친구 목록과 나를 본다. 주인은 기록을 본 사람을 색인 senders에 적어 두고 함께 보므로 친구를 끊은 사람의 기록도 남는다.
+ *  글과 선물에 적힌 이름은 보낸 사람이 마음대로 쓸 수 있어서 보낸 사람 프로필의 이름을 먼저 읽고 그 이름으로 보인다.
  *  ponytail: 방문자는 주인의 색인을 읽지 못해 주인의 친구 가운데 나와 친구가 아닌 사람이 남긴 글과 박수를 보지 못한다. 주인 색인을 읽게 되면 그 색인으로 바꾼다 */
 export function watchInboxOf(ctx: Ctx, owner: string, limit: number, fn: (v: Inbox) => void): Dispose {
   const friends = ctx.modules.get('friends');
   const me = ctx.self.uid();
   const rows = new Map<string, Array<{ key: string; value: unknown }>>();
+  const names = new Map<string, string>();
   const stops = new Map<string, Dispose>();
   let index: string[] = [];
   const sync = () => {
@@ -68,14 +70,24 @@ export function watchInboxOf(ctx: Ctx, owner: string, limit: number, fn: (v: Inb
     }
     for (const uid of want) {
       if (stops.has(uid)) continue;
-      stops.set(uid, ctx.server.userOf(owner, ['in']).watchList(uid, { limit: limit + 2, last: true }, (items) => {
-        rows.set(uid, items);
-        fn(mergeInbox(rows, limit));
-        if (owner === me && items.length && !index.includes(uid)) void ctx.server.user(['senders']).set(uid, true).catch(() => undefined);
-      }));
+      let stop: Dispose | undefined;
+      let live = true;
+      stops.set(uid, () => {
+        live = false;
+        stop?.();
+      });
+      void ctx.users.profile(uid).catch(() => null).then((p) => {
+        names.set(uid, typeof p?.name === 'string' ? p.name : '');
+        if (!live) return;
+        stop = ctx.server.userOf(owner, ['in']).watchList(uid, { limit: limit + 2, last: true }, (items) => {
+          rows.set(uid, items);
+          fn(mergeInbox(rows, limit, names));
+          if (owner === me && items.length && !index.includes(uid)) void ctx.server.user(['senders']).set(uid, true).catch(() => undefined);
+        });
+      });
     }
     // 더 보기로 다시 구독할 때 새 값이 오기 전까지는 보던 목록을 그대로 둔다
-    if (gone) fn(mergeInbox(rows, limit));
+    if (gone) fn(mergeInbox(rows, limit, names));
   };
   const offs = [friends?.onChange(sync)];
   if (owner === me) {
@@ -195,8 +207,29 @@ export async function pickImage(ctx: Ctx, maxSide: number): Promise<string | nul
   return f ? putImage(ctx, f.bytes, maxSide) : null;
 }
 
-/** 실패하면 안내 문장을 토스트로 띄운다 */
-export const run = (ctx: Ctx, fn: () => Promise<unknown>) => void fn().catch((e: Error) => ctx.ui.toast(e.message));
+/** 서버에 쓰는 사용자 동작. 연결이 끊겼으면 시작하지 않고 알린다 (0033 오프라인 쓰기 정책). 실패하면 안내 문장을 토스트로 띄운다 */
+export const run = (ctx: Ctx, fn: () => Promise<unknown>) =>
+  ctx.connection.online() ? void fn().catch((e: Error) => ctx.ui.toast(e.message)) : ctx.ui.toast(OFFLINE);
+
+/** run과 같고 쓰는 동안 busy가 true다. 그동안 단추를 꺼 두면 두 번 눌러도 한 번만 보낸다 */
+export function useBusy(ctx: Ctx): [boolean, (fn: () => Promise<unknown>) => void] {
+  const [busy, setBusy] = useState(false);
+  const go = (fn: () => Promise<unknown>) =>
+    run(ctx, () => {
+      setBusy(true);
+      return fn().finally(() => setBusy(false));
+    });
+  return [busy, go];
+}
+
+/** 서버에 연결돼 있는지. 연결되거나 끊기면 다시 그린다 */
+export const useOnline = (ctx: Ctx) => useSyncExternalStore((f) => ctx.connection.onChange(f), () => ctx.connection.online());
+
+/** 되돌릴 수 없는 지우기는 마이홈 창 안에서 한 번 더 묻고 지운다. 연결이 끊겼으면 묻지 않고 알린다 */
+export function askRun(ctx: Ctx, q: AskQuestion, fn: () => Promise<unknown>): void {
+  if (!ctx.connection.online()) return ctx.ui.toast(OFFLINE);
+  void ctx.ui.ask('home.main', q).then((ok) => ok && run(ctx, fn));
+}
 
 /** 친구 목록과 이름. friends 모듈이 없으면 빈 목록 */
 export function useFriends(ctx: Ctx): Visit[] {

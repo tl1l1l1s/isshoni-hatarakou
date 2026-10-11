@@ -20,14 +20,14 @@ export const Settings = z.object({
 export type Settings = z.infer<typeof Settings>;
 
 const VIDEO_ID = /^[\w-]{11}$/;
-/** k는 줄마다 다른 키라서 같은 곡을 두 번 넣어도 된다. 제목은 처음 재생할 때 플레이어가 알려 준다 */
+/** k는 줄마다 다른 키라서 같은 곡을 두 번 넣어도 된다. 제목은 더할 때 유튜브 oEmbed에서 받거나 처음 재생할 때 플레이어가 알려 준다 */
 export const Track = z.object({ k: z.string(), v: z.string().regex(VIDEO_ID), title: z.string().max(200) });
 export type Track = z.infer<typeof Track>;
 export const PRESETS = 3;
 export const PRESET_NAME_MAX = 20;
 export const BIO_MAX = 140;
 /** 플레이리스트 창 크기. 원래 크기는 맨 아래 백색소음 안내까지 스크롤 없이 보이는 높이이고 축소 플레이어는 플레이어 줄만 남긴 높이다 (SND-04) */
-export const PLAYER = { width: 360, height: 690, miniHeight: 240 };
+export const PLAYER = { width: 360, height: 720, miniHeight: 240 };
 
 export const Preset = z.object({ name: z.string().max(PRESET_NAME_MAX), tracks: z.array(Track).max(MAX_TRACKS) });
 export type Preset = z.infer<typeof Preset>;

@@ -1,5 +1,7 @@
+/* 창 높이에 맞춘다. 글자가 커지거나 창이 작아지면 곡 목록이 줄어들고 창은 스크롤하지 않는다 */
+.root { display: flex; flex-direction: column; height: calc(100vh - 2 * var(--sp-5)); }
 /* 유튜브 약관: 플레이어는 200x200 이상으로 보이게 둔다 */
-.top { display: flex; gap: 8px; }
+.top { display: flex; gap: 8px; flex: none; }
 .video { width: 200px; height: 200px; flex: none; border: 0; border-radius: var(--radius-l); background: #000; overflow: hidden; }
 .empty { display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; background: var(--hover-bg); font-size: 12px; text-align: center; }
 /* 옆 칸은 플레이어 높이 200px 안에 든다. 제목은 두 줄까지 보인다 */
@@ -16,7 +18,7 @@
 .add input { flex: 1; min-width: 0; }
 .count { font-size: 12px; color: var(--fg-muted); }
 
-.list { list-style: none; margin: 8px 0 0; padding: 4px; height: 104px; overflow-y: auto; border-radius: var(--radius-l); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.list { list-style: none; margin: 8px 0 0; padding: 4px; flex: 1 1 0; min-height: 40px; overflow-y: auto; border-radius: var(--radius-l); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
 .list li { display: flex; align-items: center; gap: 4px; padding: 3px 6px; border-radius: var(--radius-s); font-size: 13px; user-select: none; cursor: pointer; }
 .list li + li { margin-top: 0; }
 .list li.on { background: var(--hover-bg); font-weight: 600; }
@@ -37,9 +39,11 @@
 .bio { margin: 4px 0 8px; font-size: 12px; color: var(--fg-muted); overflow-wrap: anywhere; }
 .presets { display: flex; gap: 4px; margin-bottom: 8px; }
 .presets select, .presets input { flex: 1; min-width: 0; }
-.share { margin: -2px 0 8px; font-size: 12px; color: var(--fg-muted); }
-.pick { margin-top: 8px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 4px; height: 104px; overflow-y: auto; padding: 4px; box-sizing: border-box; border-radius: var(--radius-l); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
-.pick .hint { width: 100%; }
+.share { margin: -2px 0 0; font-size: 12px; color: var(--fg-muted); }
+.share + .hint { margin: 0 0 8px; }
+.pick { margin-top: 8px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 4px; flex: 1 1 0; min-height: 40px; overflow-y: auto; padding: 4px; box-sizing: border-box; border-radius: var(--radius-l); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.pickHead { display: flex; align-items: center; justify-content: space-between; gap: 4px; width: 100%; }
+.pickHead .hint { margin: 0; }
 
 .noise h4 { margin: 8px 0 4px; font-size: 13px; }
 .kinds { display: flex; flex-wrap: wrap; gap: 4px; }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent } from 'react';
-import type { Ctx } from '@core/types';
+import { OFFLINE, type Ctx } from '@core/types';
 import type {} from '@modules/sound/api';
 import type {} from '@modules/account/api';
 import {
@@ -8,7 +8,7 @@ import {
   POST_MAX, PROFILE_MAX, resizeSticker, restack, rotateSticker, SPEED_MAX, SPEED_MIN, STICKER_CAP, STICKER_SIDE, unread, VIEW,
 } from '../logic';
 import type { Anim, Bgm, Home, Local, Pt, Sticker } from '../logic';
-import { pickImage, run, sendClap, useFiles, useHomeDoc, useHomeState, useInbox, useShelf } from '../state';
+import { pickImage, run, sendClap, useFiles, useHomeDoc, useHomeState, useInbox, useOnline, useShelf } from '../state';
 import { BookPanel, GiftPanel, MallangiPanel, ShelfPanel } from './panels';
 import Walkers, { type Herd } from './Walkers';
 import css from './home.module.css';
@@ -21,7 +21,6 @@ interface Spark { id: number; text: string; x: number; y: number; dx: number; dy
 const ANIMS: Array<[Anim, string]> = [['none', '없음'], ['bob', '둥실'], ['spin', '빙글']];
 /** 박수 이모지 빨리 고르기. 칸에 직접 적을 수도 있다 */
 const CLAPS = ['👏', '🎉', '❤️', '👍', '🔥', '✨'];
-const YT = 'https://www.youtube-nocookie.com';
 let sparkId = 0;
 
 /** 마이홈 보기 화면 하나. 내 마이홈이면 편집 도구를 겹쳐 보여 주고 미리보기는 도구를 끈 모습이다 (HOM-02, HOM-10) */
@@ -55,9 +54,11 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
 
   const shown = (mode !== 'view' && draft) || home;
   const files = useFiles(ctx, shown ? [...shown.stickers.map((s) => s.file), ...('file' in shown.bg ? [shown.bg.file] : []), ...(shown.wall ? [shown.wall] : [])] : []);
+  const online = useOnline(ctx);
 
   if (error) return <p className={css.hint}>이 마이홈을 볼 수 없어요. 서로 친구로 등록한 사람의 마이홈만 볼 수 있어요.</p>;
-  if (!home || !shown) return <p className={css.hint}>불러오는 중이에요.</p>;
+  // 끊긴 동안에는 읽기가 끝나지 않는다. 끊김은 코어가 창 위쪽 띠로 알리고 연결되면 이어서 불러온다
+  if (!home || !shown) return <p className={css.hint}>{online ? '불러오는 중이에요.' : '연결되면 불러와요.'}</p>;
 
   const tools = mode === 'edit';
   const edit = (fn: (d: Home) => Home) => setDraft((d) => (d ? fn(d) : d));
@@ -104,7 +105,7 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
     setMode('edit');
     setPanel(null);
   };
-  const openLink = (url: string) => run(ctx, () => ctx.shell.openExternal(url));
+  const openLink = (url: string) => void ctx.shell.openExternal(url).catch((e: Error) => ctx.ui.toast(e.message));
 
   /** 글자들이 (x, y)에서 사방으로 흩어진다. 1초 뒤에 지운다 */
   const scatter = (glyphs: string[], x: number, y: number, n: number, spread: number) => {
@@ -121,7 +122,13 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
   const emoji = shown.clap || DEFAULT_CLAP;
   const clap = () => {
     const glyphs = [...new Intl.Segmenter('ko', { granularity: 'grapheme' }).segment(emoji)].map((g) => g.segment).filter((g) => g.trim());
-    if (mine) return scatter(glyphs, VIEW.width / 2, VIEW.height / 2, 14, 220);
+    if (mine) {
+      scatter(glyphs, VIEW.width / 2, VIEW.height / 2, 14, 220);
+      // 편집 중에는 고른 이모지를 미리 보는 것이라 설명하지 않는다
+      return mode === 'view' && ctx.ui.toast('친구가 놀러 와서 박수를 치면 수가 올라요.');
+    }
+    // 끊긴 동안에는 오늘 보낸 수를 세지 않는다
+    if (!ctx.connection.online()) return ctx.ui.toast(OFFLINE);
     const next = countClap(ctx.local.get<Local>('account').claps, uid, ctx.clock.dayKey());
     if (!next) return ctx.ui.toast(`박수는 한 마이홈에 하루 ${CLAP_DAILY}번까지 보낼 수 있어요.`);
     ctx.local.update<Local>('account', (s) => ({ ...s, claps: next }));
@@ -160,7 +167,10 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
   const badge = mine ? unread(book, seen) : 0;
   const postText = shown.post?.text ?? '';
   const tracks = ctx.modules.get('sound')?.tracks() ?? [];
-  const Photo = ctx.modules.get('account')?.Photo;
+  const account = ctx.modules.get('account');
+  const Photo = account?.Photo;
+  // 사진은 바로 서버에 올라가므로 편집의 취소로 되돌리지 않는다. 사진 칸이 사진을 구독해 바뀐 사진을 그린다
+  const pickPhoto = account && (() => run(ctx, account.pickPhoto));
 
   return (
     <div
@@ -175,8 +185,19 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
       onPointerCancel={up}
     >
       <aside className={css.profile}>
-        {Photo && <Photo uid={uid} size={88} />}
-        {tools && Photo && <small className={css.count}>사진은 설정 창의 계정 탭에서 바꿔요.</small>}
+        {Photo && pickPhoto && mine && mode === 'view' ? (
+          <button className={css.photo} aria-label="사진 넣기" title="눌러서 프로필 사진 넣기" onClick={pickPhoto}>
+            <Photo uid={uid} size={88} />
+          </button>
+        ) : (
+          Photo && <Photo uid={uid} size={88} />
+        )}
+        {tools && pickPhoto && (
+          <>
+            <button className={css.photoPick} onClick={pickPhoto}>사진 넣기</button>
+            <small className={css.count}>프로필 사진은 친구로 등록한 사람만 봐요.</small>
+          </>
+        )}
         <h3>{name}</h3>
         {tools ? (
           <>
@@ -223,7 +244,7 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
           </>
         ) : (
           <>
-            <BgmBar bgm={shown.bgm} mine={mine} />
+            <BgmBar ctx={ctx} bgm={shown.bgm} mine={mine} />
             <p className={css.pre}>{shown.profile || (mine ? '자기소개를 적어 보세요.' : '아직 자기소개가 없어요.')}</p>
           </>
         )}
@@ -232,11 +253,11 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
       <section className={css.main}>
         <div className={css.bar}>
           {/* 편집하는 동안에는 꾸미기 도구만 남기고 박수는 고른 이모지를 미리 보려고 둔다 */}
-          {!tools && <button onClick={() => toggle('book')}>방명록{badge > 0 && <span className={css.badge}>{badge}</span>}</button>}
+          {!tools && <button onClick={() => toggle('book')}>방명록{badge > 0 && <span data-unread>{badge}</span>}</button>}
           <button title={mine ? '눌러서 미리 보기' : `하루 ${CLAP_DAILY}번까지 보낼 수 있어요`} onClick={clap}>
             {emoji} 박수 {claps}
           </button>
-          {mine && !tools && <button onClick={() => toggle('gifts')}>선물함{gifts.length > 0 && <span className={css.badge}>{gifts.length}</span>}</button>}
+          {mine && !tools && <button onClick={() => toggle('gifts')}>선물함{gifts.length > 0 && <span data-unread>{gifts.length}</span>}</button>}
           {home.mallangi.length > 0 && !tools && <button onClick={() => herd.current?.call()}>말랑이 부르기</button>}
           {mine && !tools && <button onClick={() => toggle('mallangi')}>말랑이 관리</button>}
           <span className={css.grow} />
@@ -371,24 +392,19 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
 }
 
 /** 배경음악 막대. 누를 때만 플레이어를 띄워 재생한다. 유튜브 약관에 따라 플레이어는 200x200으로 보이게 둔다 (HOM-04).
+ *  플레이어는 sound 모듈이 그려서 플레이리스트 음량을 따르고 플레이리스트와 겹쳐 나지 않는다.
  *  곡이 없으면 누를 것이 없으니 막대 대신 글만 보인다 */
-function BgmBar({ bgm, mine }: { bgm: Bgm | undefined; mine: boolean }) {
+function BgmBar({ ctx, bgm, mine }: { ctx: Ctx; bgm: Bgm | undefined; mine: boolean }) {
   const [on, setOn] = useState(false);
+  const Player = ctx.modules.get('sound')?.Player;
   if (!bgm) return <small className={css.count}>{mine ? '배경음악 없음. 편집에서 플레이리스트 곡을 고를 수 있어요.' : '배경음악 없음'}</small>;
   return (
     <>
       <div className={css.bgm}>
-        <button aria-label={on ? '배경음악 끄기' : '배경음악 듣기'} onClick={() => setOn(!on)}>{on ? '■' : '▶'}</button>
+        <button aria-label={on ? '배경음악 끄기' : '배경음악 듣기'} disabled={!Player} onClick={() => setOn(!on)}>{on ? '■' : '▶'}</button>
         <span className={css.bgmTitle}>{bgm.title || '제목 없는 곡'}</span>
       </div>
-      {on && (
-        <iframe
-          className={css.player}
-          src={`${YT}/embed/${bgm.v}?autoplay=1&playsinline=1&rel=0`}
-          title={bgm.title || '배경음악 플레이어'}
-          allow="autoplay; encrypted-media"
-        />
-      )}
+      {on && Player && <Player track={bgm} />}
     </>
   );
 }

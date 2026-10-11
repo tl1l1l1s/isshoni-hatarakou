@@ -5,7 +5,8 @@ import type { SoundApi } from './api';
 import { createChime } from './chime';
 import { CHIMES, fromV1, initialPlaylist, isKind, KINDS, KIND_LABEL, mix, Playlist, PLAYER, Settings, SharedDoc, type Kind } from './logic';
 import { createNoise } from './noise';
-import { play, upload, WINDOW } from './state';
+import { play, setPlayer, upload, WINDOW } from './state';
+import { bgmFor } from './ui/Bgm';
 import Chip from './ui/Chip';
 
 const TYPING_IDLE_SEC = 1;
@@ -118,6 +119,8 @@ export default defineModule<SoundApi>({
         play(ctx, { k: `play:${v}`, v, title });
         ctx.ui.open(WINDOW);
       },
+      pause: () => setPlayer(ctx, { playing: false }),
+      Player: bgmFor(ctx),
     };
   },
 });

@@ -14,7 +14,8 @@ export function createNoise(ctx: Ctx): (gains: Map<Kind, number>) => void {
   const audio = () => {
     if (ac && buf) return { a: ac, b: buf };
     const a = (ac = new AudioContext());
-    const b = (buf = a.createBuffer(1, a.sampleRate * 2, a.sampleRate));
+    // 되풀이하는 잡음이 짧으면 같은 소리가 돌아오는 것이 들린다. 10초는 48kHz에서 1.9MB이고 한 번만 채운다
+    const b = (buf = a.createBuffer(1, a.sampleRate * 10, a.sampleRate));
     const d = b.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     return { a, b };
@@ -45,7 +46,8 @@ export function createNoise(ctx: Ctx): (gains: Map<Kind, number>) => void {
     };
     const r = Math.random;
     let tick: Voice['tick'];
-    if (k === 'rain') loop(filter('highpass', 400), filter('lowpass', 6000), gain(0.5));
+    // 빗소리는 넓은 대역을 남겨서 같은 음량에서 모닥불과 카페만큼 들리도록 낮춘다
+    if (k === 'rain') loop(filter('highpass', 400), filter('lowpass', 6000), gain(0.18));
     if (k === 'keys') tick = (t) => r() < 0.6 && burst(t + r() * 0.1, 1500 + r() * 2500, 0.03, 0.9);
     if (k === 'fire') {
       loop(filter('lowpass', 300), gain(0.8));
