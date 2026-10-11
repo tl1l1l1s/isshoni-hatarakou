@@ -1,6 +1,6 @@
 // 코어 규칙과 모듈 규칙 템플릿 (10.7.2). rules/build.ts가 모듈 조각과 합쳐 database.rules.json을 만든다.
 // 템플릿은 경로 변수 이름을 정해 둔다. 사용자 범위는 mod/<id>/u/$uid, 방 범위는 mod/<id>/r/$room 아래에 둔다.
-import { DAY_BOUNDARY_MS, FILE_MAX_BASE64_BYTES, KST_OFFSET_MS, NAME_MAX_LENGTH, PRESENCE_MODULE_MAX_BYTES, PRESENCE_STALE_MS } from '../src/shared/constants.ts';
+import { DAY_BOUNDARY_MS, FILE_MAX_BASE64_BYTES, JOINED_SKEW_MS, KST_OFFSET_MS, NAME_MAX_LENGTH, PRESENCE_MODULE_MAX_BYTES, PRESENCE_STALE_MS } from '../src/shared/constants.ts';
 import { ROOM_EVENT_MAX_CHARS, ROOM_EVENT_TTL_MS, ROOM_EVENT_TYPE_MAX } from '../src/shared/constants.ts';
 
 export interface RuleNode { [key: string]: RuleNode | string | boolean | string[] }
@@ -107,17 +107,34 @@ const SHORT_KEY = (k: string) => `${k}.length <= 32`;
 // 글자 수는 바이트 수보다 크지 않으므로 바이트 한도를 글자 수에 걸면 넉넉한 상한이 된다
 const LEAF = `(newData.isBoolean() || newData.isNumber() || (newData.isString() && newData.val().length <= ${PRESENCE_MODULE_MAX_BYTES}))`;
 const STALE = `now - data.child('seenAt').val() > ${PRESENCE_STALE_MS}`;
+/** 모듈 필드 m.<moduleId> (멤버 기록, 공개 프로필, 계정 접속 상태). 값은 짧은 글, 숫자, 참거짓이거나 그런 값을 담은 한 단계 객체다.
+ *  배열은 숫자 키 객체로 저장되므로 한 단계 객체다.
+ *  ponytail: 규칙은 자식 수를 세지 못해 키 길이와 값 크기만 막는다. 고친 앱은 작은 필드를 얼마든지 늘릴 수 있다.
+ *  개수까지 막아야 하면 쓰는 곳마다 모듈 id와 필드 이름을 규칙에 적는다 */
+const MODULE_FIELDS: RuleNode = {
+  '.validate': 'newData.hasChildren()',
+  $mid: {
+    '.validate': `${SHORT_KEY('$mid')} && newData.hasChildren()`,
+    $f: { '.validate': `${SHORT_KEY('$f')} && (${LEAF} || newData.hasChildren())`, $g: { '.validate': `${SHORT_KEY('$g')} && ${LEAF}` } },
+  },
+};
 
 export function coreRules(): RuleNode {
   return {
     users: {
       $uid: {
-        // friendCode는 계정 발급 스크립트(관리 SDK)만 쓴다
+        // 계정 발급 스크립트(scripts/create-account.ts)가 { v: 1, name, friendCode }로 만들고 friendCode는 스크립트(관리 SDK)만 쓴다.
+        // 로그인한 사용자 누구나 읽으므로 스크립트와 앱이 쓰는 필드만 받는다
         public: {
           '.read': AUTH,
           '.write': OWN,
+          v: { '.validate': 'newData.val() === 1' },
           friendCode: { '.validate': 'newData.val() === data.val()' },
-          name: { '.validate': `newData.isString() && newData.val().length <= ${NAME_MAX_LENGTH}` },
+          // 1자부터는 account 모듈 cleanName과 같다
+          name: { '.validate': `newData.isString() && newData.val().length >= 1 && newData.val().length <= ${NAME_MAX_LENGTH}` },
+          // 모듈 프로필 필드 (ctx.self.setProfile). 앱은 growth.level과 chat.emo(파일 해시 8개까지)만 쓴다
+          m: MODULE_FIELDS,
+          $other: { '.validate': false },
         },
         // m(지금 있는 방 코드 등)은 본인과 친구만, online과 lastSeen은 로그인한 사용자 누구나 읽는다 (10.14의 16번)
         presence: {
@@ -125,7 +142,8 @@ export function coreRules(): RuleNode {
           '.write': OWN,
           online: { '.read': AUTH, '.validate': 'newData.isBoolean()' },
           lastSeen: { '.read': AUTH, '.validate': 'newData.isNumber()' },
-          m: {},
+          // 모듈 accountPresence 필드 (ctx.self.setPresence). 앱은 manifest에 선언한 rooms.code와 friends.hidden만 쓴다
+          m: MODULE_FIELDS,
           $other: { '.validate': false },
         },
         private: { '.read': OWN, '.write': OWN },
@@ -173,17 +191,13 @@ export function coreRules(): RuleNode {
             look: { '.validate': 'newData.isString() && newData.val().matches(/^[0-9a-f]{64}$/)' },
             state: { '.validate': 'newData.isString() && newData.val().length <= 16' },
             proto: { '.validate': 'newData.isNumber()' },
-            mods: { $mid: { '.validate': `${SHORT_KEY('$mid')} && newData.isNumber()` } },
-            joinedAt: { '.validate': 'newData.isNumber()' },
-            seenAt: { '.validate': 'newData.isNumber()' },
-            // 모듈 presence 필드 (10.5). 값은 짧은 글, 숫자, 참거짓이거나 그런 값을 담은 한 단계 객체다.
-            // ponytail: 규칙은 자식 수를 세지 못해 필드마다 크기만 막는다. 합계는 앱(RoomSession.setMine)이 모듈마다 128바이트로 막는다
-            m: {
-              $mid: {
-                '.validate': `${SHORT_KEY('$mid')} && newData.hasChildren()`,
-                $f: { '.validate': `${SHORT_KEY('$f')} && (${LEAF} || newData.hasChildren())`, $g: { '.validate': `${SHORT_KEY('$g')} && ${LEAF}` } },
-              },
-            },
+            mods: { '.validate': 'newData.hasChildren()', $mid: { '.validate': `${SHORT_KEY('$mid')} && newData.isNumber()` } },
+            // 앱이 어림한 서버 시각(time.serverNow)이다. 다시 연결되면 처음 값을 다시 쓰므로 지난 값은 받고 미래 값만 막는다
+            joinedAt: { '.validate': `newData.isNumber() && newData.val() <= now + ${JOINED_SKEW_MS}` },
+            // 앱은 언제나 서버 시각으로 쓴다 (firebase/index.ts register, RoomSession.tick). 미래 값으로 150초 거름을 피하지 못한다
+            seenAt: { '.validate': 'newData.val() === now' },
+            // 모듈 presence 필드 (10.5). 합계는 앱(RoomSession.setMine)이 모듈마다 128바이트로 막는다
+            m: MODULE_FIELDS,
             $other: { '.validate': false },
           },
         },
