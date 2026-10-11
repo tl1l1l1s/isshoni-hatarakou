@@ -222,6 +222,7 @@ export function useBusy(ctx: Ctx): [boolean, (fn: () => Promise<unknown>) => voi
   return [busy, go];
 }
 
+/** 서버에 연결돼 있는지. 연결되거나 끊기면 다시 그린다 */
 export const useOnline = (ctx: Ctx) => useSyncExternalStore((f) => ctx.connection.onChange(f), () => ctx.connection.online());
 
 /** 되돌릴 수 없는 지우기는 마이홈 창 안에서 한 번 더 묻고 지운다. 연결이 끊겼으면 묻지 않고 알린다 */

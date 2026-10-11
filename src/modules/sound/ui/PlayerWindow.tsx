@@ -11,7 +11,7 @@ import css from './sound.module.css';
 import { command, embedSrc, useYouTube } from './youtube';
 
 const titleOf = (info: unknown) => (info as { videoData?: { title?: unknown } } | null)?.videoData?.title;
-/** 제목은 처음 재생할 때 플레이어가 알려 준다. 그 전에는 영상 id로 줄을 나눠 보인다 */
+/** 제목은 더할 때 유튜브 oEmbed에서 받고 받지 못하면 처음 재생할 때 플레이어가 알려 준다. 그 전에는 영상 id로 줄을 나눠 보인다 */
 const trackName = (t: { v: string; title: string }) => t.title || `제목 없는 곡 (${t.v})`;
 
 /** 플레이리스트와 백색소음 창 (SND-01..SND-09). 닫으면 숨기고 재생을 멈춘다.
