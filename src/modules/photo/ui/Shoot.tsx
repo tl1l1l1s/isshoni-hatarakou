@@ -98,7 +98,9 @@ function View({ ctx, session, im, localOwn }: { ctx: Ctx; session: Session; im: 
 
   const scale = Math.min(VIEW.width / size.width, VIEW.height / size.height);
   const lead = v.host && !busy;
-  const names = v.people.map((p) => p.name || '이름 없음').join(', ');
+  // 나는 빼고 적는다. 내 이름이 이름 없음이면 함께 찍는 사람이 없다는 뜻으로 읽혔다
+  const names = v.people.filter((p) => !p.self).map((p) => p.name || '이름 없음').join(', ');
+  const people = names ? `함께 찍는 사람 ${names}` : v.room ? '같은 방 사람이 스티커 사진을 열면 함께 찍혀요.' : '혼자 찍어요. 방에 들어가면 같이 찍을 수 있어요.';
   return (
     <div>
       <div ref={pad} className={css.pad} tabIndex={0} aria-label="촬영 미리보기" onKeyDown={onKey}>
@@ -108,7 +110,7 @@ function View({ ctx, session, im, localOwn }: { ctx: Ctx; session: Session; im: 
       <p className={css.hint}>
         {v.count ? `컷 ${v.count.cut + 1} / ${cfg.n} 찍는 중이에요.` : '아래 단추로 거리와 자세를 고르고 촬영 시작을 눌러요. 찍고 나면 꾸미기 탭이 열려요. 키보드로는 미리보기를 누른 뒤 A D로 옮기고 Q E로 돌고 W S로 다가가거나 물러나고 Space로 점프해요.'}
       </p>
-      <p className={css.hint}>함께 찍는 사람 {names || '없음'}</p>
+      <p className={css.hint}>{people}</p>
       {v.room && <p className={css.hint}>{v.full ? '자리 네 칸이 다 찼어요. 자리가 나면 함께 찍어요.' : !v.joined ? '자리를 잡는 중이에요.' : v.host ? '내가 진행해요. 설정을 고르고 촬영을 시작해요.' : `${v.hostName}님이 진행해요. 설정과 촬영 시작은 진행하는 사람이 해요.`}</p>}
       <div className={css.row}>
         <span>방향</span>

@@ -11,7 +11,7 @@ export type { AccountPresence, Point, SceneSpec };
 export type Dispose = () => void;
 
 /** 방 밖에서 방이 필요한 일을 하려 할 때 알리는 글. 코어가 needsRoom 메뉴 항목에 쓰고 모듈도 같은 글을 쓴다 */
-export const NOT_IN_ROOM = '방에 들어가면 쓸 수 있어요. 방 만들기 / 참여하기에서 들어가요.';
+export const NOT_IN_ROOM = '방에 들어가면 쓸 수 있어요. 워킹룸에서 들어가요.';
 
 /** 연결이 끊긴 동안 사용자가 시작한 쓰기를 멈출 때 알리는 글 (0033 오프라인 쓰기 정책). 적은 글은 지우지 않고 둔다 */
 export const OFFLINE = '연결이 끊겨서 보내지 못했어요. 연결되면 다시 해 주세요.';

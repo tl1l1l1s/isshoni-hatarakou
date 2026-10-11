@@ -142,7 +142,7 @@ test('뽀모도로를 시작하면 창과 머리 위에 남은 시간이 보인�
 });
 
 test('devdev 방에 들어가면 가짜 친구가 보인다', async () => {
-  const rooms = await menu('방 만들기 / 참여하기', '방 만들기 / 참여하기');
+  const rooms = await menu('워킹룸', '워킹룸');
   await rooms.getByPlaceholder('예: 7Q2K9M').fill('devdev');
   await rooms.getByRole('button', { name: '참여' }).click();
   await expect(stage.getByText('가짜 친구')).toBeVisible();
@@ -185,7 +185,7 @@ test('내 방을 만들어 가챠 아이템을 넣고 한 시간 기록으로 �
     (dialog as unknown as { showOpenDialog: unknown }).showOpenDialog = async () => ({ canceled: false, filePaths: [p] });
   }, pngPath);
 
-  const rooms = await menu('방 만들기 / 참여하기', '방 만들기 / 참여하기');
+  const rooms = await menu('워킹룸', '워킹룸');
   await rooms.getByRole('button', { name: '방에서 나가기' }).click();
   await rooms.getByRole('button', { name: '만들기', exact: true }).click();
   await rooms.getByRole('button', { name: '방 설정' }).click();
@@ -294,7 +294,7 @@ test('혼자 스티커 사진을 한 컷 찍어 PNG로 저장한다', async () =
   }, downloads + sep);
 
   // 방 밖에서 혼자 찍는다
-  const rooms = await menu('방 만들기 / 참여하기', '방 만들기 / 참여하기');
+  const rooms = await menu('워킹룸', '워킹룸');
   await rooms.getByRole('button', { name: '방에서 나가기' }).click();
   await expect(rooms.getByRole('button', { name: '만들기', exact: true })).toBeVisible();
   await rooms.close();

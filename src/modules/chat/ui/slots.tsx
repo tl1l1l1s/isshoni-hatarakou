@@ -12,7 +12,7 @@ export function ChatChip({ ctx, seat }: SlotProps) {
   if (!seat?.self || !v.code || !v.on || v.unread === 0) return null;
   return (
     <button title="대화하기" onClick={() => ctx.ui.open(WINDOW)}>
-      💬{v.unread > 0 && <span className={css.count}>{badge(v.unread)}</span>}
+      💬<span data-unread>{badge(v.unread)}</span>
     </button>
   );
 }

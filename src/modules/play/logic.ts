@@ -21,11 +21,13 @@ export const ROLL_SHOW_MS = 2_000;
 export const ROLL_GAP_MS = 3_000;
 export const ROLL_LIMIT = 6;
 export const HIT_LIMIT = 30;
-/** 날리는 글이 화면을 지나는 시간과 한꺼번에 떠 있는 줄 수 (COM-05) */
+/** 날리는 글이 화면을 지나는 시간과 보낸 사람마다 한꺼번에 떠 있는 줄 수 (COM-05, D2) */
 export const TEXT_MS = 8_000;
-export const TEXT_LINES = 30;
+export const TEXT_PER_SENDER = 5;
 /** 받는 쪽은 이보다 오래된 신호를 버린다 (CHR-11) */
 export const STALE_MS = 30_000;
+/** 내 캐릭터에 한 장난을 알리는 간격. 보낸 사람마다 이 시간에 한 번만 알린다 */
+export const TELL_GAP_MS = 10_000;
 
 export const FACES = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'] as const;
 export const TEXT_SIZES = { l: 40, m: 28, s: 20 } as const;

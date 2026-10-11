@@ -77,8 +77,12 @@ async function syncInbox(ctx: Ctx): Promise<void> {
         await apply(ctx, e);
         if (e.kind === 'befriend') ctx.ui.toast(`${await nameOf(ctx, uid)}님과 친구가 됐어요.`);
       }
-      // 받은 신청은 앱을 켤 때와 올 때 친구창을 열어 보여 준다 (FRD-02)
-      if (p.request && once(ctx, `req:${uid}:${p.request.at}`)) ctx.ui.open('friends.main');
+      // 받은 신청은 창을 열지 않고 알림으로 알린다 (FRD-02). 거절한 사람이 다시 보내도 이번 실행에서는 한 번만 알린다 (D3)
+      if (p.request && once(ctx, `req:${uid}`)) {
+        const body = `${p.request.name}님이 친구 신청을 보냈어요.`;
+        ctx.ui.toast(body);
+        ctx.notify({ title: '친구 신청', body, onClick: () => ctx.ui.open('friends.main') });
+      }
       const inv = p.invite;
       if (inv && once(ctx, `inv:${uid}:${inv.at}`)) {
         const body = `${inv.name}님이 ${inv.room} 방으로 초대했어요.`;

@@ -22,8 +22,12 @@ export default defineModule({
   settings: {
     version: 1,
     scope: 'device',
-    schema: z.object({ reactions: z.boolean().default(true) }),
-    fields: { reactions: { label: '머리 위 반응 보이기 (하트, 어지러움)', widget: 'toggle' } },
+    schema: z.object({ reactions: z.boolean().default(true), othersFx: z.boolean().default(true) }),
+    fields: {
+      reactions: { label: '머리 위 반응 보이기 (하트, 어지러움)', widget: 'toggle' },
+      // 친구가 보낸 연출은 화면 전체에 그려져 그리던 그림을 가린다 (D2)
+      othersFx: { label: '친구가 보낸 화면 연출 보기', widget: 'toggle', hint: '끄면 날리는 글이 보이지 않고 폭탄과 깜짝쇼에도 캐릭터가 날아가지 않아요.' },
+    },
   },
   local: { account: { version: 1, schema: Local, initial: initialLocal } },
   roomEvents: {
@@ -43,8 +47,8 @@ export default defineModule({
     'play.flyColor': level(PLAY_LEVELS.flyColor, '채팅 날리기 글자 색'),
   },
   effects,
-  // 반응과 주사위는 채팅보다 위에 보인다. 잠 반응 z는 잠든 자세 그림에 들어 있다 (CHR-05). 내 다른 캐릭터 좌석에도 띄운다
-  bubbles: [{ id: 'play.head', priority: BUBBLE_PRIORITY.chat + 50, local: true, text: (seat, ctx) => headText(ctx, seat.key) }],
+  // 반응과 주사위는 자리비움보다 위에 보인다. 몇 초만 떠서 자리비움을 잠깐만 가린다. 잠 반응 z는 잠든 자세 그림에 들어 있다 (CHR-05). 내 다른 캐릭터 좌석에도 띄운다
+  bubbles: [{ id: 'play.head', priority: BUBBLE_PRIORITY.away + 50, local: true, text: (seat, ctx) => headText(ctx, seat.key) }],
   ui: {
     contributions: [
       { slot: 'menu.main', id: 'play.danceMenu', label: '춤추기', command: 'play.dance', order: 26, gate: 'play.dance', needsRoom: true },

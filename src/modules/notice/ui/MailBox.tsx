@@ -66,8 +66,8 @@ export function MailChip({ ctx, seat }: SlotProps) {
   const n = unreadOf(useMail(ctx));
   if (!seat?.self || !n) return null;
   return (
-    <button className={css.chip} title="우편함" onClick={() => ctx.ui.open('notice.main')}>
-      ✉<span className={css.badge}>{n > 9 ? '9+' : n}</span>
+    <button title="우편함" onClick={() => ctx.ui.open('notice.main')}>
+      ✉<span data-unread>{n > 9 ? '9+' : n}</span>
     </button>
   );
 }

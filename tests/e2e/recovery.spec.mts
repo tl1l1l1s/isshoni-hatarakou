@@ -34,7 +34,7 @@ test('일반 작업 앱에서 시간·보상·저장 장애 복구·꾸미기까
       await settings.getByRole('button', { name: '직전에 쓴 앱 넣기' }).first().click();
       await expect(settings.getByRole('textbox', { name: '2번 앱 이름' })).toHaveValue('notepad', { timeout: 500 });
     }).toPass();
-    const rooms = await menu(s, '방 만들기 / 참여하기', '방 만들기 / 참여하기');
+    const rooms = await menu(s, '워킹룸', '워킹룸');
     await rooms.getByRole('button', { name: '만들기', exact: true }).click();
     await rooms.getByRole('button', { name: '방 설정', exact: true }).click();
     const rs = await windowTitled(s.app, '방 설정');

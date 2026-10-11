@@ -15,10 +15,15 @@ export default defineModule<ChatApi>({
   specIds: ['ROM-02', 'COM-01', 'COM-02', 'COM-08', 'COM-09', 'COM-18', 'COM-04', 'SET-08'],
   // 대화하기 창 이름 옆 프로필 사진, 채팅을 끈 사람이 방 주인인지
   optionalRequires: ['account', 'rooms'],
-  // 대화하기 창 글자 크기 (COM-04, SET-08). 창 안과 설정 창 일반 탭에서 고른다
-  settings: { version: 1, scope: 'device', schema: z.object({ fontSize: FontSize.default('m') }), fields: { fontSize: { label: '채팅 글자 크기', options: FONT_SIZES } } },
+  // 대화하기 창 글자 크기 (COM-04, SET-08). 창 안과 설정 창 일반 탭에서 고른다. 새 메시지 OS 알림은 30초에 한 번까지 (D5)
+  settings: {
+    version: 1,
+    scope: 'device',
+    schema: z.object({ fontSize: FontSize.default('m'), osNotify: z.boolean().default(true) }),
+    fields: { fontSize: { label: '채팅 글자 크기', options: FONT_SIZES }, osNotify: { label: '새 메시지를 OS 알림으로 알려 주기', widget: 'toggle' } },
+  },
   profile: { emo: Mine },
-  local: { account: { version: 1, schema: Local, initial: () => ({ read: {} }) } },
+  local: { account: { version: 1, schema: Local, initial: () => ({ read: {}, out: [] }) } },
   server: {
     version: 1,
     collections: {

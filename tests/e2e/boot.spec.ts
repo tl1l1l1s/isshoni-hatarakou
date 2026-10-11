@@ -54,7 +54,7 @@ test('첫 버전 흐름이 처음부터 끝까지 동작한다', async () => {
   await settings.close();
 
   // 방 (ROM-05, ROM-08): 메모리 서버 개발 방에 가짜 친구가 있다
-  const rooms = await menu(app, stage, '방 만들기 / 참여하기', '방 만들기 / 참여하기');
+  const rooms = await menu(app, stage, '워킹룸', '워킹룸');
   await rooms.getByPlaceholder('예: 7Q2K9M').fill('devdev');
   await rooms.getByRole('button', { name: '참여' }).click();
   await expect(stage.getByText('가짜 친구')).toBeVisible();
@@ -134,7 +134,7 @@ test('첫 버전 흐름이 처음부터 끝까지 동작한다', async () => {
   }, pngPath);
 
   // 내 방을 만들고 방 설정에서 가챠 아이템을 넣는다 (OUR-01, OUR-02)
-  const rooms2 = await menu(app, stage, '방 만들기 / 참여하기', '방 만들기 / 참여하기');
+  const rooms2 = await menu(app, stage, '워킹룸', '워킹룸');
   await rooms2.getByRole('button', { name: '방에서 나가기' }).click();
   await rooms2.getByRole('button', { name: '만들기', exact: true }).click();
   await rooms2.getByRole('button', { name: '방 설정' }).click();

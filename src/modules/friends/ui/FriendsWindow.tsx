@@ -103,15 +103,22 @@ export default function FriendsWindow({ ctx }: { ctx: Ctx }) {
         </div>
       ))}
 
-      <h4>친구 {friends.length}명</h4>
-      {friends.length === 0 ? (
-        <p className={css.muted}>아직 친구가 없어요. 친구 코드를 주고받아 보세요.</p>
+      {/* 목록을 받기 전에는 친구가 없는 것처럼 보이지 않게 한다 */}
+      {list === null ? (
+        <p className={css.muted}>친구 목록을 불러오는 중이에요.</p>
       ) : (
-        <ul className={css.list}>
-          {friends.map((uid) => (
-            <Friend key={uid} ctx={ctx} uid={uid} pending={uid in (inbox ?? {})} busy={busy} run={run} />
-          ))}
-        </ul>
+        <>
+          <h4>친구 {friends.length}명</h4>
+          {friends.length === 0 ? (
+            <p className={css.muted}>아직 친구가 없어요. 친구 코드를 주고받아 보세요.</p>
+          ) : (
+            <ul className={css.list}>
+              {friends.map((uid) => (
+                <Friend key={uid} ctx={ctx} uid={uid} pending={uid in (inbox ?? {})} busy={busy} run={run} />
+              ))}
+            </ul>
+          )}
+        </>
       )}
       <label>
         친구에게 오프라인으로 보이기
@@ -122,7 +129,8 @@ export default function FriendsWindow({ ctx }: { ctx: Ctx }) {
 }
 
 function Friend({ ctx, uid, pending, busy, run }: { ctx: Ctx; uid: string; pending: boolean; busy: boolean; run: Run }) {
-  const [p, setP] = useState<AccountPresence | null>(null);
+  // undefined는 접속 기록을 아직 받지 못한 것, null은 기록이 없는 것
+  const [p, setP] = useState<AccountPresence | null | undefined>(undefined);
   const [who, setWho] = useState(profileView(null));
   const [asking, setAsking] = useState(false);
   const mine = useMyRoom(ctx);
@@ -140,12 +148,12 @@ function Friend({ ctx, uid, pending, busy, run }: { ctx: Ctx; uid: string; pendi
   const online = p?.online === true && p.m.friends?.hidden !== true;
   const code = p?.m.rooms?.code;
   const room = online && typeof code === 'string' ? code : null;
-  const where = !online ? '오프라인' : !room ? '접속 중' : room === mine ? '같은 방' : `${room} 방`;
+  const where = p === undefined ? '확인하는 중' : !online ? '오프라인' : !room ? '접속 중' : room === mine ? '같은 방' : `${room} 방`;
 
   return (
     <li className={css.friend}>
       <div className={css.row}>
-        <span className={css.dot} data-online={online} />
+        <span className={css.dot} data-online={p === undefined ? undefined : online} />
         <strong>{name}</strong>
         {who.level !== null && <span className={css.lv}>Lv.{who.level}</span>}
         <span className={css.muted}>{where}</span>

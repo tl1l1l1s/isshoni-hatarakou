@@ -12,10 +12,3 @@
 .when { flex: none; font-size: 11px; color: var(--fg-subtle); }
 .dot { flex: none; width: 6px; height: 6px; border-radius: 3px; background: var(--fg); }
 .body { padding: 0 0 var(--sp-3); white-space: pre-wrap; }
-
-/* 상태칩 줄 안의 우편 단추. 읽지 않은 글이 있을 때만 보이고 칩 모양은 코어가 준다 */
-.chip { position: relative; }
-.badge {
-  position: absolute; right: -4px; top: -5px; min-width: 14px; height: 14px; padding: 0 3px; box-sizing: border-box; border-radius: 7px;
-  background: var(--state-busy); color: #fff; font-size: 9px; line-height: 14px; text-align: center;
-}
