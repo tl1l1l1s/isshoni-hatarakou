@@ -33,7 +33,7 @@ export default function JoinWindow({ ctx }: { ctx: Ctx }) {
   if (room.code) {
     return (
       <div>
-        <p className={css.muted}>지금 들어가 있는 방</p>
+        <p className={css.muted}>지금 있는 방</p>
         <p className={css.code}>{room.code}</p>
         <p className={css.muted}>친구에게 이 코드를 알려 주면 같은 방에 들어와요.</p>
         <div className={css.row}>
@@ -55,7 +55,7 @@ export default function JoinWindow({ ctx }: { ctx: Ctx }) {
   return (
     <div>
       <h4>코드로 참여하기</h4>
-      <p className={css.muted}>친구가 알려 준 6자 코드를 넣으면 같은 방에 앉아요.</p>
+      <p className={css.muted}>친구에게 받은 방 코드를 넣어 주세요.</p>
       <form
         className={css.row}
         onSubmit={(e) => {
@@ -63,7 +63,7 @@ export default function JoinWindow({ ctx }: { ctx: Ctx }) {
           join(input);
         }}
       >
-        <input autoFocus placeholder="예: 7Q2K9M" maxLength={8} value={input} onChange={(e) => setInput(e.target.value)} />
+        <input autoFocus placeholder="방 코드 6자" maxLength={8} value={input} onChange={(e) => setInput(e.target.value)} />
         <button type="submit" disabled={busy}>
           참여
         </button>
@@ -82,7 +82,7 @@ export default function JoinWindow({ ctx }: { ctx: Ctx }) {
         </>
       )}
       <h4>새 방 만들기</h4>
-      <p className={css.muted}>만들면 6자 코드가 생겨요. 그 코드를 친구에게 알려 주세요.</p>
+      <p className={css.muted}>만들면 친구에게 알려 줄 방 코드가 생겨요.</p>
       <div className={css.row}>
         <label>
           정원

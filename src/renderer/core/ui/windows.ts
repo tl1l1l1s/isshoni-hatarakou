@@ -111,7 +111,7 @@ export class WindowClient {
     return this.bridge.invoke('win.setAlwaysOnTop', { name: nameOf(id), on });
   }
 
-  /** ESC와 창의 닫기 단추. 저장하지 않은 일이 있으면 묻고 닫기를 누를 때만 닫는다 */
+  /** ESC와 창의 닫기 단추. 저장하지 않은 일이 있으면 묻고 나가기를 누를 때만 닫는다 */
   requestClose(id: string): void {
     void this.confirm(id).then((leave) => leave && this.close(id));
   }
@@ -124,11 +124,11 @@ export class WindowClient {
     return () => void set.delete(check);
   }
 
-  /** 떠나도 되는지. 물을 글이 있으면 그 창 안에 묻고 닫기를 누르면 true. q로 글과 단추 이름을 바꾼다 */
+  /** 떠나도 되는지. 물을 글이 있으면 그 창 안에 묻고 나가기를 누르면 true. q로 글과 단추 이름을 바꾼다 */
   confirm(id: string, q: Partial<AskQuestion> = {}): Promise<boolean> {
     const text = this.question(id);
     if (!text || !this.live(id)) return Promise.resolve(true);
-    return this.ask(id, { text: q.text ?? text, ok: q.ok ?? '닫기', cancel: q.cancel ?? '계속하기' });
+    return this.ask(id, { text: q.text ?? text, ok: q.ok ?? '나가기', cancel: q.cancel ?? '계속하기' });
   }
 
   /** ctx.ui.ask. 창이 보이지 않으면 묻지 않고 false */

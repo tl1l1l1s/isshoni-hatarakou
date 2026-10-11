@@ -251,7 +251,7 @@ export const addFailed = (ctx: Ctx, f: Failed): void => patch(ctx, { failed: [..
 export const dropFailed = (ctx: Ctx, n: number): void => patch(ctx, { failed: view(ctx).failed.filter((_, i) => i !== n) });
 
 /** 방 이벤트를 보내지 못한 까닭 (분당 한도나 끊김) */
-const notSent = (ctx: Ctx): void => ctx.ui.toast(ctx.connection.online() ? '잠시 뒤에 다시 보내 주세요.' : OFFLINE);
+const notSent = (ctx: Ctx): void => ctx.ui.toast(ctx.connection.online() ? '보내지 못했어요. 잠시 뒤에 다시 눌러 주세요.' : OFFLINE);
 
 /** 이모티콘은 채팅이 꺼져 있어도 보낸다 (COM-08) */
 export function sendEmoji(ctx: Ctx, e: string): void {

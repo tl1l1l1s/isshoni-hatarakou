@@ -330,7 +330,7 @@ it('ask는 정한 글과 단추로 묻고 창이 보이지 않으면 묻지 않�
   expect(core.windows.asking.get()).toMatchObject({ id: 'demo.w', text: '지울까요?', ok: '지우기', cancel: '취소' });
   core.windows.asking.get()!.answer(true);
   expect(await asked).toBe(true);
-  ui.guard('demo.w', () => '캐릭터를 저장하지 않았어요. 닫을까요?');
+  ui.guard('demo.w', () => '캐릭터를 저장하지 않았어요. 나갈까요?');
   const leave = ui.confirmLeave('demo.w', { text: '캐릭터를 저장하지 않았어요. 바꿀까요?', ok: '바꾸기' });
   expect(core.windows.asking.get()).toMatchObject({ text: '캐릭터를 저장하지 않았어요. 바꿀까요?', ok: '바꾸기', cancel: '계속하기' });
   core.windows.asking.get()!.answer(false);
@@ -453,10 +453,10 @@ it('로컬 파일: 새 버전 앱이 쓴 파일은 덮지 않고 알리며 검�
   newer.core.ctxs.get('demo')!.ctx.local.update<{ n: number }>('device', () => ({ n: 7 }));
   await newer.core.flush();
   expect(newer.invoked.filter(([ch, a]) => ch === 'store.write' && (a as { path: string }).path.startsWith('device/modules/demo'))).toEqual([]);
-  expect(newer.core.toasts.get().map((t) => t.text)).toEqual(['데모 데이터는 새 버전 앱이 저장한 거라 읽지 못했어요. 업데이트할 때까지 바꾼 내용은 저장하지 않아요.']);
+  expect(newer.core.toasts.get().map((t) => t.text)).toEqual(['데모 기록은 새 버전 앱이 저장해서 읽지 못했어요. 앱을 업데이트할 때까지 바꾼 내용은 저장하지 않아요.']);
 
   const broken = await boot([demo], { answers: { 'store.read': { v: 1, data: { n: 'x' } } } });
-  expect(broken.core.toasts.get().map((t) => t.text)).toEqual(['데모 데이터를 읽지 못해 처음 상태로 시작해요.']);
+  expect(broken.core.toasts.get().map((t) => t.text)).toEqual(['데모 기록을 읽지 못해서 처음 상태로 시작해요.']);
   const logs = broken.invoked.filter(([ch]) => ch === 'log.write').map(([, a]) => (a as { message: string }).message);
   expect(logs.some((m) => m.startsWith('local device:') && m.includes('invalid_type'))).toBe(true);
   expect(broken.invoked).toContainEqual(['store.write', { path: 'device/modules/demo.bak.json', data: { v: 1, data: { n: 'x' } } }]);

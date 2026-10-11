@@ -37,7 +37,7 @@ export function BookPanel({ ctx, owner, mine, book, more, onMore, onClose }: {
       <Head title="방명록" onClose={onClose} />
       {!mine && (
         <div className={css.write}>
-          <textarea maxLength={BOOK_MAX} value={text} aria-label="방명록 글" placeholder="인사를 남겨 보세요." onChange={(e) => setText(e.target.value)} />
+          <textarea maxLength={BOOK_MAX} value={text} aria-label="방명록 글" placeholder="남길 말" onChange={(e) => setText(e.target.value)} />
           <small className={css.count}>{text.length} / {BOOK_MAX}</small>
           <button disabled={!text.trim() || busy} onClick={send}>남기기</button>
         </div>
@@ -56,7 +56,7 @@ export function BookPanel({ ctx, owner, mine, book, more, onMore, onClose }: {
           ))}
         </ul>
       ) : (
-        <p className={css.hint}>{mine ? '친구가 내 마이홈에 놀러 와서 남긴 글이 여기에 보여요.' : '아직 방명록이 없어요.'}</p>
+        <p className={css.hint}>아직 방명록이 없어요.</p>
       )}
       {more && <button onClick={onMore}>이전 글 더 보기</button>}
     </>
@@ -106,7 +106,7 @@ export function GiftPanel({ ctx, home, gifts, onClose }: { ctx: Ctx; home: Home;
           })}
         </ul>
       ) : (
-        <p className={css.hint}>친구가 보낸 말랑이 선물이 여기에 와요.</p>
+        <p className={css.hint}>아직 받은 선물이 없어요.</p>
       )}
     </>
   );
@@ -158,7 +158,7 @@ export function MallangiPanel({ ctx, home, onClose }: { ctx: Ctx; home: Home; on
           <p>
             <button disabled={full} onClick={() => setDrawing(true)}>그리기</button> <button disabled={full} onClick={upload}>그림 올리기</button>
           </p>
-          <p className={css.hint}>말랑이 부르기를 누르면 이 가운데 하나가 나와서 바닥을 걸어 다녀요. 친구 탭에서 친구에게 선물할 수 있어요.</p>
+          <p className={css.hint}>말랑이 부르기를 누르면 이 중 하나가 나와서 걸어 다녀요. 선물은 친구 탭에서 보내요.</p>
         </>
       )}
     </>
@@ -215,7 +215,7 @@ function DrawPad({ ctx, onSave, onCancel }: { ctx: Ctx; onSave: (file: string) =
           onPointerUp={() => (last.current = null)}
           onPointerCancel={() => (last.current = null)}
         />
-        {empty && <span>여기에 펜으로 그려 보세요</span>}
+        {empty && <span>여기에 그려요</span>}
       </div>
       <div className={css.row}>
         <label>
@@ -229,7 +229,7 @@ function DrawPad({ ctx, onSave, onCancel }: { ctx: Ctx; onSave: (file: string) =
             setEmpty(true);
           }}
         >
-          지우기
+          전부 지우기
         </button>
         <button onClick={onCancel}>취소</button>
         <button type="submit" onClick={save}>저장</button>
@@ -296,7 +296,7 @@ export function ShelfPanel({ ctx, mine, list, onClose }: { ctx: Ctx; mine: boole
           ))}
         </div>
       ) : (
-        <p className={css.hint}>{mine ? '아직 꽂은 책이 없어요. 링크를 책으로 꽂아 두고 친구에게 공개할 수 있어요.' : '공개된 책이 없어요.'}</p>
+        <p className={css.hint}>{mine ? '아직 꽂은 책이 없어요. 링크를 책으로 꽂아 둬요.' : '친구가 공개한 책이 없어요.'}</p>
       )}
       {cur && !form && (
         <div className={css.markInfo}>
@@ -329,7 +329,7 @@ export function ShelfPanel({ ctx, mine, list, onClose }: { ctx: Ctx; mine: boole
           <div className={css.write}>
             <label className={css.field}>
               책 제목
-              <input maxLength={MARK_TITLE_MAX} value={form.m.title} placeholder={`책 제목 (${MARK_TITLE_MAX}자)`} onChange={(e) => setForm({ ...form, m: { ...form.m, title: e.target.value } })} />
+              <input maxLength={MARK_TITLE_MAX} value={form.m.title} placeholder={`${MARK_TITLE_MAX}자까지`} onChange={(e) => setForm({ ...form, m: { ...form.m, title: e.target.value } })} />
             </label>
             <label className={css.field}>
               링크

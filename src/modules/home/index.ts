@@ -42,7 +42,7 @@ export default defineModule<HomeApi>({
       // 마이홈은 친구로 등록한 사람에게만 보인다 (10.14의 16번). 친구가 아니면 좌석 메뉴에서 숨는다
       enabledWhen: (ctx, args) => {
         const v = VisitArgs.safeParse(args);
-        return v.success && ctx.modules.get('friends')?.isFriend(v.data.uid) ? null : '친구로 등록한 사람의 마이홈만 볼 수 있어요.';
+        return v.success && ctx.modules.get('friends')?.isFriend(v.data.uid) ? null : '친구의 마이홈만 볼 수 있어요.';
       },
       run: (ctx, args) => openHome(ctx, VisitArgs.parse(args)),
     },

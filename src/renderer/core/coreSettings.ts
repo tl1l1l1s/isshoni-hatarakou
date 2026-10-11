@@ -30,10 +30,10 @@ export const coreSettings = {
     coverHide: z.boolean().default(true),
   }),
   fields: {
-    autoStart: { label: '컴퓨터 켤 때 자동 실행' },
+    autoStart: { label: 'PC를 켤 때 자동 실행' },
     scale: { label: '캐릭터 크기', min: SCALE.min, max: SCALE.max },
     showHead: { label: '레벨 배지와 말풍선 보이기' },
-    opacity252: { label: '영상 겹침 우회' },
+    opacity252: { label: '화면 공유 깜빡임 줄이기' },
     mode: { label: '표시 모드' },
     theme: { label: '테마', options: [{ value: 'system', label: '시스템 설정 따르기' }, { value: 'light', label: '밝게' }, { value: 'dark', label: '어둡게' }] },
     pixel: { label: '도트 그림으로 보기' },

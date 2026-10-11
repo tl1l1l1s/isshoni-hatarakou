@@ -12,7 +12,7 @@ export default function AppsTab({ ctx }: SlotProps) {
   };
   const fill = (i: number) => {
     const key = ctx.activity.lastForeignApp();
-    if (!key) return ctx.ui.toast('등록할 앱을 먼저 잠깐 쓰고 이 창으로 돌아와 다시 눌러 주세요.');
+    if (!key) return ctx.ui.toast('넣을 앱을 먼저 잠깐 쓰고 이 창으로 돌아와 다시 눌러 주세요.');
     if (apps.some((a) => a?.key === key)) return ctx.ui.toast('이미 등록한 앱이에요.');
     save(i, { key, label: labelOf(key).slice(0, 20) });
   };

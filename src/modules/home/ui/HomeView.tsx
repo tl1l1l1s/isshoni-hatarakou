@@ -50,13 +50,13 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
 
   // 편집한 것을 저장하지 않고 ESC, 창 닫기 단추, 탭으로 떠나려 하면 코어가 묻는다. 편집을 시작하면 draft가 home과 같고 고칠 때마다 새 값이 된다
   const dirty = mode !== 'view' && draft !== home;
-  useEffect(() => (dirty ? ctx.ui.guard('home.main', () => '저장하지 않은 편집이 있어요. 닫을까요?') : undefined), [ctx, dirty]);
+  useEffect(() => (dirty ? ctx.ui.guard('home.main', () => '마이홈 편집을 저장하지 않았어요. 나갈까요?') : undefined), [ctx, dirty]);
 
   const shown = (mode !== 'view' && draft) || home;
   const files = useFiles(ctx, shown ? [...shown.stickers.map((s) => s.file), ...('file' in shown.bg ? [shown.bg.file] : []), ...(shown.wall ? [shown.wall] : [])] : []);
   const online = useOnline(ctx);
 
-  if (error) return <p className={css.hint}>이 마이홈을 볼 수 없어요. 서로 친구로 등록한 사람의 마이홈만 볼 수 있어요.</p>;
+  if (error) return <p className={css.hint}>이 마이홈을 볼 수 없어요. 친구의 마이홈만 볼 수 있어요.</p>;
   // 끊긴 동안에는 읽기가 끝나지 않는다. 끊김은 코어가 창 위쪽 띠로 알리고 연결되면 이어서 불러온다
   if (!home || !shown) return <p className={css.hint}>{online ? '불러오는 중이에요.' : '연결되면 불러와요.'}</p>;
 
@@ -195,7 +195,7 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
         {tools && pickPhoto && (
           <>
             <button className={css.photoPick} onClick={pickPhoto}>사진 넣기</button>
-            <small className={css.count}>프로필 사진은 친구로 등록한 사람만 봐요.</small>
+            <small className={css.count}>프로필 사진은 친구만 봐요.</small>
           </>
         )}
         <h3>{name}</h3>
@@ -217,7 +217,7 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
               ))}
             </select>
             {!tracks.length && <small className={css.count}>플레이리스트에 곡을 넣으면 배경음악으로 고를 수 있어요.</small>}
-            <textarea maxLength={PROFILE_MAX} value={shown.profile} placeholder="자기소개를 적어 보세요." onChange={(e) => edit((d) => ({ ...d, profile: e.target.value }))} />
+            <textarea maxLength={PROFILE_MAX} value={shown.profile} placeholder="자기소개" onChange={(e) => edit((d) => ({ ...d, profile: e.target.value }))} />
             <small className={css.count}>{shown.profile.length} / {PROFILE_MAX}</small>
             <div className={css.theme}>
               <small className={css.count}>마이홈 색</small>
@@ -244,8 +244,8 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
           </>
         ) : (
           <>
-            <BgmBar ctx={ctx} bgm={shown.bgm} mine={mine} />
-            <p className={css.pre}>{shown.profile || (mine ? '자기소개를 적어 보세요.' : '아직 자기소개가 없어요.')}</p>
+            <BgmBar ctx={ctx} bgm={shown.bgm} />
+            <p className={css.pre}>{shown.profile || '아직 자기소개가 없어요.'}</p>
           </>
         )}
       </aside>
@@ -254,7 +254,7 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
         <div className={css.bar}>
           {/* 편집하는 동안에는 꾸미기 도구만 남기고 박수는 고른 이모지를 미리 보려고 둔다 */}
           {!tools && <button onClick={() => toggle('book')}>방명록{badge > 0 && <span data-unread>{badge}</span>}</button>}
-          <button title={mine ? '눌러서 미리 보기' : `하루 ${CLAP_DAILY}번까지 보낼 수 있어요`} onClick={clap}>
+          <button title={mine ? '눌러서 미리보기' : `하루 ${CLAP_DAILY}번까지 보낼 수 있어요`} onClick={clap}>
             {emoji} 박수 {claps}
           </button>
           {mine && !tools && <button onClick={() => toggle('gifts')}>선물함{gifts.length > 0 && <span data-unread>{gifts.length}</span>}</button>}
@@ -270,7 +270,7 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
               <button type="submit" onClick={save}>저장</button>
             </>
           )}
-          {mode === 'preview' && <button onClick={() => setMode('edit')}>미리보기 나가기</button>}
+          {mode === 'preview' && <button onClick={() => setMode('edit')}>편집으로 돌아가기</button>}
         </div>
 
         <div className={css.desk} style={bgStyle}>
@@ -299,7 +299,7 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
               <textarea
                 maxLength={POST_MAX}
                 value={postText}
-                placeholder="지금 하고 있는 생각이나 하고 싶은 말을 적어 보세요. 링크도 넣을 수 있어요."
+                placeholder="하고 싶은 말이나 링크"
                 onChange={(e) => edit((d) => ({ ...d, post: { text: e.target.value, at: d.post?.at ?? 0 } }))}
               />
               <small className={css.count}>{postText.length} / {POST_MAX}</small>
@@ -394,10 +394,10 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
 /** 배경음악 막대. 누를 때만 플레이어를 띄워 재생한다. 유튜브 약관에 따라 플레이어는 200x200으로 보이게 둔다 (HOM-04).
  *  플레이어는 sound 모듈이 그려서 플레이리스트 음량을 따르고 플레이리스트와 겹쳐 나지 않는다.
  *  곡이 없으면 누를 것이 없으니 막대 대신 글만 보인다 */
-function BgmBar({ ctx, bgm, mine }: { ctx: Ctx; bgm: Bgm | undefined; mine: boolean }) {
+function BgmBar({ ctx, bgm }: { ctx: Ctx; bgm: Bgm | undefined }) {
   const [on, setOn] = useState(false);
   const Player = ctx.modules.get('sound')?.Player;
-  if (!bgm) return <small className={css.count}>{mine ? '배경음악 없음. 편집에서 플레이리스트 곡을 고를 수 있어요.' : '배경음악 없음'}</small>;
+  if (!bgm) return <small className={css.count}>배경음악 없음</small>;
   return (
     <>
       <div className={css.bgm}>

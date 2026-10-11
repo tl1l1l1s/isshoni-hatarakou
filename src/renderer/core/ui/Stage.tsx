@@ -199,7 +199,7 @@ export function Stage({ core }: { core: CoreRuntime }) {
         )}
         {elsewhere && (
           <div data-interactive className={`${css.toast} ${css.update}`}>
-            다른 기기에서 쓰는 중이에요. 한 번에 한 기기에서만 쓸 수 있어요.
+            다른 PC에서 쓰는 중이에요. 한 번에 한 PC에서만 쓸 수 있어요.
             <button onClick={() => core.takeOver()}>여기서 계속 쓰기</button>
           </div>
         )}
@@ -668,7 +668,7 @@ function SeatMenu({ core, seat, left, maxHeight, onClose }: { core: CoreRuntime;
           {c.decl.label}
         </button>
       ))}
-      {!items.length && <div className={css.menuNote}>아직 메뉴가 없어요</div>}
+      {!items.length && <div className={css.menuNote}>할 수 있는 게 없어요</div>}
     </div>
   );
 }

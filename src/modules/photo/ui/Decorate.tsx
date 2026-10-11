@@ -118,7 +118,7 @@ export default function Decorate({ ctx, sheet }: { ctx: Ctx; sheet: ImageBitmap 
       if (!ctx.room.current()) throw new Error(NOT_IN_ROOM);
       const png = new Uint8Array(await (await render()).arrayBuffer());
       const file = await ctx.files.upload(await ctx.files.prepareImage(png, { maxSide: SEND_SIDE }));
-      if (!ctx.room.emit('shared', { file })) throw new Error('지금은 보낼 수 없어요. 잠시 뒤에 다시 보내 주세요.');
+      if (!ctx.room.emit('shared', { file })) throw new Error('보내지 못했어요. 잠시 뒤에 다시 눌러 주세요.');
       setNote('지금 방에 있는 사람들에게 보냈어요.');
     });
 
@@ -163,15 +163,13 @@ export default function Decorate({ ctx, sheet }: { ctx: Ctx; sheet: ImageBitmap 
       <label>굵기 {width}<input type="range" min={2} max={40} value={width} onChange={(e) => setWidth(Number(e.target.value))} /></label>
       <div className={css.foot}>
         <button disabled={hist.at === 0} onClick={() => change(undo)}>되돌리기</button>
-        <button disabled={hist.at === hist.list.length - 1} onClick={() => change(redo)}>앞으로</button>
+        <button disabled={hist.at === hist.list.length - 1} onClick={() => change(redo)}>다시 하기</button>
         <button disabled={!doc.strokes.length && !doc.stickers.length} onClick={() => change((h) => push(h, EMPTY))}>전부 지우기</button>
         <span className={css.grow} />
         <button disabled={busy || !room} onClick={() => void send()}>방에 보내기</button>
         <button type="submit" disabled={busy} onClick={save}>저장하기</button>
       </div>
-      <p className={css.hint}>
-        저장하기는 내 컴퓨터에 바로 내려받아요. {room ? '방에 보내기는 64KB 안으로 줄인 사진을 지금 방에 있는 사람들에게 보내요.' : '방에 보내기는 방에 들어가 있을 때 쓸 수 있어요.'}
-      </p>
+      {!room && <p className={css.hint}>방에 들어가면 방에 보내기를 쓸 수 있어요.</p>}
       {note && <p className={css.hint} role="status">{note}</p>}
       {msg && <p role="alert" className={css.error}>{msg}</p>}
     </div>

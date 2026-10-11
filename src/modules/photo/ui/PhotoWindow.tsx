@@ -40,10 +40,10 @@ function Inbox({ ctx }: { ctx: Ctx }) {
   const inbox = inboxOf(ctx);
   const list = useSyncExternalStore(inbox.subscribe, inbox.list);
   useEffect(() => inbox.seen(), [inbox, list]);
-  if (!list.length) return <p className={css.hint}>방 사람이 보낸 스티커 사진이 여기에 나와요.</p>;
+  if (!list.length) return <p className={css.hint}>아직 받은 사진이 없어요.</p>;
   return (
     <>
-      <p className={css.hint}>받은 사진은 앱을 끄면 사라지니 마음에 들면 저장해 주세요.</p>
+      <p className={css.hint}>받은 사진은 앱을 끄면 사라져요. 남기려면 저장해 주세요.</p>
       <ul className={css.inbox}>
         {list.map((r) => <Photo key={`${r.file}${r.at}`} ctx={ctx} r={r} />)}
       </ul>

@@ -30,7 +30,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   window.addEventListener('error', (e) => reportError(bridge, 'renderer.error', e.error ?? e.message));
   window.addEventListener('unhandledrejection', (e) => reportError(bridge, 'renderer.rejection', e.reason));
   if (bridge.version !== BRIDGE_VERSION) {
-    root.textContent = `앱 파일이 서로 맞지 않아요 (브리지 ${bridge.version}, 화면 ${BRIDGE_VERSION}). 앱을 다시 설치해 주세요.`;
+    root.textContent = '앱 파일이 서로 맞지 않아요. 앱을 다시 설치해 주세요.';
     return;
   }
   // 외부 출처가 메인의 CSP와 다르면 메인이 저장하고 스테이지를 다시 읽는다. 모듈을 켜기 전에 확인한다
@@ -64,7 +64,8 @@ export async function boot(root: HTMLElement): Promise<void> {
   const manifests = [coreModule(core), ...modules];
   await core.preloadLocal(manifests);
   await core.start(manifests);
-  for (const s of core.host.status) if (!s.on) core.toast(`${s.id} 기능을 켜지 못했어요. ${s.reason ?? ''}`);
+  // 까닭(s.reason)은 개발자용이라 host가 로그에 남기고 사용자에게는 기능 이름만 보인다
+  for (const s of core.host.status) if (!s.on) core.toast(`${manifests.find((m) => m.id === s.id)?.title ?? s.id} 기능을 켜지 못했어요. 앱을 다시 켜 주세요.`);
   window.addEventListener('beforeunload', () => void core.flush());
   // 상태가 바뀔 때만 메인 로그에 한 줄씩 남긴다. 비정상 종료 보고에 붙는 로그 끝이 비지 않게 한다 (OPS-1)
   const off = core.host.status.filter((s) => !s.on).map((s) => s.id);
@@ -121,7 +122,7 @@ async function askSetupCode(bridge: Bridge, signIn: (code: string) => Promise<st
   // 앱을 처음 켠 사람이 바로 코드를 붙여 넣도록 포커스를 준다
   await bridge.invoke('win.prepare', { name, title: '설정 코드 입력', width: 360, height: 220, focusable: true, resizable: false, user: true });
   const win = window.open('', name);
-  if (!win) throw new Error('설정 코드 창을 열지 못했습니다');
+  if (!win) throw new Error('설정 코드 창을 열지 못했어요. 앱을 다시 켜 주세요.');
   standardsMode(win.document);
   win.document.title = '설정 코드 입력';
   for (const n of document.head.querySelectorAll('style, link[rel=stylesheet]')) win.document.head.appendChild(n.cloneNode(true));
@@ -174,7 +175,7 @@ function SetupCode({ submit }: { submit: (code: string) => Promise<void> }) {
       <p>선물받은 설정 코드를 붙여 넣어 주세요.</p>
       {error && <p role="alert">{error}</p>}
       <input autoFocus aria-label="설정 코드" value={code} disabled={busy} onChange={(e) => setCode(e.target.value)} style={{ width: '100%' }} />
-      <p><button type="submit" disabled={busy}>{busy ? '확인하는 중이에요' : '시작하기'}</button></p>
+      <p><button type="submit" disabled={busy}>{busy ? '확인 중' : '시작하기'}</button></p>
     </form>
   );
 }

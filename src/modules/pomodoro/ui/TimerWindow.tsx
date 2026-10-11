@@ -36,7 +36,6 @@ export default function TimerWindow({ ctx }: { ctx: Ctx }) {
           <button onClick={() => set((x) => (x.run ? { ...x, run: next(x, x.run, ctx.clock.now()) } : x))}>건너뛰기</button>
           <button onClick={() => set((x) => ({ ...x, run: null }))}>끝</button>
         </div>
-        <p className={css.muted}>포커스 기록과 따로 시간을 재고 알려 주기만 해요.</p>
       </div>
     );
   }
@@ -60,7 +59,7 @@ export default function TimerWindow({ ctx }: { ctx: Ctx }) {
         </label>
       ))}
       <label>
-        긴 휴식은 집중 몇 바퀴마다
+        집중 몇 번마다 긴 휴식
         <input type="number" min={2} max={10} value={l.every} onChange={(e) => set((x) => ({ ...x, every: Math.max(2, num(e.target.value, 10)) }))} />
       </label>
       <label>
@@ -74,7 +73,7 @@ export default function TimerWindow({ ctx }: { ctx: Ctx }) {
       <button type="submit" className={css.start} onClick={() => set((x) => ({ ...x, run: start(x, ctx.clock.now()) }))}>
         시작
       </button>
-      <p className={css.muted}>포커스 기록과 따로 시간을 재고 알려 주기만 해요.</p>
+      <p className={css.muted}>포커스 기록과 상관없는 타이머예요.</p>
     </div>
   );
 }

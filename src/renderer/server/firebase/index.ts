@@ -275,7 +275,7 @@ export function createFirebaseServer(cfg: FirebaseConfig, appName?: string): Fir
           if (!started) start();
           return user.uid;
         } catch (e) {
-          if ((e as { code?: string }).code === 'auth/network-request-failed') throw new Error('인터넷 연결을 확인한 뒤 다시 해 주세요.');
+          if ((e as { code?: string }).code === 'auth/network-request-failed') throw new Error('인터넷에 연결하지 못했어요. 연결을 확인하고 다시 눌러 주세요.');
           throw new Error('설정 코드로 로그인하지 못했어요. 코드를 새로 받았다면 새 코드를 넣어 주세요.');
         }
       },

@@ -22,7 +22,7 @@ export default function Tab({ ctx }: SlotProps) {
       if (!f) return;
       const file = await ctx.files.upload(await ctx.files.prepareImage(f.bytes, { maxSide: MAX_SIDE }));
       await save({ ...pic, file });
-      setMsg('그림을 등록했어요.');
+      setMsg('그림을 넣었어요.');
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
     } finally {
@@ -31,15 +31,15 @@ export default function Tab({ ctx }: SlotProps) {
   };
   return (
     <div>
-      <p>자리비움이면 캐릭터 대신 이 그림이 서요.</p>
+      <p>자리비움일 때 캐릭터 대신 이 그림이 보여요.</p>
       {/* 캐릭터 옆에 같은 비율로 세워 크기를 견줘 보게 한다 */}
       <div className={css.preview}>
         <ctx.ui.CharacterPreview width={160 * K} height={200 * K} />
         {pic.file ? <Preview ctx={ctx} file={pic.file} size={pic.size * K} /> : <span className={css.hint}>그림 없음</span>}
       </div>
       <div className={css.row}>
-        <button disabled={busy} onClick={() => void pick()}>그림 등록</button>
-        <button disabled={busy || !pic.file} onClick={() => void save({ ...pic, file: null }).then(() => setMsg('그림을 뺐어요. 자리비움이어도 캐릭터가 그대로 서요.'))}>그림 빼기</button>
+        <button disabled={busy} onClick={() => void pick()}>그림 넣기</button>
+        <button disabled={busy || !pic.file} onClick={() => void save({ ...pic, file: null }).then(() => setMsg('그림을 뺐어요.'))}>그림 빼기</button>
       </div>
       <label>
         크기
@@ -49,7 +49,7 @@ export default function Tab({ ctx }: SlotProps) {
           ))}
         </select>
       </label>
-      <p className={css.hint}>배경이 투명한 PNG를 권장해요. 큰 그림은 앱이 줄여서 저장해요.</p>
+      <p className={css.hint}>배경이 투명한 PNG가 좋아요.</p>
       {msg && <p role="status" className={css.hint}>{msg}</p>}
     </div>
   );
@@ -58,5 +58,5 @@ export default function Tab({ ctx }: SlotProps) {
 /** 고른 크기로 그려 크기마다 달라 보이게 한다 */
 function Preview({ ctx, file, size }: { ctx: Ctx; file: string; size: number }) {
   const url = useBlobUrl(file, ctx.files.get);
-  return url ? <img src={url} alt="등록한 자리비움 그림" style={{ width: size, height: size }} /> : null;
+  return url ? <img src={url} alt="넣은 자리비움 그림" style={{ width: size, height: size }} /> : null;
 }

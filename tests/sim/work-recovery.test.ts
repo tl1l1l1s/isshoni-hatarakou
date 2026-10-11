@@ -98,6 +98,8 @@ it('오전 6시를 넘겨도 집중·달성표는 날짜별이고 성장·뽑기
   await a.core.ctxs.get('goals')!.ctx.server.user().set('cfg', { goal: 3600, since: '2026-10-10', v: 1 });
   const ticks: { dayKey: string; sec: number }[] = [];
   a.core.bus.on('focus.tick', t => ticks.push(t as typeof ticks[number]));
+  // 새로 설치하면 집중 앱이 비어 있어서 먼저 넣는다
+  a.core.ctxs.get('focus')!.ctx.local.update<unknown[]>('device', (d) => [{ key: 'win:clipstudiopaint.exe', label: '클립 스튜디오' }, ...d.slice(1)]);
   await a.sample(0, 'win:clipstudiopaint.exe');
   vi.setSystemTime(Date.now() + 1000);
   await a.sample(0, 'win:clipstudiopaint.exe'); // 전날 1초

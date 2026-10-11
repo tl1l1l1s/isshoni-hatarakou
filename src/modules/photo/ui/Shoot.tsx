@@ -100,7 +100,7 @@ function View({ ctx, session, im, localOwn }: { ctx: Ctx; session: Session; im: 
   const lead = v.host && !busy;
   // 나는 빼고 적는다. 내 이름이 이름 없음이면 함께 찍는 사람이 없다는 뜻으로 읽혔다
   const names = v.people.filter((p) => !p.self).map((p) => p.name || '이름 없음').join(', ');
-  const people = names ? `함께 찍는 사람 ${names}` : v.room ? '같은 방 사람이 스티커 사진을 열면 함께 찍혀요.' : '혼자 찍어요. 방에 들어가면 같이 찍을 수 있어요.';
+  const people = names ? `함께 찍는 사람 ${names}` : v.room ? '같은 방 사람이 스티커 사진을 열면 함께 찍어요.' : '혼자 찍어요. 방에 들어가면 같이 찍을 수 있어요.';
   return (
     <div>
       <div ref={pad} className={css.pad} tabIndex={0} aria-label="촬영 미리보기" onKeyDown={onKey}>
@@ -108,10 +108,10 @@ function View({ ctx, session, im, localOwn }: { ctx: Ctx; session: Session; im: 
         {v.count && <div className={css.count} role="status">{v.count.left}</div>}
       </div>
       <p className={css.hint}>
-        {v.count ? `컷 ${v.count.cut + 1} / ${cfg.n} 찍는 중이에요.` : '아래 단추로 거리와 자세를 고르고 촬영 시작을 눌러요. 찍고 나면 꾸미기 탭이 열려요. 키보드로는 미리보기를 누른 뒤 A D로 옮기고 Q E로 돌고 W S로 다가가거나 물러나고 Space로 점프해요.'}
+        {v.count ? `컷 ${v.count.cut + 1} / ${cfg.n} 찍는 중이에요.` : '미리보기를 누른 뒤 키보드로 캐릭터를 움직여요. A D 옮기기, Q E 돌기, W S 다가가기와 물러나기, Space 점프'}
       </p>
       <p className={css.hint}>{people}</p>
-      {v.room && <p className={css.hint}>{v.full ? '자리 네 칸이 다 찼어요. 자리가 나면 함께 찍어요.' : !v.joined ? '자리를 잡는 중이에요.' : v.host ? '내가 진행해요. 설정을 고르고 촬영을 시작해요.' : `${v.hostName}님이 진행해요. 설정과 촬영 시작은 진행하는 사람이 해요.`}</p>}
+      {v.room && <p className={css.hint}>{v.full ? '자리 네 칸이 다 찼어요. 자리가 나면 함께 찍어요.' : !v.joined ? '자리를 잡는 중이에요.' : v.host ? '내가 진행해요.' : `${v.hostName}님이 진행해요. 거리와 자세는 내가 골라요.`}</p>}
       <div className={css.row}>
         <span>방향</span>
         <nav aria-label="방향">
@@ -160,7 +160,7 @@ function View({ ctx, session, im, localOwn }: { ctx: Ctx; session: Session; im: 
         </nav>
       </div>
       <p className={css.hint}>
-        {v.room ? '내 프레임은 배경이 투명한 PNG를 골라 컷마다 겹쳐요. 함께 찍는 사람들도 보도록 작게 줄여 올려요.' : '내 프레임은 배경이 투명한 PNG를 골라 컷마다 겹쳐요. 이 PC에만 쓰고 서버에 올리지 않아요.'}
+        내 프레임은 배경이 투명한 PNG를 골라 컷마다 겹쳐요.
       </p>
       {msg && <p role="alert" className={css.error}>{msg}</p>}
       <div className={css.foot}>

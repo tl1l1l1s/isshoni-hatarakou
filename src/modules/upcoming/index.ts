@@ -11,7 +11,7 @@ export default defineModule({
   specIds: ['HOM-22'],
   requires: ['scheduler'],
   optionalRequires: ['dday'],
-  settings: { version: 1, scope: 'account', schema: Settings, fields: { notify: { label: '오늘 일정을 알림으로 알려 주기', widget: 'toggle' } } },
+  settings: { version: 1, scope: 'account', schema: Settings, fields: { notify: { label: '오늘 일정 알림 받기', widget: 'toggle' } } },
   local: { account: { version: 1, schema: Local, initial: () => ({ day: '', sent: [] }) } },
   ui: {
     windows: [{ id: 'upcoming.main', title: '다가오는 일정', width: 320, height: 400, component: () => import('./ui/UpcomingWindow') }],

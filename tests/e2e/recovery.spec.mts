@@ -32,7 +32,7 @@ test('일반 작업 앱에서 시간·보상·저장 장애 복구·꾸미기까
     await settings.getByRole('button', { name: '집중 앱', exact: true }).click();
     await expect(async () => {
       await settings.getByRole('button', { name: '직전에 쓴 앱 넣기' }).first().click();
-      await expect(settings.getByRole('textbox', { name: '2번 앱 이름' })).toHaveValue('notepad', { timeout: 500 });
+      await expect(settings.getByRole('textbox', { name: '1번 앱 이름' })).toHaveValue('notepad', { timeout: 500 });
     }).toPass();
     const rooms = await menu(s, '워킹룸', '워킹룸');
     await rooms.getByRole('button', { name: '만들기', exact: true }).click();
@@ -77,7 +77,7 @@ test('일반 작업 앱에서 시간·보상·저장 장애 복구·꾸미기까
     await s.shot(g, 'work-reward-save-failed');
     await s.stage.evaluate(() => { (window as unknown as W).failWrites = false; });
     await g.getByRole('button', { name: '1회 뽑기' }).click();
-    await expect(g.getByText('NEW!', { exact: true })).toBeVisible();
+    await expect(g.getByText('NEW', { exact: true })).toBeVisible();
     await expect(g.getByText('남은 뽑기 0회', { exact: true })).toBeVisible();
     await g.getByRole('button', { name: '보관함으로' }).click();
     const inv = await windowTitled(s.app, '보관함');
@@ -162,7 +162,7 @@ test('자동 진단 기록은 저장 실패 후 재연결하면 한 번만 남�
   await verify('report-recovery', async s => {
     await start(s);
     const st = await menu(s, '설정', '설정');
-    await expect(st.getByLabel('오류가 나면 자동으로 알리기')).toBeChecked();
+    await expect(st.getByLabel('오류가 나면 선물한 사람에게 자동으로 알리기')).toBeChecked();
     await s.stage.evaluate(async () => {
       const w = window as unknown as W, ctx = w.core.ctxs.get('report')!.ctx;
       const user = ctx.server.user.bind(ctx.server); w.failWrites = true;

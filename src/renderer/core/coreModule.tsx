@@ -142,14 +142,14 @@ function General({ core }: { core: CoreRuntime }) {
 
 /** 개인정보 처리방침 (SET-12). 규칙(rules/core.ts와 모듈 rules.ts)과 저장 위치가 바뀌면 함께 고친다 */
 const PRIVACY = [
-  '이 앱은 선물한 사람이 만든 계정으로만 쓰고 연락처와 실명은 받지 않아요.',
-  '서버(Google Firebase Realtime Database)에는 닉네임, 친구 코드, 캐릭터 그림과 꾸미기, 레벨, 집중 시간 합계, 친구 목록, 마이홈과 일정, 방 채팅, 올린 그림이 저장돼요.',
-  '닉네임, 캐릭터, 레벨은 이 앱 계정이 있는 사람이 볼 수 있어요. 마이홈, 프로필 사진, 일정, 접속 중인 방은 친구로 등록한 사람만 보고 채팅과 방 안의 자리 정보는 그 방에 들어온 사람만 봐요.',
-  '마이홈 버그제보 탭에서 보낸 글과 앱 버전은 서버에 저장되고 앱을 선물한 사람만 읽어요.',
-  '앱에 오류가 나면 앱 버전, 운영체제, 최근 로그 몇 줄이 앱을 선물한 사람에게 자동으로 전해져요. 설정 일반 탭에서 끌 수 있어요.',
+  '이 앱은 선물한 사람이 만들어 준 계정으로만 써요. 연락처와 실명은 받지 않아요.',
+  '서버는 Google Firebase Realtime Database를 써요. 서버에는 닉네임, 친구 코드, 캐릭터 그림과 꾸미기, 레벨, 집중 시간 합계, 친구 목록, 마이홈과 일정, 방 채팅, 올린 사진과 그림을 저장해요.',
+  '닉네임, 캐릭터, 레벨은 이 앱 계정이 있는 사람이면 누구나 볼 수 있어요. 마이홈, 프로필 사진, 일정, 접속 중인 방은 친구만 봐요. 채팅과 방 안의 자리 정보는 그 방에 들어온 사람만 봐요.',
+  '마이홈 버그 제보 탭에서 보낸 글과 앱 버전은 서버에 저장하고 선물한 사람만 읽어요.',
+  '앱에 오류가 나면 앱 버전, 운영체제, 최근 진단 기록 몇 줄을 선물한 사람에게 자동으로 보내요. 이 탭의 버그 제보 항목에서 끌 수 있어요.',
   '이 PC에서 쓰는 프로그램 이름, 창 제목, 키보드로 입력한 내용은 서버로 보내지 않아요.',
-  '이 PC의 앱 데이터 폴더에는 설정, 프로그램별 집중 시간, 로그인 상태, 진단 기록이 남아요. 오류 자동 보고가 켜져 있으면 오류와 최근 로그 일부를 선물한 사람에게 보내요. 전체 진단 기록은 요청받았을 때 직접 보내요.',
-  '기록을 지우고 싶으면 앱을 선물한 사람에게 말해 주세요.',
+  '이 PC의 앱 데이터 폴더에는 설정, 프로그램별 집중 시간, 로그인 상태, 진단 기록이 남아요. 진단 기록 전체는 앱이 보내지 않아요. 부탁받으면 직접 보내 주세요.',
+  '기록을 지우고 싶으면 선물한 사람에게 말해 주세요.',
 ];
 
 /** 이 PC 연결 해제 (ACC-05). 한 번 더 확인한 뒤 해제한다 */
@@ -158,7 +158,7 @@ function Disconnect({ core }: { core: CoreRuntime }) {
   if (!asking) return <p><button onClick={() => setAsking(true)}>이 PC 연결 해제</button></p>;
   return (
     <div>
-      <p>이 PC에서 연결을 끊어요. 다시 쓰려면 설정 코드가 필요해요.</p>
+      <p>이 PC에서 로그아웃하고 앱을 닫아요. 다시 쓰려면 설정 코드가 필요해요.</p>
       <button onClick={() => void core.registry.run('core.disconnect')}>연결 해제</button> <button onClick={() => setAsking(false)}>취소</button>
     </div>
   );
@@ -172,15 +172,15 @@ function PenApps({ core, ctx }: { core: CoreRuntime; ctx: Ctx }) {
   const save = (next: string[]) => void bridge.invoke('penApps.set', { apps: next }).then(() => setApps(next), (e: Error) => ctx.ui.toast(e.message));
   const add = () => {
     const key = ctx.activity.lastForeignApp();
-    if (!key) return ctx.ui.toast('펜 입력 보호 앱을 먼저 잠깐 쓰고 이 창으로 돌아와 다시 눌러 주세요');
+    if (!key) return ctx.ui.toast('넣을 앱을 먼저 잠깐 쓰고 이 창으로 돌아와 다시 눌러 주세요.');
     if (apps.includes(key)) return ctx.ui.toast('이미 들어 있는 앱이에요.');
     save([...apps, key]);
   };
   // 기본 목록은 메인에 있어 여기에는 사용자가 더한 앱만 보인다
   return (
     <div>
-      <p>펜 입력 보호 목록의 앱이 앞에 있으면 자동으로 방에서 내보내지 않아요.</p>
-      <p>기본 목록 외에도 사용하는 앱을 추가할 수 있어요. 집중 기록 대상은 집중 앱 탭에서 따로 골라요.</p>
+      <p>펜 태블릿을 쓸 때만 필요한 목록이에요. 여기 있는 앱이 앞에 있으면 키보드나 마우스를 쓰지 않아도 방에서 내보내지 않아요.</p>
+      <p>집중 시간을 셀 앱은 집중 앱 탭에서 따로 골라요.</p>
       {apps.length > 0 && (
         <ul>
           {apps.map((k) => (
@@ -209,16 +209,15 @@ function DisplayTab({ core, ctx }: { core: CoreRuntime; ctx: Ctx }) {
         회사원 모드
         <input type="checkbox" checked={display === 'quiet'} onChange={(e) => ctx.mode.set(e.target.checked ? 'quiet' : 'normal')} />
       </label>
-      <p>마이홈, 말풍선, 장난 기능을 잠그고 상태칩에 숨기기가 생겨요.</p>
-      <p>숨긴 화면은 Ctrl+Alt+H나 트레이 메뉴로 다시 띄워요.</p>
+      <p>마이홈, 말풍선, 장난 기능을 잠그고 상태칩에 숨기기 버튼을 넣어요.</p>
+      <p>숨긴 실행 화면은 Ctrl+Alt+H나 트레이 메뉴로 다시 띄워요.</p>
       <Field ctx={ctx} decl={coreSettings} name="theme" />
-      <p>창과 메뉴의 밝기만 바뀌고 캐릭터 모습은 바뀌지 않아요.</p>
       {displays.length > 1 && (
         <section>
           <h4>캐릭터를 띄울 모니터</h4>
           {displays.map((d, i) => (
             <button key={d.id} aria-pressed={d.chosen} onClick={() => void bridge.invoke('display.choose', { id: d.id }).then(load, load)}>
-              모니터 {i + 1}{d.primary ? ' (주)' : ''}
+              모니터 {i + 1}{d.primary ? ' (기본)' : ''}
             </button>
           ))}
         </section>
@@ -230,12 +229,11 @@ function DisplayTab({ core, ctx }: { core: CoreRuntime; ctx: Ctx }) {
       <Field ctx={ctx} decl={coreSettings} name="showHead" />
       <Field ctx={ctx} decl={coreSettings} name="chips" />
       <Field ctx={ctx} decl={coreSettings} name="pixel" />
-      <p>캐릭터를 큰 점과 적은 색으로 옛날 게임처럼 그려요.</p>
       <hr />
       <Field ctx={ctx} decl={coreSettings} name="opacity252" />
-      <p>화면 공유 영상이 깜빡일 때만 켜요. Windows 전용이에요.</p>
+      <p>Windows에서 화면 공유 영상이 깜빡일 때만 켜요.</p>
       <Field ctx={ctx} decl={coreSettings} name="coverHide" />
-      <p>영상, 게임, 발표를 전체 화면으로 띄우면 캐릭터를 숨기고 끝나면 다시 띄워요. 펜 입력 보호 앱 위에서는 숨기지 않아요.</p>
+      <p>영상, 게임, 발표를 전체 화면으로 띄우는 동안 캐릭터를 숨겨요. 펜 입력 보호 앱 위에서는 숨기지 않아요.</p>
       <hr />
       <p>이름표를 끌어서 캐릭터를 옮길 수 있어요.</p>
       <button onClick={() => void core.registry.run('core.resetPositions').then(() => ctx.ui.toast('위치를 처음으로 되돌렸어요'), (e: Error) => ctx.ui.toast(e.message))}>

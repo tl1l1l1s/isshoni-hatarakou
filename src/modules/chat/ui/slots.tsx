@@ -49,7 +49,7 @@ export function EmojiPicker({ ctx }: { ctx: Ctx }) {
             <Pic ctx={ctx} hash={h} />
           </button>
         ))}
-        {!removing && mine.length < MINE_MAX && <button className={css.wide} title="이모티콘 추가" onClick={add}>＋ 내 그림 넣기</button>}
+        {!removing && mine.length < MINE_MAX && <button className={css.wide} onClick={add}>＋ 내 이모티콘 넣기</button>}
         {mine.length > 0 && <button className={css.wide} onClick={() => setRemoving(!removing)}>{removing ? '완료' : '빼기'}</button>}
       </div>
     </>

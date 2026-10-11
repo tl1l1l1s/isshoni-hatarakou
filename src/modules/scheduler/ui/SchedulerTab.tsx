@@ -116,11 +116,11 @@ export default function SchedulerTab({ ctx, owner, mine }: HomeTabProps & { ctx:
               </label>
               <label className={css.field}>
                 제목
-                <input maxLength={TITLE_MAX} value={form.plan.title} placeholder={`일정 제목 (${TITLE_MAX}자)`} onChange={(e) => setForm({ ...form, plan: { ...form.plan, title: e.target.value } })} />
+                <input maxLength={TITLE_MAX} value={form.plan.title} placeholder={`${TITLE_MAX}자까지`} onChange={(e) => setForm({ ...form, plan: { ...form.plan, title: e.target.value } })} />
               </label>
               <label className={css.field}>
                 메모
-                <textarea maxLength={MEMO_MAX} value={form.plan.memo} placeholder={`메모 (${MEMO_MAX}자)`} onChange={(e) => setForm({ ...form, plan: { ...form.plan, memo: e.target.value } })} />
+                <textarea maxLength={MEMO_MAX} value={form.plan.memo} placeholder={`${MEMO_MAX}자까지`} onChange={(e) => setForm({ ...form, plan: { ...form.plan, memo: e.target.value } })} />
               </label>
               <label>
                 친구에게 공개

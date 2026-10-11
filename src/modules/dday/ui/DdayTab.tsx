@@ -68,7 +68,7 @@ export default function DdayTab({ ctx, owner, mine }: HomeTabProps & { ctx: Ctx 
               className={css.card}
               data-draft={c.draft}
               style={{ background: c.color, color: inkOn(c.color) }}
-              title={Tag === 'button' ? '눌러서 고치기' : undefined}
+              title={Tag === 'button' ? '눌러서 수정' : undefined}
               onClick={Tag === 'button' ? () => edit(c) : undefined}
             >
               <span className={css.name}>{c.name || '새 D-day'}</span>
@@ -86,10 +86,10 @@ export default function DdayTab({ ctx, owner, mine }: HomeTabProps & { ctx: Ctx 
       {!cards.length && (mine ? <p className={css.hint}>마감이나 시험 같은 날을 카드로 세어 둬요. 7일 안에 오는 날은 캐릭터의 🔔에도 보여요.</p> : <p className={css.hint}>친구가 공개한 D-day가 없어요.</p>)}
       {form && (
         <fieldset className={css.form}>
-          <legend>{form.id ? 'D-day 고치기' : '새 D-day'}</legend>
+          <legend>{form.id ? 'D-day 수정' : '새 D-day'}</legend>
           <label>
             이름
-            <input maxLength={NAME_MAX} value={form.card.name} placeholder={`이름 (${NAME_MAX}자)`} onChange={(e) => setFormState({ ...form, card: { ...form.card, name: e.target.value } })} />
+            <input maxLength={NAME_MAX} value={form.card.name} placeholder={`${NAME_MAX}자까지`} onChange={(e) => setFormState({ ...form, card: { ...form.card, name: e.target.value } })} />
           </label>
           <label>
             날짜

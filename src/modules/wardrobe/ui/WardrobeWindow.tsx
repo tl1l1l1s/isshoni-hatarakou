@@ -54,7 +54,7 @@ export default function WardrobeWindow({ ctx }: { ctx: Ctx }) {
   // 저장하지 않은 그림이나 고른 값이 있으면 ESC, 창 닫기 단추, 슬롯 바꾸기 전에 묻는다
   const unsaved = useRef<() => boolean>(() => false);
   unsaved.current = () => edit.open.dirty() || edit.closed.dirty() || JSON.stringify(draft) !== JSON.stringify(w.appearance());
-  useEffect(() => ctx.ui.guard(WIN, () => (unsaved.current() ? '캐릭터를 저장하지 않았어요. 닫을까요?' : null)), [ctx]);
+  useEffect(() => ctx.ui.guard(WIN, () => (unsaved.current() ? '캐릭터를 저장하지 않았어요. 나갈까요?' : null)), [ctx]);
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -156,7 +156,7 @@ export default function WardrobeWindow({ ctx }: { ctx: Ctx }) {
       {step === 1 && mode === 'face' && <FacePanel ctx={ctx} edit={edit} face={face} body={draft.body} onFace={setFace} onError={setMsg} />}
       {step === 1 && mode === 'file' && (
         <>
-          <p className={css.hint}>320x400px에 배경이 투명한 PNG가 좋아요. 큰 그림은 앱이 줄여서 저장해요.</p>
+          <p className={css.hint}>320x400px에 배경이 투명한 PNG가 좋아요.</p>
           <div className={css.cards}>
             {POSES.map(([pose, label]) => (
               <div key={pose} className={css.card}>
@@ -178,7 +178,7 @@ export default function WardrobeWindow({ ctx }: { ctx: Ctx }) {
       )}
       {step === 2 && (
         <>
-          <p className={css.hint}>내 책상 그림은 자세 그림과 같은 320x400px 캔버스 아래쪽에 그리면 자리가 맞아요.</p>
+          <p className={css.hint}>책상 그림도 320x400px로 맞추고 책상을 아래쪽에 두어 주세요.</p>
           <div className={css.cards}>
             <button className={css.card} aria-pressed={!desk} disabled={busy} onClick={() => setDraft((a) => withDesk(a, null))}>
               <Pic id={null} load={ctx.files.get} empty="" />
@@ -237,7 +237,7 @@ function TrashList({ w, onPick }: { w: Wardrobe; onPick: (a: Appearance) => void
       <ul className={css.trash}>
         {items?.map((t) => (
           <li key={trashKey(t)}>
-            <span>캐릭터 {t.slot + 1} · {when(t.at)}</span>
+            <span>캐릭터 {t.slot + 1} ({when(t.at)})</span>
             <button onClick={() => onPick(t.appearance)}>불러오기</button>
           </li>
         ))}

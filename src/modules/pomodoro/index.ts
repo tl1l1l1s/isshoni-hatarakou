@@ -28,7 +28,7 @@ function announce(ctx: Ctx, l: Local, ended: Phase, n: Run): void {
   const body =
     ended !== 'focus'
       ? n.endsAt === null
-        ? '휴식이 끝났어요. 준비되면 다음 집중을 시작해 주세요.'
+        ? '휴식이 끝났어요. 뽀모도로 창에서 다시 시작을 눌러 주세요.'
         : `휴식이 끝났어요. 다시 ${minutes(l, 'focus')}분 집중해요.`
       : `집중이 끝났어요. ${minutes(l, n.phase)}분 쉬어요.`;
   ctx.notify({ title: '뽀모도로', body, onClick: () => ctx.ui.open('pomodoro.timer') });

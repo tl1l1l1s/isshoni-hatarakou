@@ -9,7 +9,7 @@ const SAY: Record<PhoneState, string> = {
   off: '아직 연결하지 않았어요.',
   waiting: '폰 신호를 기다리고 있어요.',
   drawing: '연결됨. 폰에서 작업하는 중이에요.',
-  expired: '열림 신호가 4시간을 넘어 더 세지 않아요. 폰에서 앱을 닫았다 다시 열어 주세요.',
+  expired: '폰에서 앱을 연 지 4시간이 지나서 시간을 그만 셌어요. 앱을 닫았다가 다시 열어 주세요.',
   resting: '연결됨. 폰에서 쉬는 중이에요.',
 };
 
@@ -34,18 +34,17 @@ export default function PhoneTab({ ctx }: SlotProps) {
 
   return (
     <div>
-      <p>폰에서 그린 시간도 쌓여요. PC 앱이 켜져 있어야 해요.</p>
+      <p>폰에서 집중 앱을 쓴 시간도 집중 시간에 더해져요. PC 앱이 켜져 있어야 해요.</p>
       <p className={css.state} data-got={got} role="status">
         {got ? '신호를 받았어요.' : state === 'drawing' && sig?.app ? `연결됨. 폰에서 ${sig.app} 쓰는 중이에요.` : SAY[state]}
       </p>
       {key ? (
         <>
           {link ? <Qr text={link} /> : <p>안내 페이지 주소가 아직 없어요. 선물한 사람에게 알려 주세요.</p>}
-          {link && <p className={css.muted}>폰 카메라로 찍으면 설정 안내가 열려요.</p>}
           <ol className={css.steps}>
             <li>폰에서 QR을 찍어 안내 페이지를 열어요.</li>
             <li>안내대로 신호를 보내는 자동화를 만들어요.</li>
-            <li>안내 페이지에서 신호 보내 보기를 누르면 여기에 표시돼요.</li>
+            <li>안내 페이지에서 신호 보내 보기를 눌러 연결을 확인해요.</li>
           </ol>
           <div className={css.row}>
             {link && <button onClick={() => run(ctx.shell.copy(link).then(() => ctx.ui.toast('링크를 복사했어요.')))}>링크 복사</button>}

@@ -88,7 +88,7 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
     const first = t[playOrder(t.length, list.shuffle, seed)[0] ?? 0];
     if (first) play(ctx, first);
   };
-  const open = (p: Promise<Guest | null>) => void p.then(listen, () => setError('친구 플리를 읽지 못했어요'));
+  const open = (p: Promise<Guest | null>) => void p.then(listen, () => setError('친구 플리를 불러오지 못했어요. 다시 눌러 주세요.'));
   const surfNow = () => open(surf(ctx, guest ? `${guest.uid}:${guest.preset}` : null));
   const pickFriend = () => {
     setError(null);
@@ -159,11 +159,13 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
       else if (m.info === 0) go(1, list.repeat);
       else if (m.info === 1 || m.info === 2) setPlayer(ctx, { playing: m.info === 1 });
     } else if (m.event === 'onError') {
-      setError(`이 곡은 여기서 재생할 수 없어요 (오류 ${String(m.info)})`);
       setPlayer(ctx, { playing: false });
-      // 목록 안의 곡이면 2초 뒤 다음 곡으로 넘어간다. 연달아 모든 곡이 재생되지 않으면 한 바퀴 돈 뒤 멈춘다
+      // 목록 안의 곡이면 2초 뒤 다음 곡으로 넘어간다. 연달아 모든 곡이 재생되지 않으면 한 바퀴 돈 뒤 멈춘다. 유튜브 오류 번호는 로그에만 남긴다
+      ctx.log.warn(`유튜브 재생 오류 ${String(m.info)}`);
       const k = track?.k;
-      if (idx >= 0 && ++fails.current < tracks.length) ctx.timers.at(2000, () => player(ctx).current?.k === k && go(1, list.repeat));
+      const skip = idx >= 0 && ++fails.current < tracks.length;
+      setError(skip ? '이 곡은 여기서 재생할 수 없어서 다음 곡으로 넘어가요.' : '이 곡은 여기서 재생할 수 없어요. 다른 곡을 골라 주세요.');
+      if (skip) ctx.timers.at(2000, () => player(ctx).current?.k === k && go(1, list.repeat));
     }
     const got = titleOf(m.info);
     if (track && !track.title && typeof got === 'string' && got) nameTrack(track.k, got);
@@ -290,7 +292,7 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
             내 플리로
           </button>
         ) : (
-          <label className={css.pub} title="켜면 내 플리를 듣는 친구가 사진이나 이름을 눌러 내 마이홈으로 와요">
+          <label className={css.pub} title="켜면 내 플리를 듣는 친구가 내 마이홈에 올 수 있어요">
             <input type="checkbox" checked={list.home} onChange={(e) => save({ home: e.target.checked })} />
             마이홈 공개
           </label>
@@ -302,7 +304,7 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
         <input
           className={css.bioInput}
           aria-label="소개글"
-          placeholder="오늘의 한마디를 적어 보세요"
+          placeholder="오늘의 한마디"
           maxLength={BIO_MAX}
           value={list.bio}
           onChange={(e) => save({ bio: e.target.value })}
@@ -341,7 +343,7 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
             친구의 🌊 파도타기에 내 플리 넣기
             <input type="checkbox" checked={!list.locked} onChange={(e) => save({ locked: !e.target.checked })} />
           </label>
-          <p className={css.hint}>🌊 파도타기는 친구 플리를 아무거나 틀어요. 마이홈 공개를 켜 두면 내 플리를 듣는 친구가 내 사진을 눌러 마이홈에 와요.</p>
+          <p className={css.hint}>파도타기는 친구 플리를 아무거나 틀어요. 마이홈 공개를 켜 두면 내 플리를 듣는 친구가 내 마이홈에 올 수 있어요.</p>
         </>
       )}
     </>
@@ -361,7 +363,7 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
         <div className={css.pick}>
           {/* 닫기는 첫 줄에 두어 친구가 많거나 이름이 길어도 스크롤 없이 보인다 */}
           <div className={css.pickHead}>
-            <p className={css.hint}>{picking.length ? '누구의 플리를 들을까요?' : '친구로 등록한 사람이 없어요.'}</p>
+            <p className={css.hint}>{picking.length ? '누구의 플리를 들을까요?' : '아직 친구가 없어요.'}</p>
             <button onClick={() => setPicking(null)}>닫기</button>
           </div>
           {picking.length > 0 && <button onClick={surfNow}>아무 친구나</button>}
@@ -371,7 +373,7 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
         </div>
       ) : (
         <ol className={css.list}>
-          {tracks.length === 0 && <li className={css.hint}>{guest ? '비어 있는 목록이에요.' : '아직 비어 있어요. 유튜브 링크를 넣어 보세요.'}</li>}
+          {tracks.length === 0 && <li className={css.hint}>{guest ? '이 플리에는 곡이 없어요.' : '아직 곡이 없어요. 위 칸에 유튜브 링크를 넣어 주세요.'}</li>}
           {tracks.map((t, i) => (
             <li
               key={t.k}
@@ -410,10 +412,10 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
           <input type="range" min={0} max={100} value={s.noiseVolume} disabled={quiet} onChange={(e) => ctx.settings.set({ noiseVolume: Number(e.target.value) })} />
         </label>
         <label>
-          같은 방 사람들 소리도 함께 듣기
+          같은 방 사람의 백색소음도 듣기
           <input type="checkbox" checked={s.shareOthers} onChange={(e) => ctx.settings.set({ shareOthers: e.target.checked })} />
         </label>
-        <p className={css.hint}>{quiet ? '회사원 모드에서는 백색소음과 알림음이 나지 않아요.' : '그리거나 타이핑하는 동안만 소리가 나요. 손을 멈추면 조용해져요.'}</p>
+        <p className={css.hint}>{quiet ? '회사원 모드에서는 백색소음과 알림음이 나지 않아요.' : '집중 앱에서 키보드나 마우스, 펜을 쓰는 동안만 소리가 나요.'}</p>
       </section>
     </>
   );

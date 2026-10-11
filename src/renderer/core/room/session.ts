@@ -29,7 +29,7 @@ export interface RoomSessionDeps {
 }
 
 const CANCELLED: JoinResult = { ok: false, reason: '방 입장을 취소했어요.', kind: 'cancelled' };
-const UPDATE_NEEDED = '앱을 새 버전으로 업데이트해야 방에 들어갈 수 있어요.';
+const UPDATE_NEEDED = '앱을 업데이트해야 방에 들어갈 수 있어요.';
 const byteLength = (v: unknown) => new TextEncoder().encode(JSON.stringify(v)).length;
 
 export class RoomSession {
@@ -130,7 +130,7 @@ export class RoomSession {
       this.batch = {};
       await server.room.join(code, this.key, this.record());
     } catch {
-      return stale() ? CANCELLED : { ok: false, reason: '방에 들어가지 못했어요. 연결을 확인하고 다시 해 주세요.', kind: 'network' };
+      return stale() ? CANCELLED : { ok: false, reason: '방에 들어가지 못했어요. 인터넷 연결을 확인하고 다시 들어가 주세요.', kind: 'network' };
     }
     if (stale()) {
       // 기록을 쓰는 동안 취소됐으면 방금 쓴 기록을 지운다
@@ -176,14 +176,14 @@ export class RoomSession {
       const code = randomCode();
       if (await server.room.createMeta(code, { kind: 'work', owner: uid, createdAt: server.time.serverNow() })) return code;
     }
-    throw new Error('방을 만들지 못했어요. 잠시 뒤 다시 해 주세요.');
+    throw new Error('방을 만들지 못했어요. 잠시 뒤에 다시 눌러 주세요.');
   }
 
   /** 주인만 지운다. 먼저 나간 뒤 삭제 표시를 쓰고 멤버 기록을 지운다. 나가기 전에 지우면 멤버 구독이 내 기록이 사라진 것을 보고
    *  주인이 방을 지웠다는 안내를 한 번 더 띄운다 */
   async remove(code: string): Promise<void> {
     const uid = this.d.server.identity.current();
-    if (!uid || (await this.owner(code)) !== uid) throw new Error('방 주인만 방을 지울 수 있어요.');
+    if (!uid || (await this.owner(code)) !== uid) throw new Error('방 주인만 지울 수 있어요.');
     if (this.code === code) await this.exit();
     await this.d.server.room.markDeleted(code, this.d.server.time.serverNow());
   }

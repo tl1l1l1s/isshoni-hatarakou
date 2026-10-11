@@ -96,7 +96,7 @@ test('시작하기로 실행 화면이 열리고 상태칩 ▼ 메뉴에 항목�
 test('설정 창의 일반, 계정, 집중 앱, 화면 탭이 열린다', async () => {
   const settings = await menu('설정', '설정');
   await settings.getByRole('button', { name: '일반', exact: true }).click();
-  await expect(settings.getByLabel('컴퓨터 켤 때 자동 실행')).toBeVisible();
+  await expect(settings.getByLabel('PC를 켤 때 자동 실행')).toBeVisible();
   await settings.getByRole('button', { name: '계정', exact: true }).click();
   await expect(settings.getByLabel('닉네임')).toBeVisible();
   await settings.getByRole('button', { name: '집중 앱', exact: true }).click();
@@ -143,7 +143,7 @@ test('뽀모도로를 시작하면 창과 머리 위에 남은 시간이 보인�
 
 test('devdev 방에 들어가면 가짜 친구가 보인다', async () => {
   const rooms = await menu('워킹룸', '워킹룸');
-  await rooms.getByPlaceholder('예: 7Q2K9M').fill('devdev');
+  await rooms.getByPlaceholder('방 코드 6자').fill('devdev');
   await rooms.getByRole('button', { name: '참여' }).click();
   await expect(stage.getByText('가짜 친구')).toBeVisible();
   await shot(stage, 'room');
@@ -205,7 +205,7 @@ test('내 방을 만들어 가챠 아이템을 넣고 한 시간 기록으로 �
   });
   const gacha = await menu('가챠', '가챠');
   await gacha.getByRole('button', { name: '1회 뽑기' }).click();
-  await expect(gacha.getByText('NEW!')).toBeVisible();
+  await expect(gacha.getByText('NEW', { exact: true })).toBeVisible();
   await expect(gacha.getByText('별').first()).toBeVisible();
   await shot(gacha, 'gacha');
   await gacha.close();
@@ -255,7 +255,7 @@ test('마이홈 창의 탭이 모두 열린다', async () => {
   await expect(home.getByRole('button', { name: '+ D-day 추가' })).toBeVisible();
   await home.getByRole('button', { name: '우편함', exact: true }).click();
   await expect(home.getByRole('button', { name: /주말 이벤트/ })).toBeVisible();
-  await home.getByRole('button', { name: '버그제보', exact: true }).click();
+  await home.getByRole('button', { name: '버그 제보', exact: true }).click();
   await expect(home.getByPlaceholder('언제 무엇을 했는데 어떻게 됐는지 적어 주세요')).toBeVisible();
   await home.getByRole('button', { name: '친구', exact: true }).click();
   await expect(home.getByRole('button', { name: '친구', exact: true })).toHaveAttribute('aria-pressed', 'true');

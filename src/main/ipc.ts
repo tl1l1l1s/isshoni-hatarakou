@@ -99,7 +99,7 @@ export function registerIpc(store: Store): void {
       ({ lines }) =>
         writeDiagnose([
           ...displayLines(),
-          `자동 실행 ${platform.autoStart.get() ? '켜짐' : '꺼짐'}, 더한 그림 앱 ${platform.penApps.user.size}개`,
+          `자동 실행 ${platform.autoStart.get() ? '켜짐' : '꺼짐'}, 넣은 펜 입력 보호 앱 ${platform.penApps.user.size}개`,
           skippedLine() || '생략한 자동 오류 보고 없음',
           ...lines,
         ]),
@@ -158,6 +158,6 @@ async function openImage(): Promise<{ name: string; bytes: Uint8Array } | null> 
   const r = parent ? await dialog.showOpenDialog(parent, opts) : await dialog.showOpenDialog(opts);
   const path = r.filePaths[0];
   if (r.canceled || !path) return null;
-  if ((await stat(path)).size > 20 * 1024 * 1024) throw new Error('20MB보다 큰 그림은 열 수 없습니다');
+  if ((await stat(path)).size > 20 * 1024 * 1024) throw new Error('20MB보다 큰 그림은 열 수 없어요.');
   return { name: basename(path), bytes: new Uint8Array(await readFile(path)) };
 }

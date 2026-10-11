@@ -85,7 +85,7 @@ export default function Walkers({ ctx, box, mallangi, onHeart, ref }: {
             // 벽을 탈 때는 발이 벽에 닿게 돌린다
             rotate: m.act === 'climb' ? (m.x <= 0 ? '90deg' : '-90deg') : undefined,
           }}
-          title="끌어서 옮기기, 누르면 통통, 오른쪽 클릭으로 들여보내기"
+          title="끌어서 옮기기, 눌러서 뛰게 하기, 오른쪽 클릭으로 들여보내기"
           onPointerDown={(ev) => hold(ev, m)}
           onPointerMove={move}
           onPointerUp={up}

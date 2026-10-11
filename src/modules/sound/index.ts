@@ -30,7 +30,7 @@ export default defineModule<SoundApi>({
         options: [{ value: 'off', label: '끄기' }, ...KINDS.map((k) => ({ value: k, label: KIND_LABEL[k] }))],
       },
       noiseVolume: { label: '백색소음 음량', widget: 'number', min: 0, max: 100 },
-      shareOthers: { label: '같은 방 사람들 소리도 함께 듣기', widget: 'toggle' },
+      shareOthers: { label: '같은 방 사람의 백색소음도 듣기', widget: 'toggle' },
       chatSound: {
         label: '채팅 알림음',
         widget: 'select',

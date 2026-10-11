@@ -89,9 +89,9 @@ export function displayLines(): string[] {
   return [
     ...screen.getAllDisplays().map(
       (d, i) =>
-        `모니터 ${i + 1}${d.id === primary ? ' (주)' : ''}${d.id === cur ? ' (캐릭터)' : ''}: ${d.size.width}x${d.size.height} 배율 ${d.scaleFactor} 위치 ${d.bounds.x},${d.bounds.y} 회전 ${d.rotation}`,
+        `모니터 ${i + 1}${d.id === primary ? ' (기본)' : ''}${d.id === cur ? ' (캐릭터)' : ''}: ${d.size.width}x${d.size.height} 배율 ${d.scaleFactor} 위치 ${d.bounds.x},${d.bounds.y} 회전 ${d.rotation}`,
     ),
-    `스테이지 ${JSON.stringify(stage?.getBounds() ?? null)}, 영상 겹침 우회 ${opacity252 || OPACITY_252_ENV ? '켜짐' : '꺼짐'}`,
+    `스테이지 ${JSON.stringify(stage?.getBounds() ?? null)}, 화면 공유 깜빡임 줄이기 ${opacity252 || OPACITY_252_ENV ? '켜짐' : '꺼짐'}`,
   ];
 }
 

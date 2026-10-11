@@ -33,7 +33,7 @@ export const WRITE_DENIED = '권한이 없어 저장하지 못했어요. 방이 
 /** 쓰기 실패를 사용자에게 보일 글로 바꾼다. 모듈은 e.message를 그대로 띄우므로 원래 오류는 cause와 code에 남긴다 */
 export function writeError(e: unknown): Error {
   const code = (e as { code?: unknown } | null)?.code;
-  const text = code === 'PERMISSION_DENIED' ? WRITE_DENIED : '저장하지 못했어요. 인터넷 연결을 확인하고 다시 해 주세요.';
+  const text = code === 'PERMISSION_DENIED' ? WRITE_DENIED : '저장하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.';
   return Object.assign(new Error(text), { cause: e, code });
 }
 

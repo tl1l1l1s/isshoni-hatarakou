@@ -184,7 +184,7 @@ export const removeBook = (ctx: Ctx, b: Item<Book>) => ctx.server.inbox([b.sende
 export async function sendGift(ctx: Ctx, to: string, file: string, msg: string): Promise<void> {
   const box = ctx.server.sendTo(to, [GIFT_KEY]);
   if ((await box.list({ limit: GIFT_PENDING_MAX })).length >= GIFT_PENDING_MAX) {
-    throw new Error(`친구가 아직 받지 않은 선물이 ${GIFT_PENDING_MAX}개 있어요. 친구가 선물함을 비우면 다시 보낼 수 있어요.`);
+    throw new Error(`친구가 받지 않은 선물이 ${GIFT_PENDING_MAX}개라서 더 보낼 수 없어요. 친구가 선물을 받거나 숨기면 다시 보낼 수 있어요.`);
   }
   const at = ctx.clock.serverNow();
   await box.set(String(at), { file, msg, name: ctx.self.name().slice(0, 20), at });

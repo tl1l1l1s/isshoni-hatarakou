@@ -49,14 +49,14 @@ export default function RoomWindow({ ctx }: { ctx: Ctx }) {
       <p>
         <b>남은 뽑기 {left}회</b>
       </p>
-      <p className={css.muted}>다음 1회까지 작업 {duration(secToNext(earned, spt))} 남았어요.</p>
-      <p className={css.muted}>뽑기 1회에 작업 {duration(spt)}이 필요해요.</p>
+      <p className={css.muted}>다음 1회까지 {duration(secToNext(earned, spt))} 남았어요.</p>
+      <p className={css.muted}>이 방에서 {duration(spt)} 집중할 때마다 1회 뽑아요.</p>
       <div className={css.stage}>
         {!spinning && result ? (
           <div className={css.result}>
             <Pic ctx={ctx} file={result.file} />
             <b>{result.name}</b>
-            {result.n === 1 ? <span className={css.new}>NEW!</span> : <span className={css.muted}>{result.n}개째</span>}
+            {result.n === 1 ? <span className={css.new}>NEW</span> : <span className={css.muted}>{result.n}개째</span>}
           </div>
         ) : (
           // 결과가 연출보다 늦으면 열린 캡슐을 그대로 두고 아래에 기다리는 중임을 보인다

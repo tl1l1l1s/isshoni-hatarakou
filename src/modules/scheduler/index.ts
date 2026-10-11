@@ -21,7 +21,7 @@ export default defineModule<SchedulerApi>({
     scope: 'account',
     schema: Settings,
     fields: {
-      weekStart: { label: '스케줄러 달력의 한 주 시작', widget: 'select', options: [{ value: 'sun', label: '일요일' }, { value: 'mon', label: '월요일' }] },
+      weekStart: { label: '한 주 시작 요일', widget: 'select', options: [{ value: 'sun', label: '일요일' }, { value: 'mon', label: '월요일' }] },
     },
   },
   server: {

@@ -20,7 +20,7 @@ export default defineModule<ChatApi>({
     version: 1,
     scope: 'device',
     schema: z.object({ fontSize: FontSize.default('m'), osNotify: z.boolean().default(true) }),
-    fields: { fontSize: { label: '채팅 글자 크기', options: FONT_SIZES }, osNotify: { label: '새 메시지를 OS 알림으로 알려 주기', widget: 'toggle' } },
+    fields: { fontSize: { label: '채팅 글자 크기', options: FONT_SIZES }, osNotify: { label: '새 메시지 OS 알림 받기', widget: 'toggle' } },
   },
   profile: { emo: Mine },
   local: { account: { version: 1, schema: Local, initial: () => ({ read: {}, out: [] }) } },

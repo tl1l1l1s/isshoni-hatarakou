@@ -27,7 +27,7 @@ export default function FriendsWindow({ ctx }: { ctx: Ctx }) {
     job()
       .then(setMsg, (e: Error) => {
         ctx.log.warn(`친구창 동작 실패: ${e.message}`);
-        setMsg('하지 못했어요. 잠시 뒤에 다시 해 주세요.');
+        setMsg('요청을 보내지 못했어요. 잠시 뒤에 다시 눌러 주세요.');
       })
       .finally(() => setBusy(false));
   };
@@ -85,7 +85,7 @@ export default function FriendsWindow({ ctx }: { ctx: Ctx }) {
       {slots.map(({ uid, request: req }) =>
         req && (
           <div key={`req:${uid}`} className={css.card}>
-            <span>{req.name}님이 친구 신청을 보냈어요. 수락하면 서로 친구가 돼요.</span>
+            <span>{req.name}님이 친구 신청을 보냈어요.</span>
             <div className={css.row}>
               <button disabled={busy} onClick={() => run(() => accept(ctx, uid).then(() => `${req.name}님과 친구가 됐어요.`))}>수락</button>
               <button disabled={busy} onClick={() => run(() => decline(ctx, uid).then(() => null))}>거절</button>
@@ -110,7 +110,7 @@ export default function FriendsWindow({ ctx }: { ctx: Ctx }) {
         <>
           <h4>친구 {friends.length}명</h4>
           {friends.length === 0 ? (
-            <p className={css.muted}>아직 친구가 없어요. 친구 코드를 주고받아 보세요.</p>
+            <p className={css.muted}>아직 친구가 없어요.</p>
           ) : (
             <ul className={css.list}>
               {friends.map((uid) => (

@@ -55,7 +55,7 @@ test('첫 버전 흐름이 처음부터 끝까지 동작한다', async () => {
 
   // 방 (ROM-05, ROM-08): 메모리 서버 개발 방에 가짜 친구가 있다
   const rooms = await menu(app, stage, '워킹룸', '워킹룸');
-  await rooms.getByPlaceholder('예: 7Q2K9M').fill('devdev');
+  await rooms.getByPlaceholder('방 코드 6자').fill('devdev');
   await rooms.getByRole('button', { name: '참여' }).click();
   await expect(stage.getByText('가짜 친구')).toBeVisible();
   await rooms.close();
@@ -182,7 +182,7 @@ test('첫 버전 흐름이 처음부터 끝까지 동작한다', async () => {
   // 마이홈 편집 (HOM-01, HOM-02, HOM-03)
   const home = await menu(app, stage, '마이홈', '마이홈');
   await home.getByRole('button', { name: '편집' }).click();
-  await home.getByPlaceholder('자기소개를 적어 보세요.').fill('그림 그리는 사람');
+  await home.getByPlaceholder('자기소개').fill('그림 그리는 사람');
   await home.getByRole('button', { name: '저장' }).click();
   await expect(home.getByText('그림 그리는 사람')).toBeVisible();
   await home.screenshot({ path: 'test-results/home.png' });

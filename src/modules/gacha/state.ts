@@ -228,7 +228,7 @@ export async function setCfg(ctx: Ctx, p: Partial<Cfg>): Promise<void> {
     const cfg = readCfg(cur);
     return { ...cfg, ...p, legacySecPerTicket: cfg.legacySecPerTicket ?? cfg.secPerTicket };
   });
-  if (!res.committed) throw new Error('가챠 설정을 바꾸지 못했어요.');
+  if (!res.committed) throw new Error('가챠 설정을 바꾸지 못했어요. 잠시 뒤에 다시 골라 주세요.');
 }
 
 /** 방을 지우기 직전(ctx.room.beforeRemove). 코어가 items를 지우기 전에 방 전체 삭제 표시를 쓴다 */

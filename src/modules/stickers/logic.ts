@@ -50,7 +50,7 @@ export function fresh(slot: SlotId, item: string, file: Sha256, img: Size = { wi
 export const capMessage = (slot: SlotId, count: number): string | null =>
   count < CAP ? null
   : slot === 'sticker' ? `스티커는 한 캐릭터에 ${CAP}개까지 붙일 수 있어요.`
-  : slot === 'floor' ? `바닥 오브제는 ${CAP}개까지 놓을 수 있어요.`
+  : slot === 'floor' ? `바닥에는 ${CAP}개까지 놓을 수 있어요.`
   : `책상 소품은 ${CAP}개까지 올릴 수 있어요.`;
 
 export const editOf = ({ slots }: Pick<Appearance, 'slots'>): Edit => ({ sticker: slots.sticker ?? [], 'desk.items': slots['desk.items'] ?? [], floor: slots.floor ?? [] });

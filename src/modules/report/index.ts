@@ -8,7 +8,7 @@ import ReportTab, { TEXT_MAX } from './ui/ReportTab';
 /** 웹훅 주소와 켜짐을 메인에 다시 알리는 간격. 서버 조정값은 setup 뒤에 늦게 올 수 있다 */
 const CONFIG_MS = 10 * 60_000;
 
-// 버그 제보 (OPS-03). 마이홈 [버그제보] 탭에서 보낸 글은 본인과 선물하는 사람의 스크립트(scripts/ops.ts reports)만 읽고 디스코드 웹훅이 있으면 그 채널에도 간다.
+// 버그 제보 (OPS-03). 마이홈 [버그 제보] 탭에서 보낸 글은 본인과 선물하는 사람의 스크립트(scripts/ops.ts reports)만 읽고 디스코드 웹훅이 있으면 그 채널에도 간다.
 // 저장소가 공개라서 GitHub 이슈 같은 공개 창구 대신 이 기록을 쓴다.
 // 자동 오류 보고 (NFR-21)는 메인이 모아 웹훅에 올리고 이 모듈이 같은 기록에 [자동 오류 보고] 글로 남긴다
 export default defineModule({
@@ -21,7 +21,7 @@ export default defineModule({
     version: 1,
     scope: 'device',
     schema: z.object({ autoReport: z.boolean().default(true) }),
-    fields: { autoReport: { label: '오류가 나면 자동으로 알리기', widget: 'toggle' } },
+    fields: { autoReport: { label: '오류가 나면 선물한 사람에게 자동으로 알리기', widget: 'toggle' } },
   },
   server: {
     version: 1,
@@ -32,7 +32,7 @@ export default defineModule({
   // 선물하는 사람이 scripts/ops.ts tunable report webhook으로 디스코드 웹훅 주소를 넣으면 제보를 그 채널에도 올린다. 주소는 저장소에 두지 않는다
   tunables: { webhook: { schema: z.string().max(300), default: '' } },
   setup(ctx) {
-    ctx.modules.get('home')!.addTab({ id: 'report', label: '버그제보', order: 40, component: () => createElement(ReportTab, { ctx }) });
+    ctx.modules.get('home')!.addTab({ id: 'report', label: '버그 제보', order: 40, component: () => createElement(ReportTab, { ctx }) });
 
     // 메인이 렌더러 없이도 보낼 수 있게 웹훅 주소와 켜짐을 알린다
     const config = () =>

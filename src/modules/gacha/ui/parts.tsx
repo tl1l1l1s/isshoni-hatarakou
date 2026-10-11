@@ -70,7 +70,6 @@ export function AddItem({ ctx, folded = false }: { ctx: Ctx; folded?: boolean })
         <input type="date" value={until} onChange={(e) => change(setUntil, e.target.value)} />
       </label>
       <p className={css.muted}>배경이 투명한 PNG가 좋아요.</p>
-      <p className={css.muted}>기간을 정하면 그 기간에만 뽑혀요.</p>
       <button disabled={busy || !!why} onClick={() => void add()}>
         그림 고르고 넣기
       </button>

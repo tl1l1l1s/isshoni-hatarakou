@@ -198,7 +198,7 @@ export class CoreRuntime {
   private watchActiveDevice() {
     const { server, uid, deviceId } = this.deps;
     this.claimDevice();
-    this.session.beforeJoin(async () => (this.elsewhere.get() ? '다른 기기에서 쓰는 중이에요. 여기서 계속 쓰기를 누르면 들어갈 수 있어요.' : null));
+    this.session.beforeJoin(async () => (this.elsewhere.get() ? '다른 PC에서 쓰는 중이에요. 여기서 계속 쓰기를 누르면 들어갈 수 있어요.' : null));
     server.userPrivate.watch<{ id?: string }>(uid, 'activeDevice', (v) => {
       if (!v?.id || v.id === deviceId || this.elsewhere.get()) return;
       this.elsewhere.set(true);
@@ -864,7 +864,7 @@ export class CoreRuntime {
       shell: {
         copy: (text) => this.deps.bridge.invoke('clipboard.write', { text }),
         openExternal: async (url) => {
-          if (!/^https?:\/\//i.test(url)) throw new Error('http나 https 주소만 열 수 있습니다');
+          if (!/^https?:\/\//i.test(url)) throw new Error('http나 https로 시작하는 주소만 열 수 있어요.');
           await this.deps.bridge.invoke('shell.openExternal', { url });
         },
       },
@@ -1009,7 +1009,7 @@ export class CoreRuntime {
       files: {
         upload: async (bytes, opts) => {
           const max = Math.min(opts?.maxBytes ?? FILE_MAX_RAW_BYTES, FILE_MAX_RAW_BYTES);
-          if (bytes.byteLength > max) throw new Error(`파일이 너무 큽니다 (${Math.ceil(bytes.byteLength / 1024)}KB, 최대 ${Math.floor(max / 1024)}KB)`);
+          if (bytes.byteLength > max) throw new Error(`파일이 너무 커요. ${Math.floor(max / 1024)}KB까지 올릴 수 있어요.`);
           return server.files.put(bytes);
         },
         get: (hash) => this.getFile(hash),
@@ -1089,7 +1089,7 @@ export class CoreRuntime {
       // 자세한 이유(검사 오류)는 로그에만 남긴다. 새 버전 앱이 쓴 파일은 덮지 않고 이번 실행에서 바꾼 것은 저장하지 않는다
       if (error) {
         const title = m.title ?? id;
-        this.toast(tooNew ? `${title} 데이터는 새 버전 앱이 저장한 거라 읽지 못했어요. 업데이트할 때까지 바꾼 내용은 저장하지 않아요.` : `${title} 데이터를 읽지 못해 처음 상태로 시작해요.`);
+        this.toast(tooNew ? `${title} 기록은 새 버전 앱이 저장해서 읽지 못했어요. 앱을 업데이트할 때까지 바꾼 내용은 저장하지 않아요.` : `${title} 기록을 읽지 못해서 처음 상태로 시작해요.`);
         this.log('warn', id, `local ${s}: ${error}`);
       }
       const file = new JsonFile<{ v: number; data: unknown }>(this.deps.bridge, localPath(s), { v: decl.version, data }, tooNew);

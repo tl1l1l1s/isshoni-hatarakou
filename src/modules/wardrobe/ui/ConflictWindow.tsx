@@ -36,7 +36,7 @@ export default function ConflictWindow({ ctx }: { ctx: Ctx }) {
             </figure>
           </div>
           <div className={css.pair}>
-            <button disabled={busy} onClick={() => pick(c.slot, true)}>현재 PC로 맞추기</button>
+            <button disabled={busy} onClick={() => pick(c.slot, true)}>이 PC로 맞추기</button>
             <button disabled={busy} onClick={() => pick(c.slot, false)}>다른 PC로 맞추기</button>
           </div>
         </fieldset>

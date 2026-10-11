@@ -29,7 +29,7 @@ const DevRecord = z.object({ v: z.literal(1), total: z.number().int().min(0), da
 
 export default defineModule<FocusApi>({
   id: 'focus',
-  title: '집중 기록',
+  title: '포커스 기록',
   version: '0.1.0',
   specIds: ['CHR-05', 'CHR-08', 'FOC-01', 'FOC-02', 'FOC-03', 'FOC-04', 'FOC-05', 'FOC-08', 'SET-02'],
   uses: ['platform.activity'],
@@ -49,14 +49,14 @@ export default defineModule<FocusApi>({
       },
       figureMode: {
         label: '피규어 모드',
-        hint: '켜면 등록 앱을 쓰지 않거나 입력이 없어도 캐릭터가 잠들지 않고 깨어 있는 모습으로 보여요. 방 사람들에게도 그렇게 보이고 집중 시간은 규칙대로만 쌓여요.',
+        hint: '켜면 집중 앱을 쓰지 않거나 입력이 없어도 캐릭터가 깨어 있어요. 방 사람들에게도 그렇게 보여요. 집중 시간은 규칙대로만 쌓여요.',
         widget: 'toggle',
       },
     },
   },
   local: {
-    // 친구가 쓰는 그림 프로그램을 첫 칸에 미리 넣어 선물 받은 날 바로 시간이 쌓이게 한다 (FOC-01 메모)
-    device: { version: 1, schema: Apps, initial: () => [{ key: 'win:clipstudiopaint.exe', label: '클립 스튜디오' }, ...Array<App>(7).fill(null)] },
+    // 새로 설치하면 비어 있다. 그림을 그리지 않는 사람도 쓰므로 그림 앱을 미리 넣지 않는다. 이미 저장한 목록은 그대로 둔다 (FOC-01)
+    device: { version: 1, schema: Apps, initial: () => Array<App>(8).fill(null) },
     account: { version: 1, schema: Totals, initial: () => ({ day: '', todaySec: 0, todayByApp: {}, deviceTotalSec: 0, otherDevicesSec: 0 }) },
   },
   server: { version: 1, collections: { dev: { scope: 'user', schema: DevRecord, template: 'owner', merge: 'sumByDevice' } } },
@@ -78,7 +78,7 @@ export default defineModule<FocusApi>({
       text: (seat, ctx) => {
         if (!seat.self || live.shown || (live.api?.totalSec() ?? 0) > 0) return null;
         const first = ctx.local.get<App[]>('device').find((a) => a !== null);
-        return first ? `${first.label || labelOf(first.key)} 쓰면 일어나요` : '집중 앱을 쓰면 일어나요';
+        return first ? `${first.label || labelOf(first.key)} 쓰면 일어나요` : '집중 앱을 넣으면 시간이 쌓여요';
       },
     },
   ],

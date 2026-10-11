@@ -35,7 +35,7 @@ export function OwnerSection({ ctx }: SlotProps) {
         </select>
       </label>
       <label>
-        뽑기 1회에 필요한 작업 시간
+        뽑기 1회에 필요한 집중 시간
         <select value={min} onChange={(e) => run(setCfg(ctx, { secPerTicket: Number(e.target.value) * 60 }))}>
           {mins.map((m) => (
             <option key={m} value={m}>
@@ -44,7 +44,7 @@ export function OwnerSection({ ctx }: SlotProps) {
           ))}
         </select>
       </label>
-      <p className={css.muted}>모은 횟수와 진행률은 그대로 두고, 이후 작업부터 새 기준을 적용해요.</p>
+      <p className={css.muted}>바꿔도 지금까지 모은 뽑기와 진행률은 그대로예요. 새 기준은 앞으로 쌓이는 시간부터 써요.</p>
       <label>
         방을 지울 때 뽑은 아이템
         <select value={v.cfg.onRemove} onChange={(e) => run(setCfg(ctx, { onRemove: e.target.value as 'keep' | 'revoke' }))}>
@@ -70,7 +70,7 @@ export function OwnerSection({ ctx }: SlotProps) {
                 <button onClick={() => run(removeItem(ctx, e.id, 'keep'))}>남기고 지우기</button>
                 <button onClick={() => run(removeItem(ctx, e.id, 'revoke'))}>함께 지우기</button>
                 <button onClick={() => setAsking(null)}>취소</button>
-                <span className={css.muted}>남기기를 고르면 이미 뽑은 사람의 보관함에 그대로 남고 함께 지우기를 고르면 다음 동기화 때 빠져요.</span>
+                <span className={css.muted}>남기고 지우면 이미 뽑은 사람의 보관함에는 그대로 남아요. 함께 지우면 보관함에서도 빠져요.</span>
               </span>
             ) : (
               <>

@@ -73,7 +73,7 @@ export default function DrawPanel({ ctx, board, under, dirty, onDone, onCancel }
       e.preventDefault();
       if (!dirty.current()) return onCancel();
       asking.current = true;
-      void ctx.ui.confirmLeave('stickers.edit', { text: '그린 그림이 사라져요. 닫을까요?' }).then((ok) => {
+      void ctx.ui.confirmLeave('stickers.edit', { text: '그린 그림을 저장하지 않았어요. 나갈까요?' }).then((ok) => {
         asking.current = false;
         if (ok) onCancel();
       });
@@ -190,12 +190,12 @@ export default function DrawPanel({ ctx, board, under, dirty, onDone, onCancel }
         <button aria-pressed={erase} onClick={() => setErase((v) => !v)}>지우개</button>
         <button disabled={!p.canUndo()} onClick={p.undo}>되돌리기</button>
         <button disabled={!p.canRedo()} onClick={p.redo}>다시 하기</button>
-        <button onClick={() => p.add({ t: 'clear' })}>지우기</button>
+        <button onClick={() => p.add({ t: 'clear' })}>전부 지우기</button>
         <button disabled={busy} onClick={() => void pattern()}>도안 불러오기</button>
       </div>
       <canvas ref={pad} width={SIZE} height={SIZE} className={css.pad} aria-label="스티커 그림판"
         onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} />
-      <p className={css.hint}>{under ? '그린 선은 원래 그림 위에 겹쳐져요.' : '그린 부분만 잘라 스티커로 만들어요.'} 큰 그림은 256px로 줄여 저장해요.</p>
+      {!board && <p className={css.hint}>{under ? '원래 그림 위에 덧그려요.' : '그린 부분만 잘라 스티커로 만들어요.'}</p>}
       <div className={css.foot}>
         {msg && <p role="alert" className={css.error}>{msg}</p>}
         <button disabled={busy} onClick={onCancel}>취소</button>

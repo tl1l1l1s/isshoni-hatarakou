@@ -59,7 +59,7 @@ function FriendsTab({ ctx }: { ctx: Ctx }) {
   const [busy, go] = useBusy(ctx);
 
   if (!ctx.modules.get('friends')) return <p className={css.hint}>친구 기능이 꺼져 있어요.</p>;
-  if (!friends.length) return <p className={css.hint}>아직 친구가 없어요. 친구를 등록하면 여기에서 친구 마이홈에 놀러 갈 수 있어요.</p>;
+  if (!friends.length) return <p className={css.hint}>아직 친구가 없어요. 친구는 친구 창에서 친구 코드로 신청해요.</p>;
 
   const open = (f: Visit) => {
     setTo(to === f.uid ? null : f.uid);
@@ -101,7 +101,7 @@ function FriendsTab({ ctx }: { ctx: Ctx }) {
                 </div>
               </div>
             ) : (
-              <p className={css.hint}>먼저 마이홈의 말랑이 관리에서 말랑이를 만들어 주세요.</p>
+              <p className={css.hint}>보낼 말랑이가 없어요. 마이홈 탭의 말랑이 관리에서 만들어 주세요.</p>
             ))}
         </li>
       ))}

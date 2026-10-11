@@ -152,12 +152,12 @@ test('M3 코어 계약이 앱에서 동작한다', async () => {
     const { deps } = (window as unknown as Win).core;
     return deps.server.userPrivate.set(deps.uid, 'activeDevice', { id: 'other-pc', at: 1 });
   });
-  await expect(stage.getByText('다른 기기에서 쓰는 중이에요', { exact: false })).toBeVisible();
+  await expect(stage.getByText('다른 PC에서 쓰는 중이에요', { exact: false })).toBeVisible();
   await expect(stage.getByText('가짜 친구')).toBeHidden();
   await stage.screenshot({ path: 'test-results/m3-elsewhere.png' });
   await stage.getByRole('button', { name: '여기서 계속 쓰기' }).click();
   await expect(stage.getByText('가짜 친구')).toBeVisible();
-  await expect(stage.getByText('다른 기기에서 쓰는 중이에요', { exact: false })).toBeHidden();
+  await expect(stage.getByText('다른 PC에서 쓰는 중이에요', { exact: false })).toBeHidden();
 
   // 연결 해제 (ACC-05): 스테이지를 다시 읽어 신원 단계부터 시작한다 (메모리 서버는 개발 계정으로 바로 들어간다)
   await stage.locator('button[title="메뉴"]').click();

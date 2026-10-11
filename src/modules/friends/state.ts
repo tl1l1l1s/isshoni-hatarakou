@@ -175,7 +175,7 @@ export async function requestByCode(ctx: Ctx, input: string): Promise<string> {
   const code = friendCodeOf(input);
   if (!code) return `친구 코드 ${FRIEND_CODE_LENGTH}자를 다시 확인해 주세요.`;
   const uid = await ctx.users.byFriendCode(code);
-  if (!uid) return '이 코드의 친구를 찾지 못했어요.';
+  if (!uid) return '없는 친구 코드예요. 코드를 다시 확인해 주세요.';
   return request(ctx, uid, await nameOf(ctx, uid));
 }
 

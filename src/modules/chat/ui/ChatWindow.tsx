@@ -55,7 +55,7 @@ export default function ChatWindow({ ctx }: { ctx: Ctx }) {
       </label>
       {v.on ? (
         <div ref={list} className={css.list} style={{ fontSize: FONT_PX[size] }}>
-          {v.items.length === 0 && <p className={css.empty}>아직 대화가 없어요. 첫 글을 보내 보세요.</p>}
+          {v.items.length === 0 && <p className={css.empty}>아직 대화가 없어요.</p>}
           {v.items.map((i, n) => {
             // 서버가 받기 전의 내 글은 흐리게 두고 시각 자리에 보내는 중을 쓴다
             const sending = v.sending.includes(i.key);
@@ -108,7 +108,7 @@ export default function ChatWindow({ ctx }: { ctx: Ctx }) {
             className={css.input}
             rows={2}
             maxLength={MSG_MAX}
-            placeholder="메시지 입력 후 Enter"
+            placeholder="Enter로 보내기"
             aria-label="메시지"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}

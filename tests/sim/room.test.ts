@@ -100,7 +100,7 @@ describe('방 시뮬레이터', () => {
     hub.write('config/minProtocol', PROTO + 1);
     await vi.advanceTimersByTimeAsync(2 * 60_000);
     expect(b.session.current()).toBeNull();
-    expect(b.kicked).toEqual(['앱을 새 버전으로 업데이트해야 방에 들어갈 수 있어요.']);
+    expect(b.kicked).toEqual(['앱을 업데이트해야 방에 들어갈 수 있어요.']);
     expect(a.sees()).toEqual(['alice']);
   });
 

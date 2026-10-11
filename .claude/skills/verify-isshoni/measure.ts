@@ -216,10 +216,15 @@ await verify('measure', async (s) => {
   await at('혼자 실행 화면');
 
   const rooms = await menu(s, '워킹룸', '워킹룸');
-  await rooms.getByPlaceholder('예: 7Q2K9M').fill('devdev');
+  await rooms.getByPlaceholder('방 코드 6자').fill('devdev');
   await rooms.getByRole('button', { name: '참여' }).click();
   await expect(s.stage.getByText('가짜 친구')).toBeVisible();
   await rooms.close();
+  // 새로 설치하면 집중 앱이 비어 있어서 깨어 있게 하려면 먼저 넣는다
+  await s.stage.evaluate(() => {
+    const c = (window as unknown as { core: { ctxs: Map<string, { ctx: { local: { update(s: 'device', fn: (d: unknown[]) => unknown[]): void } } }> } }).core;
+    c.ctxs.get('focus')!.ctx.local.update('device', (d) => [{ key: 'win:clipstudiopaint.exe', label: '클립 스튜디오' }, ...d.slice(1)]);
+  });
   await fake(s, { app: 'win:clipstudiopaint.exe', idle: 0 });
   await at('방 2좌석 깨어 있음');
   await fillSeats(s);

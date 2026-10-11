@@ -23,7 +23,7 @@ export default function UpcomingWindow({ ctx }: { ctx: Ctx }) {
           ))}
         </ul>
       ) : (
-        <p className={css.hint}>앞으로 {DAYS}일 안에 일정이 없어요. 마이홈의 스케줄러에서 일정을 더해 보세요.</p>
+        <p className={css.hint}>{DAYS}일 안에 일정이 없어요. 일정은 마이홈의 스케줄러 탭에서 추가해요.</p>
       )}
     </>
   );

@@ -167,7 +167,7 @@ export default function FacePanel({ ctx, edit, face, body, onFace, onError }: {
       </div>
       <nav className={css.steps} aria-label="그릴 얼굴">
         <button aria-pressed={which === 'open'} onClick={() => setWhich('open')}>표정</button>
-        <button aria-pressed={which === 'closed'} onClick={() => setWhich('closed')}>감은눈</button>
+        <button aria-pressed={which === 'closed'} onClick={() => setWhich('closed')}>감은 눈</button>
       </nav>
       <div className={css.tools}>
         {INKS.map(([c, name]) => (
@@ -183,7 +183,7 @@ export default function FacePanel({ ctx, edit, face, body, onFace, onError }: {
         <button aria-pressed={erase} onClick={() => setErase((s) => !s)}>지우개</button>
         <button disabled={!p.canUndo()} onClick={() => act(p.undo)}>되돌리기</button>
         <button disabled={!p.canRedo()} onClick={() => act(p.redo)}>다시 하기</button>
-        <button onClick={() => act(() => p.add({ t: 'clear' }))}>지우기</button>
+        <button onClick={() => act(() => p.add({ t: 'clear' }))}>전부 지우기</button>
         <button onClick={() => void pickStamp()}>그림 넣기</button>
       </div>
       {stamp && (
@@ -199,7 +199,7 @@ export default function FacePanel({ ctx, edit, face, body, onFace, onError }: {
         </div>
       )}
       <p className={css.hint}>
-        {stamp ? '그림을 끌어서 옮기고 크기를 맞춘 뒤 찍기를 눌러 주세요.' : which === 'open' ? '표정은 기본 자세와 타이핑 자세에 들어가요.' : '감은눈은 잠든 자세에 들어가요.'}
+        {stamp ? '그림을 끌어서 옮기고 크기를 맞춘 뒤 찍기를 눌러 주세요.' : which === 'open' ? '표정은 기본 자세와 타이핑 자세에 들어가요.' : '감은 눈은 잠든 자세에 들어가요.'}
       </p>
       <div className={css.face}>
         <canvas ref={board} width={FACE_SIZE} height={FACE_SIZE} className={css.board} aria-label="얼굴 그림판"
@@ -213,7 +213,7 @@ export default function FacePanel({ ctx, edit, face, body, onFace, onError }: {
           ))}
         </div>
       </div>
-      {POSE_IDS.some((ps) => !face.use[ps]) && <p className={css.hint}>그림을 넣은 자세는 넣은 그림을 써요. 자세 그림 넣기에서 바꿀 수 있어요.</p>}
+      {POSE_IDS.some((ps) => !face.use[ps]) && <p className={css.hint}>그림을 넣은 자세에는 이 얼굴이 들어가지 않아요. 자세 그림 넣기에서 바꿔요.</p>}
     </div>
   );
 }

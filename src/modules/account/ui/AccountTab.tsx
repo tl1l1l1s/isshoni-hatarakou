@@ -16,7 +16,7 @@ export default function AccountTab({ ctx, windowId, code: showCode = true, focus
   const typed = useRef(name);
   typed.current = name;
   useEffect(
-    () => (windowId ? ctx.ui.guard(windowId, () => (typed.current.trim() !== ctx.self.name() ? '닉네임을 저장하지 않았어요. 닫을까요?' : null)) : undefined),
+    () => (windowId ? ctx.ui.guard(windowId, () => (typed.current.trim() !== ctx.self.name() ? '닉네임을 저장하지 않았어요. 나갈까요?' : null)) : undefined),
     [ctx, windowId],
   );
 
@@ -33,7 +33,7 @@ export default function AccountTab({ ctx, windowId, code: showCode = true, focus
           setName(r.name);
           setMsg('저장했어요');
         },
-        (e: Error) => setMsg(ctx.connection.online() ? '닉네임을 저장하지 못했어요. 잠시 뒤 다시 해 주세요.' : e.message),
+        (e: Error) => setMsg(ctx.connection.online() ? '닉네임을 저장하지 못했어요. 잠시 뒤에 다시 눌러 주세요.' : e.message),
       )
       .finally(() => setBusy(false));
   };
@@ -67,7 +67,7 @@ export default function AccountTab({ ctx, windowId, code: showCode = true, focus
         <button disabled={busy} onClick={() => void photo(true)}>사진 넣기</button>
         <button disabled={busy} onClick={() => void photo(false)}>사진 빼기</button>
       </div>
-      <p className={css.hint}>프로필 사진은 친구로 등록한 사람만 봐요.</p>
+      <p className={css.hint}>프로필 사진은 친구만 봐요.</p>
       <form onSubmit={(e) => (e.preventDefault(), save())}>
         <label>
           닉네임
