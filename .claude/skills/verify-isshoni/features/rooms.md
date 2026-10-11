@@ -32,8 +32,8 @@ Preconditions:
 
 - 새 `verify()` 세션에서 시작하기를 눌러 실행 화면에 있다.
 
-- **방 창 열기.** `const rooms = await menu(s, '워킹룸', '워킹룸')`을 실행한다. ARIA에 `heading "코드로 참여하기"`, `친구가 알려 준 6자 코드를 넣으면 같은 방에 앉아요.`, `textbox "예: 7Q2K9M"`, `heading "새 방 만들기"`, `만들면 6자 코드가 생겨요. 그 코드를 친구에게 알려 주세요.`, `combobox "정원"`이 이 순서로 있다.
-- **코드로 참여.** `await rooms.getByPlaceholder('예: 7Q2K9M').fill('devdev')`와 `await rooms.getByRole('button', { name: '참여' }).click()`을 실행한다. 실행 화면에 `가짜 친구` 이름표가 보이고 방 창에 `DEVDEV`, `친구에게 이 코드를 알려 주면 같은 방에 들어와요.`, `2명 / 정원 5명`이 보인다.
+- **방 창 열기.** `const rooms = await menu(s, '워킹룸', '워킹룸')`을 실행한다. ARIA에 `heading "코드로 참여하기"`, `친구에게 받은 방 코드를 넣어 주세요.`, `textbox "방 코드 6자"`, `heading "새 방 만들기"`, `만들면 친구에게 알려 줄 방 코드가 생겨요.`, `combobox "정원"`이 이 순서로 있다.
+- **코드로 참여.** `await rooms.getByPlaceholder('방 코드 6자').fill('devdev')`와 `await rooms.getByRole('button', { name: '참여' }).click()`을 실행한다. 실행 화면에 `가짜 친구` 이름표가 보이고 방 창에 `DEVDEV`, `친구에게 이 코드를 알려 주면 같은 방에 들어와요.`, `2명 / 정원 5명`이 보인다.
 - **코드 복사.** `await rooms.getByRole('button', { name: '코드 복사' }).click()`을 실행한다. 방 창 위쪽에 `방 코드를 복사했어요.`가 뜨고 단추 이름은 `코드 복사` 그대로다. `await s.app.evaluate(({ clipboard }) => clipboard.readText())`가 `DEVDEV`다.
 - **다른 사용자 메뉴 열기.** `await s.stage.getByRole('button', { name: '가짜 친구 메뉴' }).click()`을 실행한다. 이 버튼은 `가짜 친구` 이름표다. `menu "가짜 친구"`가 나타나고 그 안에 `menuitem "친구 신청"`이 있다. 누르기 전에 잰 실행 화면 높이 `h0`보다 커진다. `await expect.poll(() => s.stage.evaluate(() => window.innerHeight)).toBeGreaterThan(h0)`로 확인한다.
 - **다른 사용자 메뉴 닫기.** 같은 버튼을 다시 누른다. `menu "가짜 친구"`가 사라진다.
@@ -53,13 +53,13 @@ Preconditions:
 
 다른 기기(`room-elsewhere`)도 `devdev`에 참여한 상태에서 시작한다. 계정 접속 상태는 `const presence = () => s.stage.evaluate(() => devHub.read('users/' + core.deps.uid + '/presence'))`로 읽는다.
 
-- **다른 기기가 가져감.** `await core.deps.server.userPrivate.set(core.deps.uid, 'activeDevice', { id: 'other-pc', at: Date.now() })`와 다른 PC가 쓰는 것처럼 `devHub.write('users/' + uid + '/presence', { online: true, lastSeen: devHub.now(), m: { rooms: { code: 'OTHER1' } } })`를 실행한다. 실행 화면에 `다른 기기에서 쓰는 중이에요`와 `button "여기서 계속 쓰기"`가 보이고 `presence()`의 방 코드는 계속 `OTHER1`이다.
+- **다른 기기가 가져감.** `await core.deps.server.userPrivate.set(core.deps.uid, 'activeDevice', { id: 'other-pc', at: Date.now() })`와 다른 PC가 쓰는 것처럼 `devHub.write('users/' + uid + '/presence', { online: true, lastSeen: devHub.now(), m: { rooms: { code: 'OTHER1' } } })`를 실행한다. 실행 화면에 `다른 PC에서 쓰는 중이에요`와 `button "여기서 계속 쓰기"`가 보이고 `presence()`의 방 코드는 계속 `OTHER1`이다.
 - **이 PC가 끊김.** `core.deps.server.goOffline()` 뒤에도 `presence()`의 `online`이 `true`다. `goOnline()`으로 되돌린다.
 - **되찾기.** `여기서 계속 쓰기`를 누른다. `가짜 친구`가 다시 보이고 `presence()`가 `{ online: true, m: { rooms: { code: 'DEVDEV' } } }`가 된다. 이제 `goOffline()`을 하면 `online`이 `false`가 된다.
 
 자동 퇴장(`room-auto-leave`)은 `devdev`에 참여한 상태에서 시작한다. 유휴 시간은 메인에서 바꾼다. `const fake = (p: { idle?: number; app?: string | null; pen?: string }) => s.app.evaluate((_, q) => { const f = (globalThis as any).fakePlatform; if (q.idle !== undefined) f.idle = q.idle; if (q.app !== undefined) f.app = q.app; if (q.pen) f.pens.add(q.pen); }, p)`를 만들어 쓰고 `const LEAVE = 22_800`(6시간 20분)으로 둔다.
 
-- **안내 띄우기.** `await fake({ idle: LEAVE - 30 })`과 `const popup = await windowTitled(s.app, '자리비움 안내')`를 실행한다. 창에 `자리를 오래 비워서 1분 뒤에 방에서 나가요.`, 한 줄 안내 `다시 입력하면 그 방에 돌아가요.`, `button "취소"`가 있고 실행 화면 내 좌석 위에 `자리비움` 말풍선이 보인다.
+- **안내 띄우기.** `await fake({ idle: LEAVE - 30 })`과 `const popup = await windowTitled(s.app, '자리비움 안내')`를 실행한다. 창에 `자리를 오래 비워서 1분 뒤에 방에서 나가요.`, 한 줄 안내 `나간 뒤에도 키보드나 마우스를 쓰면 그 방에 다시 들어가요.`, `button "취소"`가 있고 실행 화면 내 좌석 위에 `자리비움` 말풍선이 보인다.
 - **취소.** `await popup.getByRole('button', { name: '취소' }).click()`을 실행한다. 안내 창이 닫히고 `자리비움` 말풍선이 사라지며 `가짜 친구`가 그대로 보인다.
 - **나가기.** `await fake({ idle: 0 })` 뒤에 앱이 유휴 0초 샘플을 받을 때까지 기다리고(Gotchas) `await fake({ idle: LEAVE - 30 })`로 안내를 다시 띄운 뒤 누르지 않는다. 1분 안에 `await expect(s.stage.getByText('자리를 오래 비워서 방에서 나왔어요.')).toBeVisible({ timeout: 75_000 })`이 통과하고 `가짜 친구`와 `DEVDEV` 칩이 사라지며 안내 창도 닫힌다.
 - **돌아오기.** `await fake({ idle: 0 })`을 실행한다. `가짜 친구`와 `DEVDEV` 칩이 다시 보인다.
@@ -72,7 +72,7 @@ Preconditions:
 - 캐릭터를 왼쪽 버튼으로 짧게 누르면 메뉴가 열리지 않고 쓰다듬기가 된다([놀이](./play.md)).
 - 방 창은 혼자일 때 참여 양식과 만들기 양식을 이 순서로 보여 주고 방에 들어가 있을 때 현재 방 정보를 보여 준다. 같은 창이라 내용만 바뀐다. 창 제목은 어디서 열어도 `워킹룸`이다.
 - 코드 복사 알림은 마지막으로 누른 창에 뜬다. 방 창의 `코드 복사`를 눌렀으면 실행 화면이 아니라 방 창에서 찾는다.
-- 방 세션의 안내는 해요체다. `없는 방 코드예요. 코드를 다시 확인해 주세요.`, `주인이 지운 방이에요.`, `방에 들어가지 못했어요. 연결을 확인하고 다시 해 주세요.`, `앱을 새 버전으로 업데이트해야 방에 들어갈 수 있어요.`로 찾는다.
+- 방 세션의 안내는 해요체다. `없는 방 코드예요. 코드를 다시 확인해 주세요.`, `주인이 지운 방이에요.`, `방에 들어가지 못했어요. 인터넷 연결을 확인하고 다시 들어가 주세요.`, `앱을 업데이트해야 방에 들어갈 수 있어요.`로 찾는다.
 - 방 설정 창의 가챠 `아이템 넣기`는 접혀 있어서 아이템이 몇 개 없으면 `방 지우기`가 스크롤하지 않아도 보인다. 아이템이 늘거나 양식을 펼치면 스크롤해야 보이고 Playwright `click()`은 알아서 스크롤한다.
 - `방 설정` 버튼은 내 방에 있을 때만 보인다. 개발 방 `DEVDEV`에서는 보이지 않는다.
 - 내 방 코드는 실행마다 무작위로 바뀐다. 코드 값 대신 6자 코드가 보이는지로 확인한다.

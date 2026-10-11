@@ -26,7 +26,7 @@ await verify('rooms', async (s) => {
   await s.launcher.getByText('시작하기').click();
   await s.stage.locator('button[title="메뉴"]').waitFor();
   const rooms = await menu(s, '워킹룸', '워킹룸');
-  await rooms.getByPlaceholder('예: 7Q2K9M').fill('devdev');
+  await rooms.getByPlaceholder('방 코드 6자').fill('devdev');
   await rooms.getByRole('button', { name: '참여' }).click();
   await expect(s.stage.getByText('가짜 친구')).toBeVisible();
   await s.shot(s.stage, 'room-join');
@@ -80,7 +80,7 @@ Playwright `_electron` API로 조작한다. `verify()` 본문이 받는 `Session
 `node .claude/skills/verify-isshoni/measure.ts`는 앱을 켜고 상태마다 메모리와 CPU를 잰다 (NFR-10). 빌드와 doctor 조건은 Launch와 같고 한 번 도는 데 9분쯤 걸린다. `--soak 60`처럼 소크 시간을 초로 주면 짧게 돈다.
 
 - 재는 값은 프로세스마다 `/usr/bin/footprint`의 phys_footprint(활성 상태 보기의 메모리 열), `app.getAppMetrics()`의 workingSetSize, 스테이지의 `performance.memory`와 CDP로 GC를 한 번 돌린 뒤의 힙, `ps`의 CPU 시간 차이로 구한 15초 평균 CPU(코어 하나 기준 퍼센트, 프로세스별로도 남긴다), 열린 창, 메모리 서버 구독 수, 측정을 시작한 뒤 스테이지에 새로 생겨 아직 살아 있는 타이머 수다.
-- 상태는 런처, 혼자 실행 화면, 방 2좌석과 정원인 5좌석에서 깨어 있을 때(앞 앱 clipstudiopaint.exe, 유휴 0초), 5좌석의 친구 4명이 깨어 있고 레벨 티어 5라 배지가 광택을 낼 때, 모두 잠들었을 때(유휴 1201초, 실제 awake=false 확인 뒤. 집중 시간 규칙의 20분을 넘겨야 내 좌석도 잠든다), 설정과 캐릭터 만들기와 마이홈과 대화하기를 열었을 때와 닫은 뒤(1회와 3회), 플레이리스트에 유튜브 영상을 띄웠을 때와 창을 닫아 숨겼을 때, 방에서 20초마다 춤 효과를 돌리는 소크(기본 5분, 30초마다 표본)다. 5좌석은 가짜 친구 기록을 복제한 멤버 3명으로 채운다. 정원(`ROOM_CAP_MAX`)을 넘기면 늦게 들어온 내 앱이 방에서 나오므로 정원까지만 채운다.
+- 상태는 런처, 혼자 실행 화면, 방 2좌석과 정원인 5좌석에서 깨어 있을 때(집중 앱으로 넣은 clipstudiopaint.exe가 앞에 있고 유휴 0초. 새로 설치하면 집중 앱이 비어 있어서 측정이 먼저 넣는다), 5좌석의 친구 4명이 깨어 있고 레벨 티어 5라 배지가 광택을 낼 때, 모두 잠들었을 때(유휴 1201초, 실제 awake=false 확인 뒤. 집중 시간 규칙의 20분을 넘겨야 내 좌석도 잠든다), 설정과 캐릭터 만들기와 마이홈과 대화하기를 열었을 때와 닫은 뒤(1회와 3회), 플레이리스트에 유튜브 영상을 띄웠을 때와 창을 닫아 숨겼을 때, 방에서 20초마다 춤 효과를 돌리는 소크(기본 5분, 30초마다 표본)다. 5좌석은 가짜 친구 기록을 복제한 멤버 3명으로 채운다. 정원(`ROOM_CAP_MAX`)을 넘기면 늦게 들어온 내 앱이 방에서 나오므로 정원까지만 채운다.
 - 결과는 표로 찍고 증거 폴더에 `measure.json`으로 남긴다. 소크 줄은 처음 표본과 마지막 표본의 차이로 증가를 보여 준다.
 - 이 하네스로 재지 못하는 것은 Windows의 private bytes와 실제 Firebase 리스너 수다. 메모리 서버 구독 수가 Firebase 빌드의 onValue 수와 같다.
 - 유튜브 영상은 실제로 불러오므로 네트워크가 필요하다. 없으면 플레이어가 검게 보이고 그 두 상태의 값만 달라진다.

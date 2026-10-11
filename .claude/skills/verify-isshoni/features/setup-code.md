@@ -6,7 +6,7 @@
 
 - `setup-open`은 첫 실행에서 `설정 코드 입력` 창이 뜨는 것이다 (10.7.2 신원).
 - `setup-error`는 실패 이유를 창 안의 안내로 띄우고 창을 열어 둔 채 다시 넣게 하는 것이다.
-- `setup-pending`은 확인하는 동안 입력 칸과 버튼이 잠기고 버튼 글이 `확인하는 중이에요`로 바뀌는 것이다.
+- `setup-pending`은 확인하는 동안 입력 칸과 버튼이 잠기고 버튼 글이 `확인 중`으로 바뀌는 것이다.
 - `setup-reopen`은 창을 닫아도 앱이 멈춘 채로 남지 않고 창이 다시 열리는 것이다. 앱 끝내기는 트레이 메뉴에 있다.
 - `offline-start`는 로그인한 PC가 오프라인으로 켜져도 3초쯤 뒤에 런처와 실행 화면이 뜨는 것이다.
 - `offline-name`은 오프라인으로 켠 PC가 마지막으로 쓴 이름을 보이고 그 이름을 서버에 쓰지 않는 것이다.
@@ -28,7 +28,7 @@ Preconditions:
 
 - **창 열림.** 제목이 `설정 코드 입력`인 창이 뜬다. `textbox "설정 코드"`와 `button "시작하기"`가 있다.
 - **형식 오류.** `abc`를 넣고 시작하기를 누른다. 창이 열린 채로 `alert`에 `설정 코드 형식이 맞지 않아요. 받은 코드를 그대로 붙여 넣어 주세요.`가 뜬다.
-- **확인 중과 연결 오류.** 메인에서 `https://*.googleapis.com/*` 요청을 `setTimeout(() => cb({ cancel: true }), 2500)`으로 붙잡는다. 올바른 형식의 코드를 넣고 누르면 `button "확인하는 중이에요"`가 잠긴 채로 보이고 2.5초 뒤 `alert`에 `인터넷 연결을 확인한 뒤 다시 해 주세요.`가 뜨며 `시작하기`가 다시 눌린다.
+- **확인 중과 연결 오류.** 메인에서 `https://*.googleapis.com/*` 요청을 `setTimeout(() => cb({ cancel: true }), 2500)`으로 붙잡는다. 올바른 형식의 코드를 넣고 누르면 `button "확인 중"`이 잠긴 채로 보이고 2.5초 뒤 `alert`에 `인터넷에 연결하지 못했어요. 연결을 확인하고 다시 눌러 주세요.`가 뜨며 `시작하기`가 다시 눌린다.
 - **닫으면 다시 열림.** 메인에서 `BrowserWindow.getAllWindows().find((w) => w.getTitle() === '설정 코드 입력')?.close()`를 실행한다. 창이 닫힌 뒤 빈 `설정 코드 입력` 창이 새로 뜬다.
 - **오프라인 시작.** 메인에서 `session.defaultSession.protocol.handle('https', ...)`로 `googleapis.com` 요청에 가짜 로그인 응답(`accounts:signInWithPassword`는 `idToken`이 든 응답, `accounts:lookup`은 `users` 하나, `OPTIONS`는 CORS 머리글만)을 주고 나머지는 `net.fetch(req, { bypassCustomProtocolHandlers: true })`로 넘긴다. `idToken`은 `exp`와 `iat`가 든 서명 없는 JWT면 된다. 코드를 넣고 누르면 창이 닫히고 3초쯤 뒤 런처가 뜬다. 시작하기를 누르면 실행 화면에 `이름 없음 Lv.1`과 ▼ 버튼이 보이고 `core.deps.server.connection.online()`은 `false`다.
 - **오프라인 이름.** 오프라인 시작 뒤 설정 창 계정 탭에서 닉네임을 `토끼`로 저장하고 앱을 닫는다. 같은 `--user-data-dir`로 다시 켜면 설정 코드 창 없이 3초쯤 뒤 런처가 뜨고 런처와 실행 화면에 `토끼`가 보인다. `core.deps.profile`은 `undefined`이고 `core.self.get().name`은 `토끼`다. 서버에 쓰지 않는 것과 연결된 뒤 서버 이름으로 바뀌는 것은 가짜 서버가 없어서 `src/modules/account/account.test.ts`가 맡는다.
