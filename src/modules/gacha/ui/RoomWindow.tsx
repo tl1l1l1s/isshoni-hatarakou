@@ -74,22 +74,23 @@ export default function RoomWindow({ ctx }: { ctx: Ctx }) {
       ) : (
         (msg || reason) && <p role="status" className={css.muted}>{msg || reason}</p>
       )}
-      <h4>아이템과 확률</h4>
-      {items.length ? (
-        <ul className={css.list}>
-          {items.map((e, i) => (
-            <li key={e.id}>
-              <Pic ctx={ctx} file={e.file} hidden={!mine.has(e.id)} />
-              <span>
-                {e.name}
-                {periodText(e) && <span className={css.muted}> {periodText(e)}</span>}
-              </span>
-              <span>{percent(p[i]!)}</span>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className={css.muted}>지금 뽑을 수 있는 아이템이 없어요.</p>
+      {/* 뽑을 아이템이 없으면 단추 아래 까닭 한 줄만 보인다 */}
+      {items.length > 0 && (
+        <>
+          <h4>아이템과 확률</h4>
+          <ul className={css.list}>
+            {items.map((e, i) => (
+              <li key={e.id}>
+                <Pic ctx={ctx} file={e.file} hidden={!mine.has(e.id)} />
+                <span>
+                  {e.name}
+                  {periodText(e) && <span className={css.muted}> {periodText(e)}</span>}
+                </span>
+                <span>{percent(p[i]!)}</span>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
       {later.length > 0 && (
         <>
@@ -105,7 +106,7 @@ export default function RoomWindow({ ctx }: { ctx: Ctx }) {
           </ul>
         </>
       )}
-      <p className={css.muted}>아직 뽑지 않은 아이템은 그림을 가려 둬요.</p>
+      {(items.length > 0 || later.length > 0) && <p className={css.muted}>아직 뽑지 않은 아이템은 그림을 가려 둬요.</p>}
       {canAdd(v) && <AddItem ctx={ctx} />}
     </div>
   );

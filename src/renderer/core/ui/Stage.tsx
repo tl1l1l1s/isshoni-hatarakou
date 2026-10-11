@@ -2,7 +2,7 @@ import {
   Component, createContext, Fragment, Suspense, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type PointerEvent, type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import type { CharacterView, Point } from '@render/port';
+import type { CharacterView, Point, PoseId, PoseImage } from '@render/port';
 import type { Rect } from '../../../preload/api';
 import { NOT_IN_ROOM, type ContributionDecl, type SeatView } from '../types';
 import { bodyOnly, emptyAppearance, type Appearance } from '@shared/schemas';
@@ -115,13 +115,13 @@ export function Stage({ core }: { core: CoreRuntime }) {
   const menuRoom = area ? area.height - closedH + MENU_CLOSED_H : Infinity;
   const menuH = target ? Math.max(MENU_CLOSED_H, Math.min(rows * MENU_ITEM_H + 28 + breaks * MENU_HR_H, menuRoom)) : MENU_CLOSED_H;
   const seatOf = (key: string) => seats.find((s) => s.key === key)!;
-  // 벤치에 겹쳐 앉은 좌석(겹친 좌석과 그 바로 앞 좌석)은 말풍선을 좌석 간격 안으로 줄인다
+  // 벤치에 겹쳐 앉은 좌석(겹친 좌석과 그 바로 앞 좌석)은 말풍선과 이름표를 좌석 간격 안으로 줄인다
   const benched = new Set(row.flatMap((s, i) => (joined.has(s.key) ? [s.key, row[i - 1]!.key] : [])));
   const seatProps = (s: SeatView): SeatProps => ({
     core, seat: s, size: seatSize, scale, showHead, paused: display === 'hidden',
     // 회사원 모드에서는 머리 위 말풍선을 숨긴다 (SET-03)
     showBubble: showHead && display === 'normal', pixel: pixel ? PIXEL : undefined, chipSide: side,
-    bubbleMax: benched.has(s.key) ? benchStep - 6 : undefined,
+    benchMax: benched.has(s.key) ? benchStep - 6 : undefined,
     onHide: display === 'quiet' ? () => core.setDisplayMode('hidden') : undefined,
     riders: () => [...on].filter(([, under]) => under === s.key).map(([k]) => seatProps(seatOf(k))),
     onToggle: () => toggle(s.key),
@@ -333,8 +333,8 @@ function useUpdate(core: CoreRuntime): string | null {
 interface SeatProps {
   core: CoreRuntime; seat: SeatView; size: { width: number; height: number }; scale: number; showHead: boolean; paused: boolean;
   showBubble: boolean; pixel?: number; chipSide: 'right' | 'left' | null;
-  /** 벤치에 겹쳐 앉은 좌석의 말풍선 최대 폭(화면 픽셀). 이웃 말풍선을 덮지 않게 한다 */
-  bubbleMax?: number;
+  /** 벤치에 겹쳐 앉은 좌석의 말풍선과 이름표 최대 폭(화면 픽셀). 이웃 말풍선과 이름표를 덮지 않게 한다 */
+  benchMax?: number;
   /** 회사원 모드의 숨기기 칩 (SET-03) */
   onHide?: () => void;
   /** 이 좌석 머리 위에 올라탄 좌석 */
@@ -386,7 +386,7 @@ function Seat(props: SeatProps & { riding: boolean; away: boolean; joinedOffset:
   return (
     <div className={css.seat} data-side={beside ?? undefined} style={{ width: beside ? undefined : width, marginLeft: -joinedOffset }}>
       {/* 말풍선은 scale로 커지므로 화면 폭을 배율로 나눈 값을 최대 폭으로 준다 */}
-      <div ref={box} className={css.view} style={{ width, height, ...(props.bubbleMax && ({ '--bubble-max': `${props.bubbleMax / scale}px` } as CSSProperties)) }}>
+      <div ref={box} className={css.view} style={{ width, height, ...(props.benchMax && ({ '--bubble-max': `${props.benchMax / scale}px` } as CSSProperties)) }}>
         {!hidden && <Body {...props} hit={hit} anchors={anchors} />}
         {cover && <Cover {...props} file={cover.file} side={Math.round(cover.size * scale)} feet={anchors.feet} />}
         {/* 이 좌석이 남의 머리 위에 올라타 있으면 위에 탄 좌석은 그쪽 Rider가 그린다 */}
@@ -394,18 +394,20 @@ function Seat(props: SeatProps & { riding: boolean; away: boolean; joinedOffset:
       </div>
       {/* 이름표와 칩은 모듈 조각까지 함께 키우도록 zoom을 쓴다 */}
       <div className={css.plates} style={{ zoom: scale }}>
+        {/* 벤치의 좁은 이름표에는 점, 줄인 이름, ▾만 둔다. 전체 이름은 title, 상태는 점 모양과 점의 title에 있다 */}
         <button
           data-interactive
           className={css.nameplate}
           aria-label={`${seat.self ? '내 메뉴' : `${name} 메뉴`}${seat.state === 'online' ? '' : `, ${STATE_LABEL[seat.state]}`}`}
           title={name}
+          style={props.benchMax ? { maxWidth: props.benchMax / scale } : undefined}
           {...plate}
         >
           <span className={css.state} data-state={seat.state} title={STATE_LABEL[seat.state]} />
           <span className={css.name}>{name}</span>
           {/* 점 색만으로는 바쁨과 자리비움을 가리기 어려워 글로도 적는다 */}
-          {seat.state !== 'online' && <span className={css.stateText}>{STATE_LABEL[seat.state]}</span>}
-          {showHead && <SlotItems core={core} slot="seat.badge" seat={seat} />}
+          {seat.state !== 'online' && !props.benchMax && <span className={css.stateText}>{STATE_LABEL[seat.state]}</span>}
+          {showHead && !props.benchMax && <SlotItems core={core} slot="seat.badge" seat={seat} />}
           {/* 다른 사람 이름표는 누르면 메뉴가 열린다는 것을 보여 준다 (ROM-11) */}
           {!seat.self && <span aria-hidden>▾</span>}
         </button>
@@ -723,8 +725,8 @@ export class Guard extends Component<{ id: string; core: CoreRuntime; type?: str
 }
 
 /** ctx.ui.CharacterPreview. 좌석과 같은 backend로 그리고 appearance가 없으면 내 지금 외형을 그린다 */
-export function CharacterPreview({ core, appearance, pose = 'idle', width = 160, height = 200 }: {
-  core: CoreRuntime; appearance?: Appearance | null; pose?: 'idle' | 'typing' | 'sleep'; width?: number; height?: number;
+export function CharacterPreview({ core, appearance, poses, pose = 'idle', width = 160, height = 200 }: {
+  core: CoreRuntime; appearance?: Appearance | null; poses?: Partial<Record<PoseId, PoseImage>>; pose?: 'idle' | 'typing' | 'sleep'; width?: number; height?: number;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const view = useRef<CharacterView | null>(null);
@@ -743,6 +745,8 @@ export function CharacterPreview({ core, appearance, pose = 'idle', width = 160,
   useEffect(() => {
     if (look) view.current?.setAppearance(look);
   }, [look]);
+
+  useEffect(() => view.current?.setPoses(poses ?? {}), [poses]);
 
   useEffect(() => view.current?.setState(pose), [pose]);
 

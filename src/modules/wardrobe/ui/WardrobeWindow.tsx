@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { Ctx } from '@core/types';
 import type { Appearance, Sha256 } from '@shared/schemas';
 import { DESKS, deskPng } from '../desks';
-import { bakeFace, faceEdit } from '../face';
+import { bakeFace, faceEdit, facePoses } from '../face';
 import { CUSTOM_DESK, EXPORT_MAX_CHARS, EXPORT_NAME, faceOf, SLOT_COUNT, trashKey, withDesk, withFace, withPoseFile } from '../logic';
 import type { Face, PoseId, TrashRecord } from '../logic';
 import { wardrobeOf, type Wardrobe } from '../state';
@@ -33,6 +33,8 @@ export default function WardrobeWindow({ ctx }: { ctx: Ctx }) {
   const desk = draft.slots.desk?.[0];
   const unlocked = local.unlockedAt !== null;
   const face = faceOf(draft);
+  // 위 미리보기는 저장하지 않은 얼굴도 그린다. 저장할 때 구울 그림을 올리지 않고 바로 그린다
+  const poses = useMemo(() => (step === 1 ? undefined : facePoses(draft, edit)), [step, draft, edit]);
 
   /** 외형을 통째로 바꾼다 (슬롯 바꾸기, 파일, 이전 모습). 얼굴 그림판도 새로 받는다 */
   const load = (a: Appearance) => {
@@ -138,7 +140,7 @@ export default function WardrobeWindow({ ctx }: { ctx: Ctx }) {
       {/* 얼굴 그리기와 자세 그림 넣기에는 자세 미리보기가 따로 있어서 위 미리보기를 접는다 */}
       {step !== 1 && (
         <div className={css.preview}>
-          <ctx.ui.CharacterPreview appearance={draft} width={128} height={160} />
+          <ctx.ui.CharacterPreview appearance={draft} poses={poses} width={128} height={160} />
         </div>
       )}
       <div className={css.bar}>

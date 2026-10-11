@@ -7,20 +7,32 @@ import { levelOf, openPreset, parseShared, pickSurf, toShared, type Playlist, ty
 export const WINDOW = 'sound.player';
 
 export interface Player { current: Track | null; playing: boolean; load: number }
-interface Box { p: Player; subs: Set<() => void>; upload: Dispose | null }
+interface Box { p: Player; subs: Set<() => void>; upload: Dispose | null; claims: Set<{ who: string; fn: () => void }> }
 const boxes = new WeakMap<Ctx, Box>();
 function box(ctx: Ctx): Box {
   let b = boxes.get(ctx);
-  if (!b) boxes.set(ctx, (b = { p: { current: null, playing: false, load: 0 }, subs: new Set(), upload: null }));
+  if (!b) boxes.set(ctx, (b = { p: { current: null, playing: false, load: 0 }, subs: new Set(), upload: null, claims: new Set() }));
   return b;
 }
 
 export const player = (ctx: Ctx): Player => box(ctx).p;
 
+/** 음악을 틀기 시작한다. who가 아닌 음악은 멈춘다 (SoundApi.claim) */
+export const claim = (ctx: Ctx, who: string): void => box(ctx).claims.forEach((c) => c.who !== who && c.fn());
+
+export function onClaim(ctx: Ctx, who: string, fn: () => void): Dispose {
+  const c = { who, fn };
+  box(ctx).claims.add(c);
+  return () => void box(ctx).claims.delete(c);
+}
+
+/** 재생 상태를 바꾼다. 플레이리스트가 재생을 시작하면 다른 음악을 멈춘다 */
 export function setPlayer(ctx: Ctx, patch: Partial<Player>): void {
   const b = box(ctx);
+  const start = patch.playing === true && !b.p.playing;
   b.p = { ...b.p, ...patch };
   b.subs.forEach((f) => f());
+  if (start) claim(ctx, 'playlist');
 }
 
 /** 이 곡을 처음부터 튼다. null이면 멈추고 플레이어를 내린다 */

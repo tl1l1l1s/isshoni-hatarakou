@@ -146,7 +146,7 @@ const on = {
     // 친구 연출을 껐으면 아무도 날리지 않는다 (D2)
     if (d.kind === 80 && shows(ctx, uid)) ctx.room.members().filter((s) => s.uid !== uid && !s.local).forEach((s, i) => fly(ctx, s.key, d.seed + i + 1, ev));
   },
-  roll(ctx: Ctx, r: Roll, _uid: string, ev: string) {
+  roll(ctx: Ctx, r: Roll, uid: string, ev: string) {
     const result = dice(r.seed);
     let i = 0;
     const stop = ctx.timers.every(100, () => {
@@ -157,7 +157,8 @@ const on = {
       stop();
       head(ctx, r.key, diceText(result), ROLL_SHOW_MS, ev, false);
     });
-    if (busted(result)) ctx.timers.at(ROLL_MS + ROLL_PAUSE_MS, () => fly(ctx, r.key, r.seed, ev));
+    // 날아가기는 화면 전체를 지나간다. 친구 연출을 껐으면 날리지 않고 어지러움만 띄운다 (D2)
+    if (busted(result)) ctx.timers.at(ROLL_MS + ROLL_PAUSE_MS, () => (shows(ctx, uid) ? fly(ctx, r.key, r.seed, ev) : head(ctx, r.key, DIZZY, DIZZY_MS, ev)));
     if (r.key === myKey(ctx)) state(ctx).busyUntil = ctx.clock.now() + ROLL_MS + (busted(result) ? ROLL_PAUSE_MS + FLY_MS + DIZZY_MS : 0);
   },
   hit(ctx: Ctx, a: Aim, uid: string, ev: string) {

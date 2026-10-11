@@ -16,6 +16,7 @@ export const debugBackend: RenderBackend = {
     queueMicrotask(() => opts.onGeometry?.());
     return {
       setAppearance: () => {},
+      setPoses: () => {},
       setState: (s) => {
         el.textContent = s;
       },

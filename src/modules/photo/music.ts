@@ -11,9 +11,11 @@ const LEVEL = 0.12;
 
 const hz = (midi: number) => 440 * 2 ** ((midi - 69) / 12);
 
-/** 재생을 시작하고 멈추는 함수를 돌려준다. 1초 앞까지 음을 미리 걸어 둔다. 플레이리스트와 겹치지 않게 플레이리스트는 멈춘다 */
+/** 재생을 시작하고 멈추는 함수를 돌려준다. 1초 앞까지 음을 미리 걸어 둔다.
+ *  음악은 한 번에 하나만 나므로 틀 때 플레이리스트와 마이홈 배경음악을 멈추고 촬영 중에 다른 음악을 틀면 멈춘다 */
 export function playMusic(ctx: Ctx): Dispose {
-  ctx.modules.get('sound')?.pause();
+  const sound = ctx.modules.get('sound');
+  sound?.claim('shoot');
   let ac: AudioContext;
   try {
     ac = new AudioContext();
@@ -47,9 +49,15 @@ export function playMusic(ctx: Ctx): Dispose {
   void ac.resume();
   fill();
   const stop = ctx.timers.every(250, fill);
-  return () => {
+  let done = false;
+  const end = () => {
+    if (done) return;
+    done = true;
+    off?.();
     stop();
     out.gain.setTargetAtTime(0, ac.currentTime, 0.05);
     ctx.timers.at(300, () => void ac.close());
   };
+  const off = sound?.onClaim('shoot', end);
+  return end;
 }

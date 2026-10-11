@@ -22,9 +22,13 @@ export interface ViewOptions {
 }
 
 export type PoseId = 'idle' | 'typing' | 'sleep';
+/** 해시 대신 바로 그리는 자세 그림 (저장하기 전 미리보기) */
+export type PoseImage = ImageBitmap | OffscreenCanvas | HTMLCanvasElement;
 
 export interface CharacterView {
   setAppearance(a: Appearance): void;
+  /** 자세 그림을 외형의 해시보다 먼저 쓴다. 빈 객체면 외형대로 그린다. 그림을 바꾸면 새 객체로 다시 넘긴다 */
+  setPoses(poses: Partial<Record<PoseId, PoseImage>>): void;
   /** characterStates의 id. backend에 없는 id는 idle로 그린다 */
   setState(stateId: string): void;
   setPosition(p: Point): void;

@@ -90,11 +90,17 @@ export function drawPose(g: G, kind: BodyKind, pose: PoseId, color: string, face
   }
 }
 
-/** 자세 그림 한 장을 두 배 해상도(320x400) PNG로 굽는다 */
-export async function posePng(kind: BodyKind, pose: PoseId, color: string, face: CanvasImageSource | null): Promise<Uint8Array> {
+/** 자세 그림 한 장을 두 배 해상도(320x400) 캔버스에 그린다 */
+export function poseCanvas(kind: BodyKind, pose: PoseId, color: string, face: CanvasImageSource | null): OffscreenCanvas {
   const c = new OffscreenCanvas(320, 400);
   const g = c.getContext('2d')!;
   g.scale(2, 2);
   drawPose(g, kind, pose, color, face);
+  return c;
+}
+
+/** 자세 그림 한 장을 두 배 해상도(320x400) PNG로 굽는다 */
+export async function posePng(kind: BodyKind, pose: PoseId, color: string, face: CanvasImageSource | null): Promise<Uint8Array> {
+  const c = poseCanvas(kind, pose, color, face);
   return new Uint8Array(await (await c.convertToBlob({ type: 'image/png' })).arrayBuffer());
 }

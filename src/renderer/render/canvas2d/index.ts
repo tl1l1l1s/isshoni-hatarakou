@@ -2,7 +2,7 @@
 import { SEAT_SLOTS, type Appearance } from '@shared/schemas';
 import { FPS_AWAKE } from '@shared/constants';
 import { lruGet, lruTrim } from '@shared/lru';
-import type { Box, CharacterView, ImageSource, PoseId, RenderBackend, SceneSpec, ViewOptions } from '../port';
+import type { Box, CharacterView, ImageSource, PoseId, PoseImage, RenderBackend, SceneSpec, ViewOptions } from '../port';
 import { DEFAULT_SIZE, anchorsFromBounds, colorFilter, containFit, cssBox, dither, frameDue, opaqueBounds, poseFor } from './logic';
 import type { Fit, Size } from './logic';
 import { placeholder } from './placeholder';
@@ -23,7 +23,7 @@ const loading = new Map<string, Promise<ImageBitmap | null>>();
 const bitmaps = new Map<string, ImageBitmap>();
 /** 캐시에서 뺀 해시. 다시 받으면 지운다 */
 const evicted = new Set<string>();
-const boundsCache = new WeakMap<ImageBitmap, Box | null>();
+const boundsCache = new WeakMap<PoseImage, Box | null>();
 const bitmap = (h: string) => lruGet(bitmaps, h);
 
 function load(src: ImageSource, h: string) {
@@ -54,7 +54,7 @@ const hashesOf = (a: Appearance) =>
   [...Object.values(a.poses), ...Object.values(a.slots).flat().map((e) => e.file)].filter((h): h is string => !!h);
 
 /** 그림마다 한 번만 픽셀을 읽어 불투명 영역을 구한다 */
-function boundsOf(img: ImageBitmap) {
+function boundsOf(img: PoseImage) {
   if (!boundsCache.has(img)) {
     const g = new OffscreenCanvas(img.width, img.height).getContext('2d')!;
     g.drawImage(img, 0, 0);
@@ -92,7 +92,7 @@ type Ctx = CanvasState & CanvasTransform & CanvasDrawImage & CanvasImageSmoothin
  * (x * 뷰 너비, y * 뷰 높이)만큼 옮긴 뒤 scale배 키우고 rot도(시계 방향)만큼 돌린다. 기본값은 0, 0, 1, 0이다.
  * 그래서 자세 그림과 같은 크기 캔버스에 그린 책상은 값 없이도 자리가 맞는다.
  */
-function place(g: Ctx, img: ImageBitmap | OffscreenCanvas, e: { x?: number; y?: number; scale?: number; rot?: number }, size: Size, dpr: number) {
+function place(g: Ctx, img: PoseImage, e: { x?: number; y?: number; scale?: number; rot?: number }, size: Size, dpr: number) {
   const f = containFit(img, size), w = img.width * f.scale, h = img.height * f.scale, s = e.scale ?? 1;
   // 줄일 때는 부드럽게, 키울 때는 또렷한 픽셀로 그린다. dpr은 size 한 픽셀이 캔버스에서 차지하는 픽셀 수
   g.imageSmoothingEnabled = f.scale * s * dpr < 1;
@@ -105,7 +105,7 @@ function place(g: Ctx, img: ImageBitmap | OffscreenCanvas, e: { x?: number; y?: 
 }
 
 /** seatOnly면 몸(자세 그림과 스티커)을 빼고 책상과 바닥만 그린다 (detach) */
-function paint(g: Ctx, look: Appearance | null, body: ImageBitmap | undefined, size: Size, dpr: number, seatOnly = false) {
+function paint(g: Ctx, look: Appearance | null, body: PoseImage | undefined, size: Size, dpr: number, seatOnly = false) {
   for (const layer of LAYERS) {
     if (seatOnly && !SEAT_SLOTS.includes(layer)) continue;
     if (layer === 'pose') {
@@ -133,11 +133,12 @@ function createView(container: HTMLElement, opts: ViewOptions): CharacterView {
   const ac = new AbortController();
   let look: Appearance | null = null, pose: PoseId = 'idle', pos = { x: 0, y: 0 }, facing: 1 | -1 = 1;
   let fps = FPS_AWAKE, last = -Infinity, raf = 0, isDirty = true, gone = false, detached = false;
-  let geoImg: ImageBitmap | undefined;
+  let geoImg: PoseImage | undefined;
+  let override: Partial<Record<PoseId, PoseImage>> = {};
 
   const bodyFor = (p: PoseId) => {
     const h = look?.poses[p];
-    return (h && bitmap(h)) || ph.get(p);
+    return override[p] ?? ((h && bitmap(h)) || ph.get(p));
   };
   // anchor와 클릭 영역은 기본 자세 그림의 불투명 영역으로 정해서 자세가 바뀌어도 이름표가 움직이지 않는다
   const geo = (): [Box | null, Box, Fit, 1 | -1] => {
@@ -208,6 +209,10 @@ function createView(container: HTMLElement, opts: ViewOptions): CharacterView {
       look = a;
       // 늦게 온 그림은 그 사이 외형이 바뀌었으면 다시 그리지 않는다
       for (const h of hashesOf(a)) void load(opts.images, h).then(() => look === a && dirty());
+      dirty();
+    },
+    setPoses(p) {
+      override = p;
       dirty();
     },
     setState(s) {
