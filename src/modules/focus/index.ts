@@ -47,7 +47,11 @@ export default defineModule<FocusApi>({
           { value: 'foregroundWithInput', label: '앱에서 입력하는 동안' },
         ],
       },
-      figureMode: { label: '피규어 모드 (잠든 모습 숨기기)', widget: 'toggle' },
+      figureMode: {
+        label: '피규어 모드',
+        hint: '켜면 등록 앱을 쓰지 않거나 입력이 없어도 캐릭터가 잠들지 않고 깨어 있는 모습으로 보여요. 방 사람들에게도 그렇게 보이고 집중 시간은 규칙대로만 쌓여요.',
+        widget: 'toggle',
+      },
     },
   },
   local: {
@@ -162,26 +166,22 @@ export default defineModule<FocusApi>({
     // 서버: 기기마다 자기 기록만 쓰고 누적과 오늘은 기기별 값을 더한다 (sumByDevice, FOC-08)
     const dev = ctx.server.user(['dev']);
     const me = ctx.self.deviceId();
-    // 한 계정은 한 번에 한 기기만 세므로 켤 때와 다시 쓰는 기기가 될 때만 읽으면 된다
-    const loadOthers = () =>
-      dev.list({ limit: 20 }).then(
-        (rows) => {
-          data.otherDevicesSec = 0;
-          Object.assign(others, { day: ctx.clock.dayKey(), sec: 0 });
-          for (const row of rows) {
-            const r = DevRecord.safeParse(row.value);
-            if (!r.success) continue;
-            if (row.key === me) data.deviceTotalSec = Math.max(data.deviceTotalSec, r.data.total);
-            else {
-              data.otherDevicesSec += r.data.total;
-              if (r.data.day === others.day) others.sec += r.data.today;
-            }
-          }
-          totalChanged();
-          save();
-        },
-        (e: Error) => ctx.log.warn(`기기별 기록을 읽지 못했습니다: ${e.message}`),
-      );
+    // 기기별 기록을 구독한다. 다시 쓰는 기기가 된 직후에 읽으면 가져간 기기가 늦게 올린 마지막 기록을 놓친다 (F1)
+    const readOthers = (rows: Array<{ key: string; value: unknown }>) => {
+      data.otherDevicesSec = 0;
+      Object.assign(others, { day: ctx.clock.dayKey(), sec: 0 });
+      for (const row of rows) {
+        const r = DevRecord.safeParse(row.value);
+        if (!r.success) continue;
+        if (row.key === me) data.deviceTotalSec = Math.max(data.deviceTotalSec, r.data.total);
+        else {
+          data.otherDevicesSec += r.data.total;
+          if (r.data.day === others.day) others.sec += r.data.today;
+        }
+      }
+      totalChanged();
+      save();
+    };
     let sent = -1;
     const push = () => {
       const total = Math.floor(data.deviceTotalSec);
@@ -192,11 +192,11 @@ export default defineModule<FocusApi>({
         ctx.log.warn(`기기별 기록을 쓰지 못했습니다: ${e.message}`);
       });
     };
-    void loadOthers();
+    dev.watchList('', { limit: 20 }, readOthers);
     ctx.timers.every(60_000, push);
     ctx.lifecycle.on((e) => (e.type === 'suspend' || e.type === 'shutdown') && push());
-    // 다른 기기가 가져가면 그때까지 센 것을 바로 올리고 돌아오면 그 기기가 센 것을 읽는다
-    ctx.self.onActiveDevice((active) => (active ? void loadOthers() : push()));
+    // 다른 기기가 가져가면 그때까지 센 것을 바로 올린다. 가져간 기기는 구독으로 받는다
+    ctx.self.onActiveDevice((active) => !active && push());
 
     return api;
   },

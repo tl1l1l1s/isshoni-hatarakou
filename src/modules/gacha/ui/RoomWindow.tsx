@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { NOT_IN_ROOM, type Ctx } from '@core/types';
 import { duration, earnedOf, inPeriod, odds, percent, periodText, pool, secToNext, tickets } from '../logic';
 import { canAdd, useGacha, type Drawn } from '../state';
@@ -12,6 +12,8 @@ export default function RoomWindow({ ctx }: { ctx: Ctx }) {
   const [waiting, setWaiting] = useState(false);
   const [result, setResult] = useState<Drawn | null>(null);
   const [msg, setMsg] = useState('');
+  // 끊기면 뽑기 단추를 끄고 까닭을 보이도록 다시 그린다
+  const online = useSyncExternalStore((f) => ctx.connection.onChange(f), () => ctx.connection.online());
   if (!v.code) return <p>{NOT_IN_ROOM}</p>;
 
   const earned = earnedOf(v.rec, v.cfg) + v.pendingEarned;
@@ -57,7 +59,8 @@ export default function RoomWindow({ ctx }: { ctx: Ctx }) {
             {result.n === 1 ? <span className={css.new}>NEW!</span> : <span className={css.muted}>{result.n}개째</span>}
           </div>
         ) : (
-          <div className={css.capsule} data-spin={spinning} onAnimationEnd={() => setSpinning(false)} />
+          // 결과가 연출보다 늦으면 열린 캡슐을 그대로 두고 아래에 기다리는 중임을 보인다
+          <div className={css.capsule} data-spin={spinning || waiting} onAnimationEnd={() => setSpinning(false)} />
         )}
       </div>
       <div className={css.row}>
@@ -66,7 +69,11 @@ export default function RoomWindow({ ctx }: { ctx: Ctx }) {
         </button>
         <button onClick={() => ctx.ui.open('gacha.inventory')}>보관함으로</button>
       </div>
-      {(msg || reason) && <p role="status" className={css.muted}>{msg || reason}</p>}
+      {waiting && !spinning ? (
+        <p role="status" className={css.muted}>{online ? '결과를 받는 중이에요.' : '연결되면 결과가 나와요.'}</p>
+      ) : (
+        (msg || reason) && <p role="status" className={css.muted}>{msg || reason}</p>
+      )}
       <h4>아이템과 확률</h4>
       {items.length ? (
         <ul className={css.list}>

@@ -23,17 +23,25 @@ const round = (v: number, digits: number) => Math.round(v * 10 ** digits) / 10 *
 /** scale배로 줄인 그림의 아래가 4:5 칸 아래에 닿는 y. 그림은 칸에 맞춰 아래에 붙인 뒤 가운데를 기준으로 줄어들기 때문이다 */
 const floorY = (img: Size, scale: number) => round((Math.min(4 / img.width, 5 / img.height) * img.height * (1 - scale)) / 10, 3);
 
+/** 같은 자리가 차 있을 때 비켜 놓는 칸. 기본 자리에서 오른쪽, 왼쪽, 오른쪽 둘째 칸 순서이고 줄은 위, 아래 순서다 */
+const COLS = [0, 1, -1, 2];
+const ROWS = [0, -1, 1];
+/** x, y는 칸 크기에 대한 비율이라 4:5 칸이면 크기는 상관없다 */
+const BOX = { width: 4, height: 5 };
+
 /** 새로 붙일 때 자리. 스티커는 가슴께(칠판은 머리 위), 소품은 책상 오른쪽, 바닥 오브제는 책상 왼쪽 바닥.
  *  바닥 오브제는 그림 크기를 알면 그림 아래가 칸 아래에 닿게 놓고 모르면 정사각 그림으로 친다.
- *  placed에 같은 자리가 있으면 오른쪽 위로 0.06씩 비켜 4x3 칸 안에서 빈 자리를 찾는다 (칸이 CAP개라 다 차지 않는다) */
+ *  placed에 같은 자리가 있으면 그림 크기의 절반씩 비켜 4x3 칸 가운데 빈 자리에 놓는다. 가운데는 칸 밖으로 나가지 않는다 */
 export function fresh(slot: SlotId, item: string, file: Sha256, img: Size = { width: 1, height: 1 }, placed: Equip[] = []): Equip {
   const e = slot === 'floor' ? { item, file, x: -0.3, y: floorY(img, FLOOR_SCALE), scale: FLOOR_SCALE, rot: 0 }
     : slot === 'desk.items' ? { item, file, x: 0.25, y: 0, scale: 0.3, rot: 0 }
     : item === BOARD_ITEM ? { item, file, x: 0, y: -0.6, scale: 0.45, rot: 0 }
     : { item, file, x: 0, y: -0.3, scale: 0.4, rot: 0 };
+  const step = e.scale / 2;
   for (let n = 0; n < CAP; n++) {
-    const x = round(e.x + 0.06 * (n % 4), 3), y = round(e.y - 0.06 * Math.floor(n / 4), 3);
-    if (!placed.some((p) => p.x === x && p.y === y)) return { ...e, x, y };
+    const c = placeOf(img, { ...e, x: e.x + step * COLS[n % 4]!, y: e.y + step * ROWS[Math.floor(n / 4)]! }, BOX);
+    const p = moveTo(img, e, BOX, c.cx, c.cy);
+    if (!placed.some((q) => q.x === p.x && q.y === p.y)) return p;
   }
   return e;
 }

@@ -45,6 +45,7 @@ test('일반 작업 앱에서 시간·보상·저장 장애 복구·꾸미기까
     });
     const path = join(s.dir, 'star.png'); writeFileSync(path, new Uint8Array(bytes));
     await s.app.evaluate(({ dialog }, file) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] }); }, path);
+    await rs.getByText('아이템 넣기', { exact: true }).click();
     await rs.getByRole('textbox', { name: '이름', exact: true }).fill('별');
     await rs.getByRole('button', { name: '그림 고르고 넣기' }).click();
     await expect(rs.getByText('아이템을 넣었어요.')).toBeVisible();

@@ -59,8 +59,10 @@ export function OwnerSection({ ctx }: SlotProps) {
             <span>
               <span className={css.name} title={e.name}>{e.name}</span>
               <span className={css.muted}>
-                가중치 {e.w}{on.includes(e) ? `, ${percent(p[on.indexOf(e)]!)}` : ''}{periodText(e) ? `, ${periodText(e)}` : ''}{e.st === 'off' ? ', 지금은 뽑지 않음' : ''}
+                가중치 {e.w}{on.includes(e) ? `, ${percent(p[on.indexOf(e)]!)}` : ''}{e.st === 'off' ? ', 지금은 뽑지 않음' : ''}
               </span>
+              {/* 기간은 가중치 줄에 이으면 좁은 칸에서 꺾이므로 그 아래 줄에 둔다 */}
+              {periodText(e) && <span className={css.muted}>{periodText(e)}</span>}
             </span>
             {asking === e.id ? (
               // 지우기를 물을 때는 단추와 안내를 그 아이템 아래 줄에 둔다
@@ -82,7 +84,8 @@ export function OwnerSection({ ctx }: SlotProps) {
         ))}
       </ul>
       {msg && <p role="alert" className={css.error}>{msg}</p>}
-      <AddItem ctx={ctx} />
+      {/* 양식이 방 설정을 다 차지하지 않게 접어 둔다 */}
+      <AddItem ctx={ctx} folded />
     </section>
   );
 }

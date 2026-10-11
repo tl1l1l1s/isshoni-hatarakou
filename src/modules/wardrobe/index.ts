@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { defineModule } from '@core/types';
 import type { WardrobeApi } from './api';
-import { CharRecord, initialLocal, Local, migrateV1, TrashRecord, UnlockRecord } from './logic';
+import { ActiveRecord, CharRecord, initialLocal, Local, migrateV1, TrashRecord, UnlockRecord } from './logic';
 import { initialSolo, Solo, startSolo } from './solo';
 import { createWardrobe } from './state';
 import { SYNC_MS } from './sync';
@@ -22,6 +22,7 @@ export default defineModule<WardrobeApi>({
       chars: { scope: 'user', schema: CharRecord, template: 'owner', merge: 'askUser' },
       trash: { scope: 'user', schema: TrashRecord, template: 'owner' },
       unlock: { scope: 'user', schema: UnlockRecord, template: 'owner' },
+      active: { scope: 'user', schema: ActiveRecord, template: 'owner' },
     },
   },
   tunables: { animalUnlockLevel: { schema: z.number().int().min(1).max(999), default: 30 } },

@@ -18,6 +18,12 @@ export function roundOf(totalSec: number): { round: number; level: number } {
   return { round: 1 + Math.floor(t / per), level: 1 + Math.floor((t % per) / SECONDS_PER_LEVEL) };
 }
 
+/** 다음 레벨까지 남은 집중 시간 글. 45분, 1시간 */
+export function leftText(sec: number): string {
+  const m = Math.ceil(sec / 60);
+  return m >= 60 ? `${Math.floor(m / 60)}시간${m % 60 ? ` ${m % 60}분` : ''}` : `${m}분`;
+}
+
 /** 2회차부터는 Lv. 대신 별을 붙인다 */
 export const levelText = (round: number, level: number): string => `${round >= 2 ? '☆' : 'Lv.'}${level}`;
 

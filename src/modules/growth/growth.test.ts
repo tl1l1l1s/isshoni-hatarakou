@@ -5,7 +5,7 @@ import { dayKey } from '@shared/time';
 import focus from '@modules/focus';
 import type { FocusApi } from '@modules/focus/api';
 import growth from './index';
-import { levelOf, levelText, roundOf, tierOf, xpOf } from './logic';
+import { leftText, levelOf, levelText, roundOf, tierOf, xpOf } from './logic';
 
 describe('레벨', () => {
   // 누적 초, 레벨, 경험치 비율
@@ -33,6 +33,10 @@ describe('레벨', () => {
     expect(roundOf(total)).toEqual({ round, level });
   });
 
+  it('다음 레벨까지 남은 시간은 분을 올려 세고 60분부터 시간으로 쓴다', () => {
+    expect([3600, 3599.5, 2700, 1, 4500].map(leftText)).toEqual(['1시간', '1시간', '45분', '1분', '1시간 15분']);
+  });
+
   it('2회차부터 별을 붙이고 티어는 넘은 단계 수다', () => {
     expect([levelText(1, 12), levelText(2, 12)]).toEqual(['Lv.12', '☆12']);
     expect([1, 49, 50, 149, 150, 999].map((lv) => tierOf(lv, [50, 100, 150]))).toEqual([0, 0, 1, 2, 3, 3]);
@@ -56,7 +60,12 @@ describe('focus와 growth', () => {
       activity: { on: (fn: (s: ActivitySample) => void) => void (out.onSample = fn) },
       timers: { every: () => () => {} },
       lifecycle: { on: () => () => {} },
-      server: { user: () => ({ list: async () => others, set: async (_k: string, v: unknown) => void out.sets.push(v) }) },
+      server: {
+        user: () => ({
+          watchList: (_k: string, _o: unknown, fn: (rows: unknown[]) => void) => (fn(others), () => {}),
+          set: async (_k: string, v: unknown) => void out.sets.push(v),
+        }),
+      },
       self: {
         deviceId: () => 'pc', setProfile: (p: Record<string, unknown>) => Object.assign(out.profile, p),
         activeDevice: () => out.active, onActiveDevice: (fn: (a: boolean) => void) => void (out.onActive = fn),

@@ -5,6 +5,8 @@ import { MAX_SIDE, SIZES, type Local } from '../logic';
 import css from './awaypic.module.css';
 
 const SIZE_WORD: Record<Local['size'], string> = { 60: '작게', 80: '보통', 100: '크게' };
+/** 미리보기 배율. 좌석(160x200)과 그림(한 변 size)을 같은 비율로 줄여 나란히 세운다 */
+const K = 0.75;
 
 /** 설정 창의 자리비움 그림 탭 (CHR-07) */
 export default function Tab({ ctx }: SlotProps) {
@@ -30,7 +32,11 @@ export default function Tab({ ctx }: SlotProps) {
   return (
     <div>
       <p>자리비움이면 캐릭터 대신 이 그림이 서요.</p>
-      <div className={css.preview}>{pic.file ? <Preview ctx={ctx} file={pic.file} size={pic.size} /> : <span className={css.hint}>그림 없음</span>}</div>
+      {/* 캐릭터 옆에 같은 비율로 세워 크기를 견줘 보게 한다 */}
+      <div className={css.preview}>
+        <ctx.ui.CharacterPreview width={160 * K} height={200 * K} />
+        {pic.file ? <Preview ctx={ctx} file={pic.file} size={pic.size * K} /> : <span className={css.hint}>그림 없음</span>}
+      </div>
       <div className={css.row}>
         <button disabled={busy} onClick={() => void pick()}>그림 등록</button>
         <button disabled={busy || !pic.file} onClick={() => void save({ ...pic, file: null }).then(() => setMsg('그림을 뺐어요. 자리비움이어도 캐릭터가 그대로 서요.'))}>그림 빼기</button>
@@ -49,7 +55,7 @@ export default function Tab({ ctx }: SlotProps) {
   );
 }
 
-/** 고른 크기로 그려 크기마다 달라 보이게 한다. 상자(120px)는 가장 큰 크기보다 크다 */
+/** 고른 크기로 그려 크기마다 달라 보이게 한다 */
 function Preview({ ctx, file, size }: { ctx: Ctx; file: string; size: number }) {
   const url = useBlobUrl(file, ctx.files.get);
   return url ? <img src={url} alt="등록한 자리비움 그림" style={{ width: size, height: size }} /> : null;

@@ -22,6 +22,9 @@
 .card .pic { width: 64px; height: 64px; }
 .pic img { width: 100%; height: 100%; object-fit: contain; }
 .add { margin: var(--sp-3) 0; }
+/* 접힌 아이템 넣기는 양식 칸(fieldset)과 같은 카드이고 제목 줄을 펜으로 누르기 쉽게 30px로 둔다 */
+details.add { padding: var(--sp-2) var(--sp-4); border-radius: var(--radius-l); background: var(--surface); box-shadow: var(--shadow-sm), inset 0 0 0 1px var(--line); }
+details.add > summary { line-height: 30px; font-weight: 600; cursor: pointer; }
 .off { opacity: 0.55; }
 .hue { font-size: 11px; color: var(--fg-subtle); }
 

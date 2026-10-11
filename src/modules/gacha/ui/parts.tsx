@@ -13,8 +13,8 @@ export function Pic({ ctx, file, hidden = false }: { ctx: Ctx; file: string; hid
   return <span className={css.pic}>{url ? <img src={url} alt="" /> : '?'}</span>;
 }
 
-/** 아이템 넣기. 방 주인과 넣기를 허락받은 멤버가 쓴다 */
-export function AddItem({ ctx }: { ctx: Ctx }) {
+/** 아이템 넣기. 방 주인과 넣기를 허락받은 멤버가 쓴다. folded면 제목을 눌러 펼치는 접힌 칸으로 그린다 (방 설정) */
+export function AddItem({ ctx, folded = false }: { ctx: Ctx; folded?: boolean }) {
   const [name, setName] = useState('');
   const [w, setW] = useState(10);
   // 기간 한정 (GCH-04). 날짜 칸 값이고 비우면 그쪽 끝이 없다
@@ -51,9 +51,8 @@ export function AddItem({ ctx }: { ctx: Ctx }) {
       setBusy(false);
     }
   };
-  return (
-    <fieldset className={css.add}>
-      <legend>아이템 넣기</legend>
+  const fields = (
+    <>
       <label>
         이름
         <input value={name} maxLength={ITEM_NAME_MAX} onChange={(e) => change(setName, e.target.value)} />
@@ -70,11 +69,23 @@ export function AddItem({ ctx }: { ctx: Ctx }) {
         기간 끝 (선택)
         <input type="date" value={until} onChange={(e) => change(setUntil, e.target.value)} />
       </label>
-      <p className={css.muted}>배경이 투명한 PNG가 좋아요. 기간을 정하면 그 기간에만 뽑혀요.</p>
+      <p className={css.muted}>배경이 투명한 PNG가 좋아요.</p>
+      <p className={css.muted}>기간을 정하면 그 기간에만 뽑혀요.</p>
       <button disabled={busy || !!why} onClick={() => void add()}>
         그림 고르고 넣기
       </button>
       {(msg || why) && <p role="status" className={css.muted}>{msg || why}</p>}
+    </>
+  );
+  return folded ? (
+    <details className={css.add}>
+      <summary>아이템 넣기</summary>
+      {fields}
+    </details>
+  ) : (
+    <fieldset className={css.add}>
+      <legend>아이템 넣기</legend>
+      {fields}
     </fieldset>
   );
 }

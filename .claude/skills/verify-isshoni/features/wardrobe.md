@@ -4,7 +4,7 @@
 
 ## Sub-features
 
-- `wardrobe-open`은 캐릭터 만들기 창을 여는 것이다. 단계 줄은 `캐릭터`와 `책상` 둘이고 아래 줄에 `파일로 내보내기`, `파일에서 불러오기`, `이전 모습 불러오기`, 검은 `저장`이 있다.
+- `wardrobe-open`은 캐릭터 만들기 창을 여는 것이다. 맨 위 한 줄에 캐릭터 슬롯과 종류(`사람`, `동물`)가 있고 동물이 잠겨 있으면 그 옆에 `동물은 30레벨부터`가 보인다. 다음 한 줄에 단계 `캐릭터`, `책상`과 만드는 방법이 있다. 아래 줄에 `파일로 내보내기`, `파일에서 불러오기`, `이전 모습 불러오기`, 검은 `저장`이 있다.
 - `wardrobe-face`는 얼굴 그리기 그림판에 표정을 그리는 것이다 (AVT-03, AVT-04).
 - `wardrobe-esc`는 저장하지 않은 그림이나 고른 값이 있을 때 어느 단계에서든 ESC, 창 닫기 단추(제목 표시줄 ×), 다른 캐릭터 슬롯 단추를 누르면 창 안에서 묻고 `닫기`를 눌러야 떠나는 것이다. 이미지 찍기 중 ESC는 그 그림만 버리고 창은 남는다. 바뀐 것이 없으면 묻지 않는다 (AVT-03).
 - `wardrobe-pose`는 자세 그림 넣기에서 크기 안내(320x400px)가 보이고 얼굴 그림을 쓰는 자세 카드에는 `지금은 얼굴 그림을 써요`가, 그림을 넣은 카드에는 `얼굴 그림으로` 단추가 보이는 것이다. 캐릭터 단계에서는 위쪽 큰 미리보기가 없다 (AVT-04).
@@ -32,7 +32,7 @@ Preconditions:
 
 - 새 `verify()` 세션에서 시작하기를 눌러 실행 화면에 있다.
 
-- **창 열기.** `const w = await menu(s, '캐릭터 만들기', '캐릭터 만들기')`를 실행한다. ARIA에 `navigation "캐릭터 슬롯"`의 `캐릭터 1 [pressed]`, 단계 줄의 `캐릭터 [pressed]`와 `책상`, `navigation "만드는 방법"`의 `얼굴 그리기 [pressed]`, `button "이전 모습 불러오기"`, `button "저장"`이 있다. 스크롤하지 않은 창에서 `저장` 상자의 아래 끝이 `window.innerHeight` 안에 있다.
+- **창 열기.** `const w = await menu(s, '캐릭터 만들기', '캐릭터 만들기')`를 실행한다. ARIA에 `navigation "캐릭터 슬롯"`의 `캐릭터 1 [pressed]`, `navigation "캐릭터 종류"`, `동물은 30레벨부터`, 단계 줄의 `캐릭터 [pressed]`와 `책상`, `navigation "만드는 방법"`의 `얼굴 그리기 [pressed]`, `button "이전 모습 불러오기"`, `button "저장"`이 있다. `캐릭터 슬롯`과 `캐릭터 종류`의 위쪽 y가 같고 단계 줄과 `만드는 방법`의 위쪽 y가 같다. 얼굴 그림판 위쪽은 창 위에서 310px 안쪽이고 스크롤하지 않은 창에서 `저장` 상자의 아래 끝이 `window.innerHeight` 안에 있다.
 - **얼굴 그리기.** 붓 색 `파랑`을 누르고 그림판 위에서 마우스를 끌어 한 획을 긋는다.
   ```ts
   await w.getByRole('button', { name: '파랑' }).click();
@@ -43,7 +43,7 @@ Preconditions:
   await w.mouse.up();
   ```
   `await expect(w.getByRole('button', { name: '되돌리기' })).toBeEnabled()`로 획이 들어간 것을 확인한다. 그림판과 오른쪽 기본, 타이핑 미리보기에 파란 선이 보인다.
-- **ESC와 떠나기 전 묻기 (wardrobe-esc).** 창에 `w.on('dialog', () => {})`를 먼저 붙인다(Gotchas). 그림 고르기 대화상자를 시험용 PNG로 바꾸고 `w.getByRole('button', { name: '그림 넣기', exact: true })`를 누르면 `찍기`가 보인다. `w.keyboard.press('Escape')`를 실행하면 `찍기`가 사라지고 창은 열려 있으며 묻지 않는다. 한 획을 긋고 `책상` 단계로 옮긴 뒤 ESC를 누르면 `alertdialog "캐릭터를 저장하지 않았어요. 닫을까요?"`와 `닫기`, `계속하기`가 보인다. `계속하기`를 누르거나 묻는 중에 ESC를 누르면 물음만 닫힌다. `캐릭터 2` 슬롯 단추를 누르면 같은 물음이 뜨고 그동안 `캐릭터 1`이 `[pressed]` 그대로다. 메인에서 `BrowserWindow.getAllWindows().find((x) => x.getTitle() === '캐릭터 만들기')?.close()`를 실행하면(제목 표시줄 ×와 같다) 창이 닫히지 않고 같은 물음이 뜨며 `닫기`를 누르면 닫힌다. 아무것도 바꾸지 않은 창은 ESC 한 번에 닫힌다.
+- **ESC와 떠나기 전 묻기 (wardrobe-esc).** 창에 `w.on('dialog', () => {})`를 먼저 붙인다(Gotchas). 그림 고르기 대화상자를 시험용 PNG로 바꾸고 `w.getByRole('button', { name: '그림 넣기', exact: true })`를 누르면 `찍기`가 보인다. `w.keyboard.press('Escape')`를 실행하면 `찍기`가 사라지고 창은 열려 있으며 묻지 않는다. 한 획을 긋고 `책상` 단계로 옮긴 뒤 ESC를 누르면 `alertdialog "캐릭터를 저장하지 않았어요. 닫을까요?"`와 `닫기`, `계속하기`가 보인다. `계속하기`를 누르거나 묻는 중에 ESC를 누르면 물음만 닫힌다. `캐릭터 2` 슬롯 단추를 누르면 `alertdialog "캐릭터를 저장하지 않았어요. 바꿀까요?"`와 `바꾸기`, `계속하기`가 뜨고 그동안 `캐릭터 1`이 `[pressed]` 그대로다. `바꾸기`를 누르면 캐릭터 2로 바뀐다. 메인에서 `BrowserWindow.getAllWindows().find((x) => x.getTitle() === '캐릭터 만들기')?.close()`를 실행하면(제목 표시줄 ×와 같다) 창이 닫히지 않고 같은 물음이 뜨며 `닫기`를 누르면 닫힌다. 아무것도 바꾸지 않은 창은 ESC 한 번에 닫힌다.
 - **자세 그림 넣기 (wardrobe-pose).** `자세 그림 넣기`를 누르면 `320x400px에 배경이 투명한 PNG가 좋아요. 큰 그림은 앱이 줄여서 저장해요.`와 카드 세 장의 `지금은 얼굴 그림을 써요`가 보이고 `얼굴 그림으로` 단추는 없다. 위쪽 큰 미리보기도 없어서 창의 `canvas`는 카드의 세 장뿐이다. 첫 카드의 `그림 넣기`(exact)를 누르면 그 카드만 `얼굴 그림으로` 단추로 바뀐다.
 - **펜 지우개 (wardrobe-pen-eraser).** 하네스는 펜 입력을 만들 수 없다. 창에서 `HTMLCanvasElement.prototype.setPointerCapture`를 빈 함수로 바꾸고 굵은 검정 획 위로 `new PointerEvent('pointerdown', { pointerType: 'pen', button: 5, buttons: 32, clientX, clientY, pointerId: 7, bubbles: true })`와 `pointermove`, `pointerup`을 그림판 canvas에 보낸다. 획 가운데 픽셀이 몸 색으로 돌아오고 `지우개`는 `aria-pressed="false"` 그대로다. 보고에 이 준비를 적는다.
 - **책상 고르기.** `await w.getByRole('button', { name: '책상', exact: true }).click()`과 `await w.getByRole('button', { name: /나무 책상/ }).click()`을 실행한다. `button "나무 책상" [pressed]`가 되고 `내 책상 그림은 자세 그림과 같은 320x400px 캔버스 아래쪽에 그리면 자리가 맞아요.`가 보인다.
