@@ -61,9 +61,9 @@ export function OwnerSection({ ctx }: SlotProps) {
             <span>
               <span className={css.name} title={e.name}>{e.name}</span>
               <span className={css.muted}>
-                가중치 {e.w}{on.includes(e) ? `, ${percent(p[on.indexOf(e)]!)}` : ''}{e.st === 'off' ? ', 지금은 뽑지 않음' : ''}
+                비중 {e.w}{on.includes(e) ? `, ${percent(p[on.indexOf(e)]!)}` : ''}{e.st === 'off' ? ', 지금은 뽑지 않음' : ''}
               </span>
-              {/* 기간은 가중치 줄에 이으면 좁은 칸에서 꺾이므로 그 아래 줄에 둔다 */}
+              {/* 기간은 비중 줄에 이으면 좁은 칸에서 꺾이므로 그 아래 줄에 둔다 */}
               {periodText(e) && <span className={css.muted}>{periodText(e)}</span>}
             </span>
             {asking === e.id ? (

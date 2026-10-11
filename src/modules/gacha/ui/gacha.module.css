@@ -5,7 +5,7 @@
 .list li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .list li > .pic + span { flex: 1; min-width: 0; }
 .list li > button { flex: none; white-space: nowrap; }
-/* 긴 아이템 이름은 한 줄로 줄이고 가중치와 확률은 그 아래 줄에 둔다 */
+/* 긴 아이템 이름은 한 줄로 줄이고 비중과 확률은 그 아래 줄에 둔다 */
 .name { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .list li > .pic + span > .muted { display: block; margin: 0; }
 /* 지우기를 물을 때 단추와 안내는 아이템 아래 새 줄에 둔다 */

@@ -23,7 +23,7 @@ export function AddItem({ ctx, folded = false }: { ctx: Ctx; folded?: boolean })
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   // 넣기 단추가 꺼진 까닭. 없으면 빈 글. 빈 이름은 적기 전부터 알리지 않고 단추를 누르면 알린다
-  const why = !(Number.isInteger(w) && w >= 1 && w <= 100) ? '가중치는 1부터 100까지예요.'
+  const why = !(Number.isInteger(w) && w >= 1 && w <= 100) ? '뽑힐 비중은 1부터 100까지예요.'
     : from && until && until < from ? '끝 날짜가 시작 날짜보다 빨라요.'
     : '';
   // 다음 아이템을 적기 시작하면 지난 안내를 지운다
@@ -58,7 +58,7 @@ export function AddItem({ ctx, folded = false }: { ctx: Ctx; folded?: boolean })
         <input value={name} maxLength={ITEM_NAME_MAX} onChange={(e) => change(setName, e.target.value)} />
       </label>
       <label>
-        가중치 (1부터 100)
+        뽑힐 비중 (1부터 100)
         <input type="number" min={1} max={100} value={w} onChange={(e) => change(setW, Number(e.target.value))} />
       </label>
       <label>
