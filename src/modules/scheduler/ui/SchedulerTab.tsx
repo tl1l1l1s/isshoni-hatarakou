@@ -17,6 +17,8 @@ export default function SchedulerTab({ ctx, owner, mine }: HomeTabProps & { ctx:
   const [day, setDay] = useState(today);
   const [month, setMonth] = useState(today.slice(0, 7));
   const [form, setForm] = useState<{ id: string | null; plan: Plan } | null>(null);
+  // 쓰는 동안 추가와 저장을 꺼서 두 번 눌러도 일정이 하나만 생긴다
+  const [busy, setBusy] = useState(false);
   const { weekStart } = ctx.settings.get<Settings>();
 
   const byDay = new Map<string, Row[]>();
@@ -33,7 +35,12 @@ export default function SchedulerTab({ ctx, owner, mine }: HomeTabProps & { ctx:
   const write = (oldId: string | null, plan: Plan | null, after?: () => void) => {
     if (!ctx.connection.online()) return ctx.ui.toast(OFFLINE);
     const id = oldId && (!plan || plan.date === oldId.slice(0, 10)) ? oldId : planId(plan!.date, ctx.clock.now().toString(36));
-    void ctx.server.user().update('', planWrites(oldId, id, plan)).then(after, (e: Error) => ctx.ui.toast(e.message));
+    setBusy(true);
+    void ctx.server
+      .user()
+      .update('', planWrites(oldId, id, plan))
+      .then(after, (e: Error) => ctx.ui.toast(e.message))
+      .finally(() => setBusy(false));
   };
   const submit = () => {
     const r = Plan.safeParse({ ...form!.plan, title: form!.plan.title.trim(), memo: form!.plan.memo.trim() });
@@ -128,7 +135,7 @@ export default function SchedulerTab({ ctx, owner, mine }: HomeTabProps & { ctx:
               </label>
               <p className={css.row}>
                 <button onClick={() => setForm(null)}>취소</button>
-                <button type="submit" onClick={submit}>{form.id ? '저장' : '추가'}</button>
+                <button type="submit" disabled={busy} onClick={submit}>{form.id ? '저장' : '추가'}</button>
               </p>
             </div>
           ) : (

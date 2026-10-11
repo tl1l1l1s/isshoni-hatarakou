@@ -98,7 +98,8 @@
 .update { display: flex; align-items: center; justify-content: space-between; gap: 8px; pointer-events: auto; }
 .update button { border: 0; border-radius: 7px; padding: 4px 10px; background: var(--accent); color: var(--on-accent); font: inherit; font-weight: 600; cursor: pointer; }
 .bubbleImage { display: block; height: 40px; max-width: 120px; object-fit: contain; }
-.bubbleText { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; word-break: keep-all; overflow-wrap: anywhere; }
+/* 두 줄 글은 줄 길이를 고르게 나눠 한 낱말만 둘째 줄에 남지 않게 하고 남는 폭이 한쪽에 몰리지 않게 가운데에 둔다 */
+.bubbleText { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; word-break: keep-all; overflow-wrap: anywhere; text-wrap: balance; text-align: center; }
 /* 떠날지 묻기 (ctx.ui.guard). 패널 창 전체를 덮고 가운데에 묻는 글과 단추를 둔다 */
 .askBack { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: var(--sp-4); background: rgb(0 0 0 / 18%); }
 .ask {

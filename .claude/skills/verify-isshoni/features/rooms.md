@@ -60,7 +60,7 @@ Preconditions:
 
 자동 퇴장(`room-auto-leave`)은 `devdev`에 참여한 상태에서 시작한다. 유휴 시간은 메인에서 바꾼다. `const fake = (p: { idle?: number; app?: string | null; pen?: string }) => s.app.evaluate((_, q) => { const f = (globalThis as any).fakePlatform; if (q.idle !== undefined) f.idle = q.idle; if (q.app !== undefined) f.app = q.app; if (q.pen) f.pens.add(q.pen); }, p)`를 만들어 쓰고 `const LEAVE = 22_800`(6시간 20분)으로 둔다.
 
-- **안내 띄우기.** `await fake({ idle: LEAVE - 30 })`과 `const popup = await windowTitled(s.app, '자리비움 안내')`를 실행한다. 창에 `자리를 오래 비워서 1분 뒤에 방에서 나가요.`, 한 줄 안내 `나간 뒤에도 키보드나 마우스를 쓰면 그 방에 다시 들어가요.`, `button "취소"`가 있고 실행 화면 내 좌석 위에 `자리비움` 말풍선이 보인다.
+- **안내 띄우기.** `await fake({ idle: LEAVE - 30 })`과 `const popup = await windowTitled(s.app, '자리비움 안내')`를 실행한다. 창에 `자리를 오래 비워서 1분 뒤에 방에서 나가요.`, 한 줄 안내 `키보드나 마우스를 쓰면 다시 들어가요.`, `button "취소"`가 있고 실행 화면 내 좌석 위에 `자리비움` 말풍선이 보인다.
 - **취소.** `await popup.getByRole('button', { name: '취소' }).click()`을 실행한다. 안내 창이 닫히고 `자리비움` 말풍선이 사라지며 `가짜 친구`가 그대로 보인다.
 - **나가기.** `await fake({ idle: 0 })` 뒤에 앱이 유휴 0초 샘플을 받을 때까지 기다리고(Gotchas) `await fake({ idle: LEAVE - 30 })`로 안내를 다시 띄운 뒤 누르지 않는다. 1분 안에 `await expect(s.stage.getByText('자리를 오래 비워서 방에서 나왔어요.')).toBeVisible({ timeout: 75_000 })`이 통과하고 `가짜 친구`와 `DEVDEV` 칩이 사라지며 안내 창도 닫힌다.
 - **돌아오기.** `await fake({ idle: 0 })`을 실행한다. `가짜 친구`와 `DEVDEV` 칩이 다시 보인다.

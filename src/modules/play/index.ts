@@ -26,7 +26,7 @@ export default defineModule({
     fields: {
       reactions: { label: '머리 위에 하트와 어지러움 반응 보이기', widget: 'toggle' },
       // 친구가 보낸 연출은 화면 전체에 그려져 그리던 그림을 가린다 (D2)
-      othersFx: { label: '친구가 보낸 화면 연출 보기', widget: 'toggle', hint: '끄면 날리는 글이 보이지 않아요. 폭탄과 깜짝쇼에도 캐릭터가 날아가지 않아요.' },
+      othersFx: { label: '친구가 보낸 화면 연출 보기', widget: 'toggle', hint: '끄면 날리는 글이 보이지 않아요. 캐릭터도 날아가지 않아요.' },
     },
   },
   local: { account: { version: 1, schema: Local, initial: initialLocal } },

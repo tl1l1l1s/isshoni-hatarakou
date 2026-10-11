@@ -1,7 +1,7 @@
 // 가짜 ctx로 받은 신호의 머리 위 글 순서, 친구 연출 끄기, 날리는 글 줄 수, 누가 했는지 알림, 춤 중 굴리기를 확인한다
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Ctx, RoomEventMsg, SeatView } from '@core/types';
-import { DANCE_MS, DIZZY_MS, FLY_MS, PET_MS, TELL_GAP_MS, TEXT_MS, TEXT_PER_SENDER } from './logic';
+import { DANCE_MS, DIZZY_MS, FLY_MS, PET_MS, ROLL_MS, ROLL_PAUSE_MS, TELL_GAP_MS, TEXT_MS, TEXT_PER_SENDER } from './logic';
 import { DIZZY, HEART, headText, listen, react, rollWait, dance } from './state';
 
 const ME = 'me_pc';
@@ -91,6 +91,19 @@ describe('놀이 받은 신호', () => {
     f.fire('bomb', { from: ME, to: BOB, seed: 4 }, 'me');
     vi.advanceTimersByTime(1_000);
     expect(f.effects()).toEqual(['play.dance80', 'play.bomb', 'play.fly']);
+  });
+
+  it('친구 연출을 끄면 친구의 러시안룰렛에서 날아가지 않고 어지러움만 뜬다 (D2)', () => {
+    const f = fake({ othersFx: false });
+    // 시드 0은 두 주사위가 모두 1이라 날아가는 결과다
+    f.fire('roll', { key: BOB, seed: 0 });
+    vi.advanceTimersByTime(ROLL_MS + ROLL_PAUSE_MS);
+    expect(f.effects()).toEqual([]);
+    expect(headText(f.ctx, BOB)).toBe(DIZZY);
+    // 내가 굴린 것은 그대로 날아간다
+    f.fire('roll', { key: ME, seed: 0 }, 'me');
+    vi.advanceTimersByTime(ROLL_MS + ROLL_PAUSE_MS);
+    expect(f.effects()).toEqual(['play.fly']);
   });
 
   it('날리는 글은 보낸 사람마다 5줄까지 흐른다', () => {

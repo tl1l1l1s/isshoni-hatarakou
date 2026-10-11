@@ -22,9 +22,8 @@ export function AddItem({ ctx, folded = false }: { ctx: Ctx; folded?: boolean })
   const [until, setUntil] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
-  // 넣기 단추가 꺼진 까닭. 없으면 빈 글
-  const why = !name.trim() ? '이름을 적어 주세요.'
-    : !(Number.isInteger(w) && w >= 1 && w <= 100) ? '가중치는 1부터 100까지예요.'
+  // 넣기 단추가 꺼진 까닭. 없으면 빈 글. 빈 이름은 적기 전부터 알리지 않고 단추를 누르면 알린다
+  const why = !(Number.isInteger(w) && w >= 1 && w <= 100) ? '가중치는 1부터 100까지예요.'
     : from && until && until < from ? '끝 날짜가 시작 날짜보다 빨라요.'
     : '';
   // 다음 아이템을 적기 시작하면 지난 안내를 지운다
@@ -33,6 +32,7 @@ export function AddItem({ ctx, folded = false }: { ctx: Ctx; folded?: boolean })
     setMsg('');
   };
   const add = async () => {
+    if (!name.trim()) return setMsg('이름을 적어 주세요.');
     setBusy(true);
     setMsg('');
     try {

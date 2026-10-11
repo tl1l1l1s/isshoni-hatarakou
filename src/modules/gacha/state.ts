@@ -1,6 +1,6 @@
 // 가챠 상태와 동작. 상태는 ctx마다 따로 두어 시험에서 앱 여러 개를 한 프로세스에 띄워도 섞이지 않는다
 import { useCallback, useSyncExternalStore } from 'react';
-import { NOT_IN_ROOM, OFFLINE, type Ctx } from '@core/types';
+import { NOT_IN_ROOM, type Ctx } from '@core/types';
 import type { InventoryItem } from './api';
 import {
   applyDraw, earnedOf, EMPTY, inventoryOf, Item, pool, readCfg, readRec, reconcile, ROOM_TOMB, sortInventory, tickets, draw,
@@ -167,8 +167,8 @@ export async function flush(ctx: Ctx, only?: string): Promise<void> {
 export function drawReason(ctx: Ctx): string | null {
   const v = view(ctx);
   if (!v.code) return NOT_IN_ROOM;
-  // 끊긴 채 뽑으면 연결될 때까지 결과가 오지 않으므로 미리 막는다 (0033 오프라인 쓰기 정책)
-  if (!ctx.connection.online()) return OFFLINE;
+  // 끊긴 채 뽑으면 연결될 때까지 결과가 오지 않으므로 미리 막는다 (0033 오프라인 쓰기 정책). 누르기 전이라 OFFLINE 글을 쓰지 않는다
+  if (!ctx.connection.online()) return '연결이 끊겨 있어요.';
   if (!pool(v.items, ctx.clock.serverNow()).length) return '뽑을 아이템이 없어요.';
   if (tickets(earnedOf(v.rec, v.cfg) + v.pendingEarned, v.rec.bonus, v.rec.spent) < 1) return '남은 뽑기가 없어요.';
   return null;

@@ -5,7 +5,7 @@ import type { SoundApi } from './api';
 import { createChime } from './chime';
 import { CHIMES, fromV1, initialPlaylist, isKind, KINDS, KIND_LABEL, mix, Playlist, PLAYER, Settings, SharedDoc, type Kind } from './logic';
 import { createNoise } from './noise';
-import { play, setPlayer, upload, WINDOW } from './state';
+import { claim, onClaim, play, player, setPlayer, upload, WINDOW } from './state';
 import { bgmFor } from './ui/Bgm';
 import Chip from './ui/Chip';
 
@@ -112,6 +112,9 @@ export default defineModule<SoundApi>({
       if (c !== 'off' && !quiet()) chime(c);
     });
 
+    // 다른 음악이 틀기 시작하면 플레이리스트를 멈춘다. 플레이리스트 창이 재생 상태를 따라 플레이어를 멈춘다
+    onClaim(ctx, 'playlist', () => player(ctx).playing && setPlayer(ctx, { playing: false }));
+
     void upload(ctx);
     return {
       tracks: () => ctx.local.get<Playlist>('device').presets.flatMap((p) => p.tracks.map(({ v, title }) => ({ v, title }))),
@@ -119,7 +122,8 @@ export default defineModule<SoundApi>({
         play(ctx, { k: `play:${v}`, v, title });
         ctx.ui.open(WINDOW);
       },
-      pause: () => setPlayer(ctx, { playing: false }),
+      claim: (who) => claim(ctx, who),
+      onClaim: (who, fn) => onClaim(ctx, who, fn),
       Player: bgmFor(ctx),
     };
   },

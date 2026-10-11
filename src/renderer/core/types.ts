@@ -3,7 +3,7 @@
 import type { ComponentType } from 'react';
 import type { z } from 'zod';
 import type { ActivitySample, Appearance, CoreState, MemberRecord, Sha256 } from '@shared/schemas';
-import type { Anchors, Box, Point, SceneSpec } from '@render/port';
+import type { Anchors, Box, Point, PoseImage, SceneSpec } from '@render/port';
 import type { AccountPresence } from '@server/port';
 
 export type { AccountPresence, Point, SceneSpec };
@@ -465,8 +465,11 @@ export interface Ctx {
     ask(windowId: string, q: AskQuestion): Promise<boolean>;
     /** 모듈 화면 안에서 다른 모듈이 슬롯에 넣은 조각을 그린다 (예: launcher.cards, rooms.settings) */
     Slot: ComponentType<{ name: string; seat?: SeatView }>;
-    /** 캐릭터 미리보기. appearance를 빼면 내 지금 외형을 그린다 (런처, 캐릭터 만들기, 꾸미기) */
-    CharacterPreview: ComponentType<{ appearance?: Appearance | null; pose?: 'idle' | 'typing' | 'sleep'; width?: number; height?: number }>;
+    /** 캐릭터 미리보기. appearance를 빼면 내 지금 외형을 그린다 (런처, 캐릭터 만들기, 꾸미기).
+     *  poses는 외형의 자세 그림 대신 그릴 그림이다. 저장하기 전 그림을 올리지 않고 보일 때 쓰고 그림이 바뀌면 새 객체로 넘긴다 */
+    CharacterPreview: ComponentType<{
+      appearance?: Appearance | null; poses?: Partial<Record<'idle' | 'typing' | 'sleep', PoseImage>>; pose?: 'idle' | 'typing' | 'sleep'; width?: number; height?: number;
+    }>;
     /** 다른 사람 좌석을 몇 초 안에 누르게 해서 고른다. ESC, 취소, 시간이 지나면 null. 고를 사람이 없으면 바로 null */
     pickTarget(opts?: { timeoutMs?: number }): Promise<{ uid: string; key: string; name: string } | null>;
   };

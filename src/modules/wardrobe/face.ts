@@ -1,8 +1,8 @@
 // 얼굴 그림판 상태와 자세 그림 굽기 (AVT-03, AVT-04). 캐릭터 만들기 창이 열려 있는 동안만 쓴다
 import type { Ctx } from '@core/types';
 import type { Appearance } from '@shared/schemas';
-import { BODIES, faceRect, posePng } from './bodies';
-import { FACE_SIZE, faceOf, faceView, mirror, POSE_IDS, pushOp, redoOp, undoOp, withFace, type History, type Pt, type Rect } from './logic';
+import { BODIES, faceRect, poseCanvas, posePng } from './bodies';
+import { FACE_SIZE, faceOf, faceView, mirror, POSE_IDS, pushOp, redoOp, undoOp, withFace, type History, type PoseId, type Pt, type Rect } from './logic';
 
 export type Op =
   | { t: 'line'; color: string; size: number; erase: boolean; sym: boolean; pts: Pt[] }
@@ -157,6 +157,14 @@ export function faceEdit(ctx: Ctx, a: Appearance) {
 export type FaceEdit = ReturnType<typeof faceEdit>;
 
 const png = async (c: OffscreenCanvas) => new Uint8Array(await (await c.convertToBlob({ type: 'image/png' })).arrayBuffer());
+
+/** 저장하면 bakeFace가 구울 자세 그림을 올리지 않고 바로 그린다. 미리보기가 저장하기 전 얼굴을 보이게 한다.
+ *  고치지 않았으면 저장한 그림 그대로라 없다 */
+export function facePoses(a: Appearance, e: FaceEdit): Partial<Record<PoseId, OffscreenCanvas>> | undefined {
+  if (!e.touched) return undefined;
+  const f = faceOf(a);
+  return Object.fromEntries(POSE_IDS.filter((p) => f.use[p]).map((p) => [p, poseCanvas(a.body, p, f.color, (p === 'sleep' ? e.closed : e.open).layer)]));
+}
 
 /** 얼굴 그리기를 쓰는 자세의 그림을 굽고 올려 poses에 넣고 고칠 수 있는 편집 데이터를 bodyExt.face에 남긴다 */
 export async function bakeFace(ctx: Ctx, a: Appearance, e: FaceEdit): Promise<Appearance> {

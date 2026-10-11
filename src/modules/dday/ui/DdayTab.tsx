@@ -18,6 +18,8 @@ export default function DdayTab({ ctx, owner, mine }: HomeTabProps & { ctx: Ctx 
   const [form, setFormState] = useState<Form>(null);
   // 색 코드 칸에 적는 중인 글. null이면 고른 색을 그대로 보인다
   const [code, setCode] = useState<string | null>(null);
+  // 쓰는 동안 추가와 저장을 꺼서 두 번 눌러도 카드가 하나만 생긴다
+  const [busy, setBusy] = useState(false);
   const setForm = (f: Form) => {
     setFormState(f);
     setCode(null);
@@ -31,11 +33,13 @@ export default function DdayTab({ ctx, owner, mine }: HomeTabProps & { ctx: Ctx 
   // 끊긴 동안에는 쓰지 않고 양식을 그대로 둔다 (0033 오프라인 쓰기 정책)
   const put = (id: string, card: Card | null) => {
     if (!ctx.connection.online()) return ctx.ui.toast(OFFLINE);
+    setBusy(true);
     void ctx.server
       .user()
       .update('', cardWrites(id, card))
       .then(() => setForm(null))
-      .catch((e: Error) => ctx.ui.toast(e.message));
+      .catch((e: Error) => ctx.ui.toast(e.message))
+      .finally(() => setBusy(false));
   };
   // 지운 카드는 되돌릴 수 없어서 한 번 더 묻는다
   const remove = (id: string) =>
@@ -131,7 +135,7 @@ export default function DdayTab({ ctx, owner, mine }: HomeTabProps & { ctx: Ctx 
             {form.id && <button onClick={() => remove(form.id!)}>지우기</button>}
             <span className={css.grow} />
             <button onClick={() => setForm(null)}>취소</button>
-            <button type="submit" onClick={submit}>{form.id ? '저장' : '추가'}</button>
+            <button type="submit" disabled={busy} onClick={submit}>{form.id ? '저장' : '추가'}</button>
           </p>
         </fieldset>
       )}

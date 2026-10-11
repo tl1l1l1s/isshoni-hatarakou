@@ -10,6 +10,7 @@
 - `wardrobe-pose`는 자세 그림 넣기에서 크기 안내(320x400px)가 보이고 얼굴 그림을 쓰는 자세 카드에는 `지금은 얼굴 그림을 써요`가, 그림을 넣은 카드에는 `얼굴 그림으로` 단추가 보이는 것이다. 캐릭터 단계에서는 위쪽 큰 미리보기가 없다 (AVT-04).
 - `wardrobe-pen-eraser`는 펜 뒤쪽 지우개(button 5)로 그림판을 문지르면 `지우개`를 누르지 않아도 지워지는 것이다. 꾸미기 그림판도 같다.
 - `wardrobe-desk`는 `책상` 단계에서 기본 책상을 고르는 것이다 (AVT-01).
+- `wardrobe-preview`는 `책상` 단계와 이전 모습 화면의 위쪽 큰 미리보기가 저장하지 않은 몸 색과 얼굴을 그대로 그리는 것이다. 미리보기 때문에 그림을 서버에 올리지 않는다 (AVT-03).
 - `wardrobe-trash`는 아래 줄의 `이전 모습 불러오기`로 덮어쓴 옛 모습 목록을 여는 것이다 (ACC-08).
 - `wardrobe-slot`은 런처 슬롯 카드가 한 번도 저장하지 않은 슬롯을 `빈 캐릭터 (2/3)`처럼 보이고 저장한 슬롯은 `캐릭터 (1/3)`처럼 보이는 것이다 (AVT-15).
 - `wardrobe-save`는 저장하면 창이 닫히고 실행 화면에 저장 안내가 뜨는 것이다 (AVT-11).
@@ -46,6 +47,7 @@ Preconditions:
 - **ESC와 떠나기 전 묻기 (wardrobe-esc).** 창에 `w.on('dialog', () => {})`를 먼저 붙인다(Gotchas). 그림 고르기 대화상자를 시험용 PNG로 바꾸고 `w.getByRole('button', { name: '그림 넣기', exact: true })`를 누르면 `찍기`가 보인다. `w.keyboard.press('Escape')`를 실행하면 `찍기`가 사라지고 창은 열려 있으며 묻지 않는다. 한 획을 긋고 `책상` 단계로 옮긴 뒤 ESC를 누르면 `alertdialog "캐릭터를 저장하지 않았어요. 나갈까요?"`와 `나가기`, `계속하기`가 보인다. `계속하기`를 누르거나 묻는 중에 ESC를 누르면 물음만 닫힌다. `캐릭터 2` 슬롯 단추를 누르면 `alertdialog "캐릭터를 저장하지 않았어요. 바꿀까요?"`와 `바꾸기`, `계속하기`가 뜨고 그동안 `캐릭터 1`이 `[pressed]` 그대로다. `바꾸기`를 누르면 캐릭터 2로 바뀐다. 메인에서 `BrowserWindow.getAllWindows().find((x) => x.getTitle() === '캐릭터 만들기')?.close()`를 실행하면(제목 표시줄 ×와 같다) 창이 닫히지 않고 같은 물음이 뜨며 `나가기`를 누르면 닫힌다. 아무것도 바꾸지 않은 창은 ESC 한 번에 닫힌다.
 - **자세 그림 넣기 (wardrobe-pose).** `자세 그림 넣기`를 누르면 `320x400px에 배경이 투명한 PNG가 좋아요.`와 카드 세 장의 `지금은 얼굴 그림을 써요`가 보이고 `얼굴 그림으로` 단추는 없다. 위쪽 큰 미리보기도 없어서 창의 `canvas`는 카드의 세 장뿐이다. 첫 카드의 `그림 넣기`(exact)를 누르면 그 카드만 `얼굴 그림으로` 단추로 바뀐다.
 - **펜 지우개 (wardrobe-pen-eraser).** 하네스는 펜 입력을 만들 수 없다. 창에서 `HTMLCanvasElement.prototype.setPointerCapture`를 빈 함수로 바꾸고 굵은 검정 획 위로 `new PointerEvent('pointerdown', { pointerType: 'pen', button: 5, buttons: 32, clientX, clientY, pointerId: 7, bubbles: true })`와 `pointermove`, `pointerup`을 그림판 canvas에 보낸다. 획 가운데 픽셀이 몸 색으로 돌아오고 `지우개`는 `aria-pressed="false"` 그대로다. 보고에 이 준비를 적는다.
+- **저장 전 미리보기 (wardrobe-preview).** `캐릭터` 단계의 얼굴 그리기에서 `몸 색 하늘`과 붓 색 `파랑`을 누르고 한 획을 그은 뒤 `책상`을 누른다. 위쪽 128x160 미리보기 `canvas`(aria-label 없음)의 픽셀을 `getImageData`로 세면 하늘색(`#dcefff` 안팎) 픽셀과 파란 획 픽셀이 있고 기본 분홍 몸(`#ffe4ec`) 픽셀은 없다. `책상 없음`을 눌러도 같다. 다시 `캐릭터` 단계에서 `몸 색 분홍`을 누르고 `책상`으로 오면 분홍 몸에 파란 획이 보인다.
 - **책상 고르기.** `await w.getByRole('button', { name: '책상', exact: true }).click()`과 `await w.getByRole('button', { name: /나무 책상/ }).click()`을 실행한다. `button "나무 책상" [pressed]`가 되고 `책상 그림도 320x400px로 맞추고 책상을 아래쪽에 두어 주세요.`가 보인다.
 - **이전 모습 (wardrobe-trash).** `이전 모습 불러오기`를 누르면 새 세션에서는 `남아 있는 이전 모습이 없어요.`가 보이고 단계 줄에 눌린 단추가 없다. `캐릭터`나 `책상`을 누르면 그 단계로 돌아간다.
 - **저장.** `await w.getByRole('button', { name: '저장', exact: true }).click()`을 실행한다. 실행 화면에 `캐릭터를 저장했어요.`가 보이고 묻지 않고 창이 닫힌다. 런처에서 연 창이면 같은 알림이 런처 창 위쪽에 뜬다. `await expect.poll(() => w.isClosed()).toBe(true)`로 확인한다.

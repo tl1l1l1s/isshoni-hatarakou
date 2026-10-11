@@ -44,7 +44,9 @@ export function OwnerSection({ ctx }: SlotProps) {
           ))}
         </select>
       </label>
-      <p className={css.muted}>바꿔도 지금까지 모은 뽑기와 진행률은 그대로예요. 새 기준은 앞으로 쌓이는 시간부터 써요.</p>
+      {/* 넓은 글꼴에서도 문장마다 한 줄이 되게 두 줄로 나눈다 */}
+      <p className={css.muted}>바꿔도 모은 뽑기와 진행률은 그대로예요.</p>
+      <p className={css.muted}>새 기준은 앞으로 쌓이는 시간부터 써요.</p>
       <label>
         방을 지울 때 뽑은 아이템
         <select value={v.cfg.onRemove} onChange={(e) => run(setCfg(ctx, { onRemove: e.target.value as 'keep' | 'revoke' }))}>

@@ -54,7 +54,7 @@ export default function MePage({ ctx, windowId }: SlotProps) {
             {level !== undefined && <span className={css.lv}>{level}</span>}
             <button className={css.small} onClick={startEdit}>수정</button>
           </div>
-          <div className={css.line}>
+          <div className={`${css.line} ${css.wrap}`}>
             {code ? (
               <>
                 <span className={css.hint}>친구 코드 {code}</span>
@@ -73,7 +73,7 @@ export default function MePage({ ctx, windowId }: SlotProps) {
               <small>{rank.of}명 중</small>
             </>
           ) : (
-            <small>친구를 등록하면 보여요</small>
+            <small>친구가 생기면 보여요.</small>
           )}
         </div>
       </div>

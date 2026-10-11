@@ -128,7 +128,7 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
     return () => doc.removeEventListener('visibilitychange', onVis);
   }, [ctx]);
 
-  // 마이홈 배경음악이나 촬영 음악이 재생 상태를 끄면(SoundApi.pause) 플레이어도 멈춘다
+  // 마이홈 배경음악이나 촬영 음악이 틀기 시작해 재생 상태를 끄면(SoundApi.claim) 플레이어도 멈춘다
   useEffect(() => {
     if (!playing) send('pauseVideo');
   }, [playing]);
