@@ -8,10 +8,8 @@ import {
 } from '../logic';
 import { friends, openFriend, play, player, savePlaylist, setPlayer, surf, usePlayer, WINDOW, type Friend, type Guest } from '../state';
 import css from './sound.module.css';
+import { command, embedSrc, useYouTube } from './youtube';
 
-// embed 주소에 origin을 붙이지 않으면 플레이어가 app:// 창에서 온 명령을 무시한다
-const YT = 'https://www.youtube-nocookie.com';
-type YtMsg = { event?: string; info?: unknown };
 const titleOf = (info: unknown) => (info as { videoData?: { title?: unknown } } | null)?.videoData?.title;
 /** 제목은 처음 재생할 때 플레이어가 알려 준다. 그 전에는 영상 id로 줄을 나눠 보인다 */
 const trackName = (t: { v: string; title: string }) => t.title || `제목 없는 곡 (${t.v})`;
@@ -37,6 +35,8 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
   const quiet = useSyncExternalStore(ctx.mode.on, () => ctx.mode.get() === 'quiet');
   const frame = useRef<HTMLIFrameElement>(null);
   const root = useRef<HTMLDivElement>(null);
+  // 연달아 재생하지 못한 곡 수 (목록 반복이 모두 막힌 곡에서 끝없이 돌지 않게 센다)
+  const fails = useRef(0);
 
   const presets = guest ? guest.shared.presets : list.presets;
   const at = guest ? guest.preset : list.cur;
@@ -55,8 +55,7 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
     savePlaylist(ctx, next);
   };
   const saveTracks = (next: Track[]) => save({ presets: list.presets.map((p, i) => (i === list.cur ? { ...p, tracks: next } : p)) });
-  const send = (func: string, args: unknown[] = []) =>
-    frame.current?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func, args }), YT);
+  const send = (func: string, args: unknown[] = []) => command(frame, func, args);
   const playAt = (i: number | null) => {
     setError(null);
     play(ctx, (i === null ? undefined : tracks[i]) ?? null);
@@ -122,22 +121,39 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
     if (!doc) return;
     const onVis = () => {
       if (doc.visibilityState !== 'hidden' || !player(ctx).playing) return;
-      frame.current?.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }), YT);
+      command(frame, 'pauseVideo');
       setPlayer(ctx, { playing: false });
     };
     doc.addEventListener('visibilitychange', onVis);
     return () => doc.removeEventListener('visibilitychange', onVis);
   }, [ctx]);
 
+  // 마이홈 배경음악이나 촬영 음악이 재생 상태를 끄면(SoundApi.pause) 플레이어도 멈춘다
+  useEffect(() => {
+    if (!playing) send('pauseVideo');
+  }, [playing]);
+
+  /** 받은 제목을 그 곡 줄과 재생 중인 곡에 적는다. 늦게 오므로 이 PC에 저장된 지금 목록에 적는다 */
+  const nameTrack = (k: string, title: string) => {
+    const named = title.slice(0, 200);
+    const cur = player(ctx).current;
+    if (cur?.k === k && !cur.title) setPlayer(ctx, { current: { ...cur, title: named } });
+    const now = ctx.local.get<Playlist>('device');
+    if (!now.presets.some((p) => p.tracks.some((t) => t.k === k && !t.title))) return;
+    const next = { ...now, presets: now.presets.map((p) => ({ ...p, tracks: p.tracks.map((t) => (t.k === k ? { ...t, title: named } : t)) })) };
+    setList(next);
+    savePlaylist(ctx, next);
+  };
+
   // 플레이어 이벤트: 준비되면 음량을 맞추고 재생, 곡이 끝나면 다음 곡, 처음 받은 제목은 목록에 적는다
-  const onMsg = useRef<(m: YtMsg) => void>(() => undefined);
-  onMsg.current = (m) => {
+  useYouTube(ctx, frame, `${track?.v}:${load}`, (m) => {
     if (m.event === 'onReady') {
       send('addEventListener', ['onStateChange']);
       send('addEventListener', ['onError']);
       send('setVolume', [s.musicVolume]);
       if (playing) send('playVideo');
     } else if (m.event === 'onStateChange') {
+      if (m.info === 1) fails.current = 0;
       // 목록 밖의 곡(마이홈 배경음악)은 끝나면 멈춘다
       if (m.info === 0 && idx < 0) setPlayer(ctx, { playing: false });
       else if (m.info === 0) go(1, list.repeat);
@@ -145,48 +161,13 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
     } else if (m.event === 'onError') {
       setError(`이 곡은 여기서 재생할 수 없어요 (오류 ${String(m.info)})`);
       setPlayer(ctx, { playing: false });
+      // 목록 안의 곡이면 2초 뒤 다음 곡으로 넘어간다. 연달아 모든 곡이 재생되지 않으면 한 바퀴 돈 뒤 멈춘다
+      const k = track?.k;
+      if (idx >= 0 && ++fails.current < tracks.length) ctx.timers.at(2000, () => player(ctx).current?.k === k && go(1, list.repeat));
     }
     const got = titleOf(m.info);
-    if (track && !track.title && typeof got === 'string' && got) {
-      const named = got.slice(0, 200);
-      setPlayer(ctx, { current: { ...track, title: named } });
-      if (list.presets.some((p) => p.tracks.some((t) => t.k === track.k))) {
-        save({ presets: list.presets.map((p) => ({ ...p, tracks: p.tracks.map((t) => (t.k === track.k ? { ...t, title: named } : t)) })) });
-      }
-    }
-  };
-
-  // iframe이 뜨면 이벤트를 받겠다고 알린다. 첫 응답이 올 때까지 0.5초마다 다시 알린다.
-  // 플레이어는 메시지를 보낸 창으로 답하는데 이 코드는 패널이 아니라 스테이지 창에서 돈다
-  useEffect(() => {
-    const f = frame.current;
-    if (!f) return;
-    const hello = () => f.contentWindow?.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), YT);
-    let stopHello = () => {};
-    const onLoad = () => {
-      stopHello();
-      stopHello = ctx.timers.every(500, hello);
-      hello();
-    };
-    const onMessage = (e: MessageEvent) => {
-      if (e.source !== f.contentWindow || e.origin !== YT || typeof e.data !== 'string') return;
-      stopHello();
-      let m: YtMsg;
-      try {
-        m = JSON.parse(e.data) as YtMsg;
-      } catch {
-        return;
-      }
-      onMsg.current(m);
-    };
-    f.addEventListener('load', onLoad);
-    window.addEventListener('message', onMessage);
-    return () => {
-      stopHello();
-      f.removeEventListener('load', onLoad);
-      window.removeEventListener('message', onMessage);
-    };
-  }, [ctx, track?.v, load]);
+    if (track && !track.title && typeof got === 'string' && got) nameTrack(track.k, got);
+  });
 
   useEffect(() => void send('setVolume', [s.musicVolume]), [s.musicVolume]);
 
@@ -194,9 +175,18 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
     e.preventDefault();
     const v = youTubeId(link);
     if (!v) return setError('유튜브 영상 링크를 넣어 주세요');
-    saveTracks([...tracks, { k: ctx.clock.now().toString(36), v, title: '' }]);
+    const k = ctx.clock.now().toString(36);
+    saveTracks([...tracks, { k, v, title: '' }]);
     setLink('');
     setError(null);
+    // 제목은 유튜브 oEmbed에서 받아 적는다. 받지 못하면(끊김, 비공개 영상) 처음 재생할 때 플레이어가 알려 준다
+    void ctx.net.get(`https://www.youtube.com/oembed?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${v}`)}&format=json`).then(
+      (r) => {
+        const t = (r.json as { title?: unknown } | null)?.title;
+        if (typeof t === 'string' && t) nameTrack(k, t);
+      },
+      () => undefined,
+    );
   };
   const move = (i: number, d: -1 | 1) => {
     const j = i + d;
@@ -213,7 +203,7 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
           key={`${track.v}:${load}`}
           ref={frame}
           className={css.video}
-          src={`${YT}/embed/${track.v}?enablejsapi=1&playsinline=1&rel=0&origin=${encodeURIComponent(location.origin)}`}
+          src={embedSrc(track.v)}
           title={track.title || '유튜브 플레이어'}
           allow="autoplay; encrypted-media"
         />
@@ -344,12 +334,15 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
         )}
         {!guest && naming === null && <button aria-label="프리셋 이름 바꾸기" onClick={() => setNaming(list.presets[list.cur]!.name)}>이름 바꾸기</button>}
       </div>
-      {/* 파도타기 잠금 (SND-06). 잠가도 친구가 나를 골라 듣는 것은 막지 않는다 */}
+      {/* 파도타기 잠금 (SND-06). 잠가도 친구가 나를 골라 듣는 것은 막지 않는다. 파도타기와 마이홈 공개는 툴팁 대신 글로 풀어 둔다 */}
       {!guest && (
-        <label className={css.share}>
-          친구의 🌊 파도타기에 내 플리 넣기
-          <input type="checkbox" checked={!list.locked} onChange={(e) => save({ locked: !e.target.checked })} />
-        </label>
+        <>
+          <label className={css.share}>
+            친구의 🌊 파도타기에 내 플리 넣기
+            <input type="checkbox" checked={!list.locked} onChange={(e) => save({ locked: !e.target.checked })} />
+          </label>
+          <p className={css.hint}>🌊 파도타기는 친구 플리를 아무거나 틀어요. 마이홈 공개를 켜 두면 내 플리를 듣는 친구가 내 사진을 눌러 마이홈에 와요.</p>
+        </>
       )}
     </>
   );
@@ -366,12 +359,15 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
 
       {picking ? (
         <div className={css.pick}>
-          <p className={css.hint}>{picking.length ? '누구의 플리를 들을까요?' : '친구로 등록한 사람이 없어요.'}</p>
+          {/* 닫기는 첫 줄에 두어 친구가 많거나 이름이 길어도 스크롤 없이 보인다 */}
+          <div className={css.pickHead}>
+            <p className={css.hint}>{picking.length ? '누구의 플리를 들을까요?' : '친구로 등록한 사람이 없어요.'}</p>
+            <button onClick={() => setPicking(null)}>닫기</button>
+          </div>
           {picking.length > 0 && <button onClick={surfNow}>아무 친구나</button>}
           {picking.map((f) => (
             <button key={f.uid} onClick={() => open(openFriend(ctx, f))}>{f.name}</button>
           ))}
-          <button onClick={() => setPicking(null)}>닫기</button>
         </div>
       ) : (
         <ol className={css.list}>
@@ -423,7 +419,7 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
   );
 
   return (
-    <div ref={root}>
+    <div ref={root} className={css.root}>
       {!mini && head}
       {top}
       {error && <p className={css.error}>{error}</p>}

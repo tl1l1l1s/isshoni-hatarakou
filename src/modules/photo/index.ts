@@ -11,6 +11,8 @@ export default defineModule({
   title: '스티커 사진',
   version: '0.2.0',
   specIds: ['COM-15'],
+  // 촬영 음악을 틀 때 플레이리스트를 멈춘다
+  optionalRequires: ['sound'],
   // 촬영 세션은 사진 창이 열려 있는 동안만 구독한다. 자세는 바뀔 때만 초당 10번까지 보낸다
   server: {
     version: 1,

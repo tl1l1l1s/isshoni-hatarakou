@@ -1,5 +1,6 @@
 // 촬영 배경음악 (COM-15). 소리 파일 없이 WebAudio로 4초짜리 짧은 곡을 되풀이한다
 import type { Ctx, Dispose } from '@core/types';
+import type {} from '@modules/sound/api';
 
 const STEP = 0.25;
 /** 8분음표마다 멜로디 (MIDI 번호, 0은 쉼) */
@@ -10,8 +11,9 @@ const LEVEL = 0.12;
 
 const hz = (midi: number) => 440 * 2 ** ((midi - 69) / 12);
 
-/** 재생을 시작하고 멈추는 함수를 돌려준다. 1초 앞까지 음을 미리 걸어 둔다 */
+/** 재생을 시작하고 멈추는 함수를 돌려준다. 1초 앞까지 음을 미리 걸어 둔다. 플레이리스트와 겹치지 않게 플레이리스트는 멈춘다 */
 export function playMusic(ctx: Ctx): Dispose {
+  ctx.modules.get('sound')?.pause();
   let ac: AudioContext;
   try {
     ac = new AudioContext();
