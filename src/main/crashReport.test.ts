@@ -33,6 +33,12 @@ describe('recordText와 discordBody', () => {
   it('스택이 없으면 메시지를 쓴다', () => {
     expect(recordText(input({ stack: '' }))).toContain('터졌어요\n둘째 줄\n최근 로그');
   });
+  it('한도 때문에 생략한 보고 수가 있으면 셋째 줄에 넣는다 (OPS-8)', () => {
+    const skipped = '그동안 생략한 보고 main.rejection x2';
+    expect(recordText(input({ skipped })).split('\n')[2]).toBe(skipped);
+    expect(discordBody(input({ skipped })).content).toContain(skipped);
+    expect(recordText(input({ skipped: '' })).split('\n')[2]).not.toContain('생략');
+  });
   it('디스코드 본문은 마지막 10줄을 코드 블록에 넣고 1900자를 넘지 않으며 멘션을 끈다', () => {
     const log = Array.from({ length: 50 }, (_, i) => `줄 ${i} ${'가'.repeat(150)}`);
     const b = discordBody(input({ log, stack: Array.from({ length: 30 }, (_, i) => `    at f${i}`).join('\n') }));

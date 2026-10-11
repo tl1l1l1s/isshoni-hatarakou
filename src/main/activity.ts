@@ -1,10 +1,13 @@
 // 500ms 활동 샘플 (10.8.1). 창 제목은 읽지 않는다
 import { ACTIVITY_SAMPLE_MS } from '@shared/constants';
 import type { ActivitySample } from '@shared/schemas';
-import type { ActiveWindow, Platform } from './platform/ports';
+import type { ActiveWindow, Foreground, Platform } from './platform/ports';
 
-export async function buildSample(p: Platform, now = Date.now()): Promise<ActivitySample> {
-  const { appKey, unknownReason } = await p.activeWindow.foreground();
+/** onWindow는 앞 창 결과를 그대로 받는다 (전체 화면 앱 확인). 렌더러에는 앱 키만 보낸다 */
+export async function buildSample(p: Platform, now = Date.now(), onWindow: (w: Foreground) => void = () => {}): Promise<ActivitySample> {
+  const w = await p.activeWindow.foreground();
+  onWindow(w);
+  const { appKey, unknownReason } = w;
   return { at: now, appKey, idleSec: p.idleSeconds(), pen: appKey !== null && p.penApps.isPen(appKey), unknownReason };
 }
 
@@ -25,12 +28,12 @@ export function lessForeground(a: ActiveWindow, idleSeconds: () => number, minMs
 }
 
 /** 앞 호출이 아직 끝나지 않았으면 그 틱은 건너뛴다 */
-export function startActivity(p: Platform, send: (s: ActivitySample) => void): () => void {
+export function startActivity(p: Platform, send: (s: ActivitySample) => void, onWindow?: (w: Foreground) => void): () => void {
   let busy = false;
   const t = setInterval(() => {
     if (busy) return;
     busy = true;
-    void buildSample(p)
+    void buildSample(p, Date.now(), onWindow)
       .then(send)
       .finally(() => (busy = false));
   }, ACTIVITY_SAMPLE_MS);

@@ -15,6 +15,10 @@
 - `conflict`는 두 PC에서 다르게 바꾼 캐릭터를 캐릭터 맞추기 창에서 고르고 고르지 않은 쪽이 이전 모습에 남는 것이다 (ACC-13, NFR-17).
 - `event`는 서버 조정값의 기간 값이 기간 안에서만 레벨 보상 표에 보이는 것이다 (OPS-12).
 - `auto-report`는 처리하지 않은 오류, 렌더러 충돌, 지난 실행의 비정상 종료를 메인이 디스코드 웹훅과 버그 제보 기록으로 보내고 같은 오류는 한 번만 보내며 설정 일반 탭의 체크 상자로 끄는 것이다 (NFR-21, OPS-03).
+- `auto-report-more`는 켜지지 못한 부팅, 모듈의 이벤트 처리 오류와 정리 오류도 자동 오류 보고가 되고 한도로 보내지 않은 보고는 종류마다 세어 다음 보고 셋째 줄과 진단 요약에 남는 것이다 (NFR-21).
+- `state-log`는 메인 로그에 켜고 끈 것, 부팅 결과와 꺼진 모듈, 서버 연결, 방에 들어가고 나온 것, 패널을 연 것이 한 줄씩 남고 진단 요약에 프로세스별 메모리와 CPU 시간이 있는 것이다 (NFR-21).
+- `device-version`은 앱이 켤 때 이 기기의 앱 버전, 방 프로토콜, 업데이트 상태를 본인만 읽는 자리에 남기고 선물하는 사람이 `node scripts/ops.ts versions`로 보는 것이다 (NFR-21, ROM-10).
+- `data-files`는 모양이 다른 설정 파일은 `.bak`으로 옮기고 처음 값으로 켜지고 검사에 실패한 모듈 파일은 짧은 알림으로 알리며 새 버전 앱이 쓴 모듈 파일은 덮지 않고 저장하지 않는다고 알리는 것이다 (NFR-16).
 
 ## How to get to it (user POV)
 
@@ -59,6 +63,11 @@ Preconditions:
 - **보조 프로세스와 응답 없음.** 새 세션에서 준비 뒤 메인에서 `app.emit('child-process-gone', {}, { type: 'GPU', reason: 'crashed', exitCode: 5 })`를 내면 POST 본문이 `[자동 오류 보고] child-process-gone: GPU 프로세스가 끝났습니다 (crashed, exit 5)`로 시작하고 기록이 생긴다. 이어서 `BrowserWindow.getAllWindows()[0].emit('unresponsive')`를 내면 로그에 `보고 생략 unresponsive`와 `stage recreate: unresponsive`가 남고 런처가 다시 뜬다.
 - **끄기.** 새 세션에서 웹훅 주소를 넣고 `오류가 나면 자동으로 알리기`를 끈다. `device/crash.json`의 `config.enabled`가 false다. `ErrorEvent`를 내면 로그에 `[renderer] renderer.error: 꺼짐 시험`은 남지만 POST가 없고 `crash.pending`이 `[]`이며 기록도 없고 `보고 생략`도 없다. 다시 켜고 다른 메시지로 내면 POST와 기록이 생긴다.
 - **비정상 종료.** 세션 안에서 `window.bridge.invoke('log.write', { level: 'info', scope: 'verify', message: '지난 실행 표시줄' })`을 쓰고 데이터 폴더에 `running` 파일이 있는 것을 본 뒤 데이터 폴더를 통째로 복사해 둔다. 복사본의 `device/crash.json`을 `{ day: '', count: 0, config: { hook: '', enabled: true }, pending: [] }`로 바꾸고 `verify()` 대신 `_electron.launch`로 `--user-data-dir=<복사본>`을 주어 켠다. 런처가 뜬 뒤 `mod/report/u/<uid>/r`에 `[자동 오류 보고] abnormal-exit: 지난 실행이 비정상으로 끝났습니다`로 시작하고 `최근 로그` 아래 `[verify] 지난 실행 표시줄`이 든 기록이 하나 있다. `app.close()`로 끝내면 복사본의 `running`이 사라진다.
+- **이벤트 처리 오류.** 스테이지에서 `core.bus.on('qa.ops', () => { throw new Error('이벤트 처리 오류'); })`와 `core.bus.emit('qa.ops', {})`를 실행한다. 메인 로그에 `[renderer] renderer.event: qa.ops: 이벤트 처리 오류`가 남고 `mod/report/u/<uid>/r`에 `[자동 오류 보고] renderer.event: qa.ops: 이벤트 처리 오류` 기록이 생긴다. `errors.json`에는 남지 않는다.
+- **생략한 보고 수.** 위 보고 뒤 5분 안에 `bridge.invoke('crash.report', { type: 'qa.second', message: '두 번째 오류', stack: '' })`를 부르면 `device/crash.json`의 `skipped`가 `{ "qa.second": 1 }`이다. `bridge.invoke('diag.write', { lines: [] })` 뒤 `logs/diagnose.txt`에 `그동안 생략한 보고 qa.second x1`과 `프로세스 Browser 메모리 ...MB CPU ...초` 줄이 있다.
+- **상태 로그와 기기 버전.** 시작하기, 방 `devdev` 참여, 설정 창 열기 뒤 메인 로그에 `켬 v`, `[core] 시작 memory`, `[room] 들어감 DEVDEV`, `[win] panel:launcher.main`, `[win] panel:core.settings`가 있다. `devHub.read('users/<uid>/private/devices/<deviceId>')`가 `{ ver: '0.1.0', proto: 1, upd: '꺼짐', at: 숫자 }`다(uid와 deviceId는 `core.deps`).
+- **데이터 파일.** 옛 렌더러가 다시 읽기 전에 저장하는 값이 준비한 파일을 덮지 않도록 메인의 `ipcMain._invokeHandlers`에서 `core:store.write` 처리기를 잠시 빈 함수로 바꾼다. `settings.json`에 `{}`, `accounts/<uid>/settings.json`에 `{"schemaVersion":1,"modules":null}`, `accounts/<uid>/modules/rooms.json`에 `{"v":1,"data":{"lastRoom":5}}`, `device/modules/sound.json`에 `{"v":3,"data":{}}`를 메인 `fs`로 쓰고 `s.stage.reload()`한다. 부팅 중 `core.toasts`에 `워킹룸 데이터를 읽지 못해 처음 상태로 시작해요.`와 `소리 데이터는 새 버전 앱이 저장한 거라 읽지 못했어요. 업데이트할 때까지 바꾼 내용은 저장하지 않아요.`가 있고 검사 오류 글은 없다. 처리기를 되돌린다. 모든 모듈이 켜지고 `settings.json.bak`과 `accounts/<uid>/settings.json.bak`이 있으며 메인 로그에 `[rooms] local account:`와 검사 오류가 있다. `core.ctxs.get('sound').ctx.local.update('device', (d) => d)`와 `core.flush()` 뒤에도 `sound.json`은 처음 쓴 값 그대로다.
+- **부팅 실패.** 세션 마지막에 메인에서 `ipcMain.removeHandler('core:app.info')`와 던지는 처리기를 넣고 `s.stage.reload()`한다. 실행 화면에 `시작하지 못했습니다.`가 보이고 메인 로그에 `[renderer] renderer.boot:`가 남으며 `device/crash.json`의 `pending`에 `renderer.boot` 보고가 있다(report 모듈이 켜지지 않아 서버로 옮기지 않는다). 이 시험이 낸 오류는 `errors.json`에 남으므로 그 메시지만 빼고 본다.
 - **증거.** 각 단계 뒤 창과 실행 화면을 `s.shot`으로 남기고 `errors.json`이 `[]`인지 본다. 자동 오류 보고의 진짜 예외 단계만 위에 적은 메시지가 `errors.json`에 남는다.
 
 ## Gotchas

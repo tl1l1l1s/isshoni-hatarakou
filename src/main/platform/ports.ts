@@ -1,11 +1,13 @@
 // OS마다 동작이 다른 곳만 adapter로 둔다 (10.8.1). 유휴 시간과 커서 위치는 Electron이 같은 API로 주지만
 // 시험에서 바꿀 수 있도록 FakePlatform이 함께 가짜를 준다.
-import type { BrowserWindow, BrowserWindowConstructorOptions, Point } from 'electron';
+import type { BrowserWindow, BrowserWindowConstructorOptions, Point, Rectangle } from 'electron';
 import type { AppKey } from '@shared/appkey';
 
+/** 앞에 있는 앱. 창 제목은 읽지도 돌려주지도 않는다. bounds는 앞 창의 화면 영역(DIP)이고 전체 화면 앱을 알아볼 때만 쓴다 */
+export interface Foreground { appKey: AppKey | null; unknownReason: string | null; bounds?: Rectangle }
+
 export interface ActiveWindow {
-  /** 앞에 있는 앱. 창 제목은 읽지도 돌려주지도 않는다 */
-  foreground(): Promise<{ appKey: AppKey | null; unknownReason: string | null }>;
+  foreground(): Promise<Foreground>;
 }
 
 export interface PenApps {

@@ -11,6 +11,11 @@ import { logDir } from './log';
 import { postJson } from './net';
 import type { Store } from './store';
 
+const PERF_MS = 30 * 60_000;
+/** 오래 켜 둔 앱의 자원 경고 기준. NFR-10 목표(깨어 있을 때 CPU 5%, 메모리 400MB)보다 넉넉하다 */
+const PERF_RENDERER_MB = 500;
+const PERF_CPU = 20;
+
 const FILE = 'device/crash.json';
 /** 켜 있는 동안 데이터 폴더에 두는 표시. 정상 종료가 지우므로 켤 때 남아 있으면 지난 실행이 비정상으로 끝난 것이다 */
 const MARKER = 'running';
@@ -22,6 +27,8 @@ const Saved = z.object({
   count: z.number().default(0),
   config: z.object({ hook: z.string(), enabled: z.boolean() }).default({ hook: '', enabled: true }),
   pending: z.array(z.object({ id: z.string(), text: z.string() })).default([]),
+  /** 한도 때문에 보내지 않은 보고 수 (종류마다). 다음에 보내는 보고에 붙이고 비운다 */
+  skipped: z.record(z.string(), z.number()).default({}),
 });
 type Saved = z.infer<typeof Saved>;
 type Config = Saved['config'];
@@ -54,7 +61,11 @@ function readLogTail(): string[] {
 export function report(type: string, message: string, stack = '', lines?: string[]): void {
   if (!ready) return void queue.push([type, message, stack, lines]);
   if (!saved.config.enabled) return;
-  if (!limiter.allow(signature(type, message))) return void log.info(`[crash] 보고 생략 ${type}`);
+  if (!limiter.allow(signature(type, message))) {
+    saved.skipped[type] = (saved.skipped[type] ?? 0) + 1;
+    persist();
+    return void log.info(`[crash] 보고 생략 ${type}`);
+  }
   const input = {
     type,
     message: sanitize(message),
@@ -63,7 +74,9 @@ export function report(type: string, message: string, stack = '', lines?: string
     os: `${process.platform} ${release()}`,
     minutes: Math.round((Date.now() - launchedAt) / 60_000),
     log: (lines ?? readLogTail()).map(sanitize),
+    skipped: skippedLine(),
   };
+  saved.skipped = {};
   saved.pending.push({ id: `${Date.now().toString(36)}-${++seq}`, text: recordText(input) });
   if (saved.pending.length > PENDING_MAX) saved.pending.splice(0, saved.pending.length - PENDING_MAX);
   persist();
@@ -118,6 +131,24 @@ export function endRun(): void {
 export function crashReady(): void {
   ready = true;
   for (const q of queue.splice(0)) report(...q);
+  watchPerf();
+}
+
+/** 30분마다 프로세스별 메모리와 그동안의 평균 CPU(코어 하나 기준)를 로그에 남기고 기준을 넘으면 보고한다 (OPS-8, NFR-10).
+ *  보고 첫 줄이 같아 한 실행에 한 번만 간다 */
+function watchPerf(): void {
+  const cpuOf = (ms: Electron.ProcessMetric[]) => new Map(ms.map((m) => [m.pid, m.cpu.cumulativeCPUUsage ?? 0]));
+  let last = cpuOf(app.getAppMetrics());
+  let lastAt = Date.now();
+  setInterval(() => {
+    const ms = app.getAppMetrics();
+    const cpu = (ms.reduce((a, m) => a + (m.cpu.cumulativeCPUUsage ?? 0) - (last.get(m.pid) ?? 0), 0) / ((Date.now() - lastAt) / 1000)) * 100;
+    [last, lastAt] = [cpuOf(ms), Date.now()];
+    const mb = (m: Electron.ProcessMetric) => Math.round(m.memory.workingSetSize / 1024);
+    const renderer = Math.max(0, ...ms.filter((m) => m.type === 'Tab').map(mb));
+    log.info(`[perf] CPU ${cpu.toFixed(1)}%, ${ms.map((m) => `${m.type} ${mb(m)}MB`).join(', ')}`);
+    if (renderer > PERF_RENDERER_MB || cpu > PERF_CPU) report('perf', `자원을 많이 씁니다\n렌더러 ${renderer}MB, 30분 평균 CPU ${cpu.toFixed(1)}%`);
+  }, PERF_MS);
 }
 
 /** 렌더러가 알려 준 웹훅 주소와 켜짐. 끄면 들고 있던 보고도 버린다 */
@@ -128,6 +159,12 @@ export function setCrashConfig(c: Config): void {
 }
 
 export const pendingReports = () => saved.pending.map((p) => ({ ...p }));
+
+/** 아직 보내지 않은 생략 수. 없으면 빈 글 */
+export function skippedLine(): string {
+  const all = Object.entries(saved.skipped);
+  return all.length ? `그동안 생략한 보고 ${all.map(([t, n]) => `${t} x${n}`).join(', ')}` : '';
+}
 
 export function ackReports(ids: string[]): void {
   saved.pending = saved.pending.filter((p) => !ids.includes(p.id));

@@ -26,6 +26,12 @@ const MENU_ITEM_H = 32;
 const MENU_HR_H = 9;
 // 이름표나 상태칩 줄을 이만큼 넘게 끌어야 스테이지를 옮긴다. 그 안에서 떼면 누른 것이다
 const DRAG_PX = 6;
+// 캐릭터 몸은 흔들기와 나누려고 더 멀리 끌어야 옮긴다. 방향을 바꾼 적 없이 세로로 더 많이 움직였거나 이 시간이 지나면 끌기다.
+// ponytail: 고정 값, 끌기와 흔들기가 서로 잘못 잡히면 이 두 값만 고친다
+const BODY_DRAG_PX = 12;
+const BODY_DRAG_MS = 200;
+// 작은 화면에서도 ▼ 메뉴가 이만큼은 보이게 좌석 배율을 줄인다
+const MENU_MIN_ROWS = 5;
 // 메뉴를 닫았을 때 좌석 위에 남겨 두는 높이
 const MENU_CLOSED_H = 40;
 const BUBBLE_H = 32;
@@ -98,7 +104,8 @@ export function Stage({ core }: { core: CoreRuntime }) {
     return { scale, seatSize, benchStep, left, deskOf, stageW, closedH };
   };
   let m = measure(wanted);
-  const fit = fitScale(wanted, { width: m.stageW, height: m.closedH }, { width: 16, height: MENU_CLOSED_H + extra }, area);
+  const menuMin = MENU_MIN_ROWS * MENU_ITEM_H + 28 - MENU_CLOSED_H;
+  const fit = fitScale(wanted, { width: m.stageW, height: m.closedH }, { width: 16, height: MENU_CLOSED_H + extra }, area && { width: area.width, height: area.height - menuMin });
   if (fit < wanted) m = measure(fit);
   const { scale, seatSize, benchStep, left, deskOf, stageW, closedH } = m;
   // ▼ 메뉴는 항목과 설정에 묶음 사이 구분선, 다른 사용자 메뉴는 이름 줄과 항목(없으면 안내 한 줄).
@@ -387,10 +394,24 @@ function Rider(props: SeatProps & { head: Point }) {
   );
 }
 
-/** 말풍선과 클릭 영역. 대상을 고르는 중이면 다른 사람 좌석을 강조하고 누르면 고른다 */
+/** 말풍선과 클릭 영역. 대상을 고르는 중이면 다른 사람 좌석을 강조하고 누르면 고른다.
+ *  몸을 끌면 이름표처럼 스테이지를 옮긴다. 끌기로 본 뒤에는 흔들기를 세지 않고 짧게 누른 것으로도 보지 않는다 */
 function Body({ core, seat, scale, showBubble, onToggle, onAct, actLabel, onShake, onPick, hit, anchors }: SeatProps & { hit: Rect; anchors: { bubble: Point } }) {
   const bubble = core.bubbleOf(seat);
-  const press = useRef<Shake | null>(null);
+  const press = useRef<(Shake & { at: number; dragging: boolean }) | null>(null);
+  const drag = useDrag(
+    core,
+    () => {
+      if (onPick) onPick();
+      else if (!press.current?.moved) onAct();
+    },
+    (dx, dy, t) => {
+      const p = press.current;
+      if (!p || onPick || p.turns.length || Math.hypot(dx, dy) < BODY_DRAG_PX || (Math.abs(dy) < Math.abs(dx) && t - p.at < BODY_DRAG_MS)) return false;
+      p.moved = p.dragging = true;
+      return true;
+    },
+  );
   const name = seat.name || '이름 없음';
   const who = seat.self && !seat.local ? '내 캐릭터' : name;
   return (
@@ -406,15 +427,19 @@ function Body({ core, seat, scale, showBubble, onToggle, onAct, actLabel, onShak
         aria-label={onPick ? `${name} 고르기` : actLabel ? `${who} ${actLabel}` : who}
         className={onPick ? `${css.hit} ${css.pick}` : css.hit}
         style={{ left: hit.x, top: hit.y, width: hit.width, height: hit.height }}
-        onPointerDown={(e) => void (press.current = e.button === 0 ? startShake(e.clientX) : null)}
-        // 클릭 통과 창은 캐릭터 밖의 포인터를 받지 못해서 흔들기는 캐릭터 위에서만 센다
+        onPointerDown={(e) => {
+          press.current = e.button === 0 ? { ...startShake(e.clientX), at: e.timeStamp, dragging: false } : null;
+          drag.onPointerDown(e);
+        }}
         onPointerMove={(e) => {
-          if (press.current && e.buttons & 1 && shakeMove(press.current, e.clientX, e.timeStamp)) onShake?.();
+          const p = press.current;
+          if (p && !p.dragging && e.buttons & 1 && shakeMove(p, e.clientX, e.timeStamp)) onShake?.();
+          drag.onPointerMove(e);
         }}
-        onClick={() => {
-          if (onPick) onPick();
-          else if (!press.current?.moved) onAct();
-        }}
+        onPointerUp={drag.onPointerUp}
+        onPointerCancel={drag.onPointerCancel}
+        onLostPointerCapture={drag.onLostPointerCapture}
+        onClick={drag.onClick}
         onContextMenu={(e) => {
           e.preventDefault();
           if (!onPick) onToggle();
@@ -509,8 +534,8 @@ function useView({ core, seat, size, paused, pixel }: SeatProps, register: boole
 }
 
 /** 이름표나 상태칩 줄의 빈 곳을 끌면 메인이 스테이지 창을 옮긴다. DRAG_PX 안에서 떼면 onClick으로 본다.
- *  onClick이 없으면(상태칩 줄) 칩 사이 빈 곳을 누를 때만 끈다 */
-function useDrag(core: CoreRuntime, onClick?: () => void) {
+ *  onClick이 없으면(상태칩 줄) 칩 사이 빈 곳을 누를 때만 끈다. gate가 있으면 gate가 true를 돌려줄 때 끌기를 시작한다 (캐릭터 몸) */
+function useDrag(core: CoreRuntime, onClick?: () => void, gate?: (dx: number, dy: number, t: number) => boolean) {
   const at = useRef<{ x: number; y: number; on: boolean } | null>(null);
   const dragged = useRef(false);
   const send = (phase: 'start' | 'move' | 'end', dx = 0, dy = 0) => void core.deps.bridge.invoke('stage.drag', { phase, dx, dy });
@@ -531,7 +556,7 @@ function useDrag(core: CoreRuntime, onClick?: () => void) {
       if (!(e.buttons & 1)) return end();
       const dx = e.screenX - s.x;
       const dy = e.screenY - s.y;
-      if (!s.on && Math.hypot(dx, dy) < DRAG_PX) return;
+      if (!s.on && (Math.hypot(dx, dy) < DRAG_PX || (gate && !gate(dx, dy, e.timeStamp)))) return;
       dragged.current = true;
       send(s.on ? 'move' : 'start', dx, dy);
       s.on = true;

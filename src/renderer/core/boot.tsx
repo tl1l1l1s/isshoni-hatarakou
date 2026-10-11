@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BRIDGE_VERSION } from '@shared/proto';
+import { BRIDGE_VERSION, PROTO } from '@shared/proto';
 import { randomCode } from '@shared/codes';
+import { SERVER_TIME } from '@shared/constants';
 import { createServer } from '@server/index';
 import type { ServerPort } from '@server/port';
 import { getBackend } from '@render/index';
 import { modules } from '@modules/index';
 import { FRAME_ORIGIN, type Bridge } from '../../preload/api';
 import { getBridge, reportError } from './bridge';
-import { JsonFile, emptySettings } from './persist';
+import { JsonFile, emptySettings, isSettingsFile } from './persist';
 import { CoreRuntime } from './runtime';
 import type { ModuleManifest } from './types';
 import { coreModule } from './coreModule';
@@ -33,7 +34,8 @@ export async function boot(root: HTMLElement): Promise<void> {
   // 외부 출처가 메인의 CSP와 다르면 메인이 저장하고 스테이지를 다시 읽는다. 모듈을 켜기 전에 확인한다
   if (await syncFrameOrigins(bridge, modules).catch(() => false)) return;
   const info = await bridge.invoke('app.info', {});
-  const device = await JsonFile.load(bridge, 'device/core.json', () => ({ v: 1, deviceId: randomCode(12) }));
+  // 모양이 맞지 않는 파일(다른 버전이 쓴 것, 손으로 고친 것)은 메인이 .bak으로 옮기고 처음 값으로 시작한다
+  const device = await JsonFile.load(bridge, 'device/core.json', () => ({ v: 1, deviceId: randomCode(12) }), (v) => typeof (v as { deviceId?: unknown }).deviceId === 'string');
   await device.flush();
 
   // 3. 신원: 저장된 로그인을 되살리고 없으면 설정 코드를 받는다. 이 단계 전에는 타이머를 시작하지 않는다
@@ -42,8 +44,8 @@ export async function boot(root: HTMLElement): Promise<void> {
 
   // 4-5. 설정과 모듈
   const [deviceSettings, accountSettings] = await Promise.all([
-    JsonFile.load(bridge, 'settings.json', emptySettings),
-    JsonFile.load(bridge, `accounts/${uid}/settings.json`, emptySettings),
+    JsonFile.load(bridge, 'settings.json', emptySettings, isSettingsFile),
+    JsonFile.load(bridge, `accounts/${uid}/settings.json`, emptySettings, isSettingsFile),
   ]);
   const backend = getBackend(new URLSearchParams(location.search).get('renderer') === 'debug' ? 'debug' : 'canvas2d');
   // 오프라인이면 프로필 없이 스테이지를 먼저 띄우고 연결된 뒤에 채운다
@@ -62,6 +64,11 @@ export async function boot(root: HTMLElement): Promise<void> {
   await core.start(manifests);
   for (const s of core.host.status) if (!s.on) core.toast(`${s.id} 기능을 켜지 못했어요. ${s.reason ?? ''}`);
   window.addEventListener('beforeunload', () => void core.flush());
+  // 상태가 바뀔 때만 메인 로그에 한 줄씩 남긴다. 비정상 종료 보고에 붙는 로그 끝이 비지 않게 한다 (OPS-1)
+  const off = core.host.status.filter((s) => !s.on).map((s) => s.id);
+  core.log('info', 'core', `시작 ${server.kind}${off.length ? `, 꺼진 모듈 ${off.join(' ')}` : ''}`);
+  server.connection.onChange((online) => core.log('info', 'core', online ? '서버 연결됨' : '서버 연결 끊김'));
+  core.session.onChange((code, reason) => core.log('info', 'room', code ? `들어감 ${code}` : `나옴${reason ? ` ${reason}` : ''}`));
 
   createRoot(root).render(
     <>
@@ -70,6 +77,12 @@ export async function boot(root: HTMLElement): Promise<void> {
     </>,
   );
   Object.assign(window, { core }); // 콘솔 확인과 e2e 시험이 쓴다
+
+  // 이 기기의 앱 버전과 업데이트 상태. 선물하는 사람이 scripts/ops.ts versions로 보고 본인만 쓰고 읽는 자리다 (OPS-7)
+  const writeDevice = (upd: string) =>
+    void server.userPrivate.set(uid, `devices/${device.value.deviceId}`, { ver: info.version, proto: PROTO, upd, at: SERVER_TIME }).catch((e: Error) => core.log('warn', 'core', `기기 버전 기록 실패: ${e.message}`));
+  void bridge.invoke('update.state', {}).then((s) => writeDevice(s.status ?? ''), () => writeDevice(''));
+  bridge.on('update.status', ({ status }) => writeDevice(status));
 }
 
 /** manifest externalOrigins를 모아 메인에 알린다. 다시 읽기를 시작했으면 true */
@@ -100,7 +113,8 @@ async function signIn(bridge: Bridge, server: ServerPort, deviceId: string): Pro
  *  로그인하는 동안 창을 열어 두고 실패하면 그 이유를 띄운다. 로그인 전에 창을 닫으면 null */
 async function askSetupCode(bridge: Bridge, signIn: (code: string) => Promise<string>): Promise<string | null> {
   const name = 'panel:core.setup';
-  await bridge.invoke('win.prepare', { name, title: '설정 코드 입력', width: 360, height: 220, focusable: true, resizable: false });
+  // 앱을 처음 켠 사람이 바로 코드를 붙여 넣도록 포커스를 준다
+  await bridge.invoke('win.prepare', { name, title: '설정 코드 입력', width: 360, height: 220, focusable: true, resizable: false, user: true });
   const win = window.open('', name);
   if (!win) throw new Error('설정 코드 창을 열지 못했습니다');
   standardsMode(win.document);

@@ -22,7 +22,7 @@ export default defineModule({
       quota: { scope: 'global', schema: z.object({ d: z.number(), n: z.number() }), template: 'dailyQuota' },
     },
   },
-  // 서비스 전체의 하루 촬영 횟수. 0이면 세지 않는다 (친구 두세 명이면 서버 비용 걱정이 적다)
+  // 서비스 전체의 하루 촬영 횟수. 0이면 세지 않는다 (초대받은 친구 몇 명이 쓰는 앱이라 서버 비용 걱정이 적다)
   tunables: { photoDailyCap: { schema: z.number().int().min(0).max(DAILY_CAP_MAX), default: 0 } },
   roomEvents: {
     // 꾸민 사진을 방 사람들에게 보낸다. 사진은 64KB 안으로 줄여 files에 올리고 이벤트에는 해시만 담는다

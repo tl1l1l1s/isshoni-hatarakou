@@ -5,11 +5,14 @@ import { join } from 'node:path';
 import type { CoreEventMap, CoreInvokeMap, Rect } from '../../preload/api';
 import type { Store } from '../store';
 import { report } from '../crash';
-import { anchorOf, clampIn, pickDisplay, placeAt, remember, type Anchor, type SavedDisplay } from '../display';
-import { platform, panelMaterial } from '../platform';
+import { anchorOf, clampIn, pickDisplay, placeAt, placeKey, remember, type Anchor, type SavedDisplay } from '../display';
+import { platform, panelMaterial, selfAppKey } from '../platform';
+import type { Foreground } from '../platform/ports';
 import { pageUrl } from '../protocol';
 
 type Prepared = CoreInvokeMap['win.prepare']['args'];
+/** 패널 제목 표시줄 높이(DIP). 두 OS 모두 32보다 작다 */
+const TITLE_BAR_H = 32;
 
 let stage: BrowserWindow | null = null;
 let size = { width: 400, height: 200 };
@@ -44,7 +47,7 @@ export function effectsBounds(name: string): Rect | null {
   return isEffects(name) && w && !w.isDestroyed() ? w.getBounds() : null;
 }
 
-// 사용자가 이름표를 끌어 옮긴 스테이지 자리 (모니터 id마다). 위치 초기화 때 지운다
+// 사용자가 이름표를 끌어 옮긴 스테이지 자리 (모니터마다, placeKey). 위치 초기화 때 지운다
 const PLACE_FILE = 'device/stage-place.json';
 const savedPlaces = () => (store?.read(PLACE_FILE) ?? {}) as Record<string, Anchor>;
 
@@ -53,6 +56,7 @@ const DISPLAY_FILE = 'device/display.json';
 let chosen: SavedDisplay | null | undefined;
 const savedDisplay = () => (chosen === undefined ? (chosen = (store?.read(DISPLAY_FILE) as SavedDisplay | null) ?? null) : chosen);
 export const currentDisplay = () => pickDisplay(screen.getAllDisplays(), screen.getPrimaryDisplay(), savedDisplay());
+const keyOf = (d: Electron.Display) => placeKey(d, savedDisplay());
 
 export function listDisplays() {
   const cur = currentDisplay().id;
@@ -65,6 +69,7 @@ export function chooseDisplay(id: number): void {
   if (!d) throw new Error('연결되지 않은 모니터입니다');
   chosen = remember(d);
   store?.write(DISPLAY_FILE, chosen);
+  kept = null;
   place();
 }
 
@@ -110,15 +115,15 @@ export function setPanelAlwaysOnTop(name: string, on: boolean): void {
   w.setAlwaysOnTop(on, 'floating');
 }
 
-/** 패널을 다시 보이거나(이미 열린 패널을 다시 열 때도) 숨긴다 */
-export function setPanelVisible(name: string, show: boolean): void {
+/** 패널을 다시 보이거나(이미 열린 패널을 다시 열 때도) 숨긴다. 키보드 포커스는 사용자가 연 창(user)에만 준다 */
+export function setPanelVisible(name: string, show: boolean, user = false): void {
   const w = panels.get(name);
   if (!w || w.isDestroyed()) return;
   if (show) {
     // 숨긴 사이 모니터가 빠졌으면 화면 밖에 뜨지 않게 가운데로 옮긴다
     if (!visible(w.getBounds())) w.center();
     raise(w);
-    if (w.isFocusable()) w.focus();
+    if (user && w.isFocusable()) w.focus();
     send('win.visibility', { name, visible: true });
     return;
   }
@@ -178,11 +183,13 @@ export function workArea(): { width: number; height: number } {
  *  작업 영역 크기가 마지막으로 알린 것과 다르면 렌더러에 알린다.
  *  ponytail: 위쪽에 끌어 둔 캐릭터의 메뉴를 열면 창이 작업 영역 안에 남도록 아래로 밀려 캐릭터가 메뉴를 닫을 때까지 내려간다. 거슬리면 메뉴를 아래로 연다 */
 let toldArea = '';
+/** 이번 실행에서 좌석 수가 바뀌어 왼쪽 끝을 둔 자리 (setSize). 끌어 둔 자리 파일에는 남기지 않고 끌기, 위치 초기화, 모니터 고르기가 지운다 */
+let kept: Anchor | null = null;
 export function place(): void {
   if (!stage) return;
   const d = currentDisplay();
   const wa = d.workArea;
-  applyBounds(stage, placeAt(wa, size, savedPlaces()[d.id]));
+  applyBounds(stage, placeAt(wa, size, kept ?? savedPlaces()[keyOf(d)]));
   const key = `${wa.width}x${wa.height}`;
   if (key === toldArea) return;
   toldArea = key;
@@ -201,6 +208,7 @@ export function dragStage(phase: 'start' | 'move' | 'end', dx: number, dy: numbe
   if (phase === 'start') {
     const b = stage.getBounds();
     dragFrom = { x: b.x + b.width / 2, y: b.y + b.height };
+    kept = null;
   }
   if (!dragFrom) return;
   if (phase === 'end') {
@@ -211,7 +219,7 @@ export function dragStage(phase: 'start' | 'move' | 'end', dx: number, dy: numbe
   holdUntil = Date.now() + 2000;
   const d = currentDisplay();
   const b = clampIn(d.workArea, { x: Math.round(dragFrom.x + dx - size.width / 2), y: Math.round(dragFrom.y + dy - size.height), ...size });
-  store?.write(PLACE_FILE, { ...savedPlaces(), [d.id]: anchorOf(d.workArea, b) });
+  store?.write(PLACE_FILE, { ...savedPlaces(), [keyOf(d)]: anchorOf(d.workArea, b) });
   applyBounds(stage, b);
 }
 
@@ -223,21 +231,63 @@ function applyBounds(w: BrowserWindow, b: Bounds): void {
   if (!same(w.getBounds(), b)) w.setBounds(b);
 }
 
+/** 좌석이 늘거나 줄어 폭만 바뀌면 왼쪽 끝을 그대로 두고 이번 실행 동안 그 자리를 쓴다(kept). 아래 가운데 점에 맞추면 맨 왼쪽의 내 캐릭터가
+ *  누가 들어오고 나갈 때마다 옆으로 뛴다. 높이가 바뀌면(메뉴, 런처 화면) 그 자리에 다시 놓는다 */
 export function setSize(width: number, height: number): void {
-  size = { width: Math.ceil(width), height: Math.ceil(height) };
+  const next = { width: Math.ceil(width), height: Math.ceil(height) };
+  const widthOnly = next.height === size.height && next.width !== size.width;
+  size = next;
+  if (stage && widthOnly && !dragFrom) {
+    const wa = currentDisplay().workArea;
+    kept = anchorOf(wa, clampIn(wa, { ...stage.getBounds(), ...size }));
+  }
   place();
 }
 
 /** 화면 숨김 때 함께 숨긴 패널. 다시 보일 때 이 패널만 띄운다 (SET-03) */
 let hiddenPanels: BrowserWindow[] = [];
 
+// 전체 화면 앱 위에서 숨기기 (NFR-04). 그림 앱이 아닌 다른 앱의 창이 캐릭터 모니터를 꽉 채우면 스테이지만 숨기고 끝나면 다시 띄운다.
+// 사용자가 숨긴 것(hidden)과 따로 두고 그동안 사용자가 보이기를 누르면 그 전체 화면이 끝날 때까지 보인다(revealed)
+let covered = false;
+let coverHide = true;
+let revealed = false;
+const shown = () => !hidden && !(covered && coverHide && !revealed);
+
+function applyStage(): void {
+  const v = shown();
+  if (stage) {
+    if (v) stage.showInactive();
+    else stage.hide();
+  }
+  send('stage.visibility', { visible: v });
+}
+
+/** 설정 화면 탭의 전체 화면 앱 위에서 숨기기 */
+export function setCoverHide(on: boolean): void {
+  if (on === coverHide) return;
+  coverHide = on;
+  applyStage();
+}
+
+/** 활동 샘플마다 앞 창으로 부른다. 앞 창이 캐릭터 모니터 전체와 1px 안에서 같아야 전체 화면으로 본다.
+ *  최대화한 창은 테두리만큼 모니터보다 크거나 작업 표시줄만큼 작아서 숨기지 않는다 */
+export function checkCover(fg: Foreground): void {
+  const d = currentDisplay().bounds;
+  const b = fg.bounds;
+  const full = !!b && Math.abs(b.x - d.x) <= 1 && Math.abs(b.y - d.y) <= 1 && Math.abs(b.width - d.width) <= 1 && Math.abs(b.height - d.height) <= 1;
+  const next = full && fg.appKey !== selfAppKey && !(fg.appKey && platform.penApps.isPen(fg.appKey));
+  if (next === covered) return;
+  covered = next;
+  revealed = false;
+  applyStage();
+}
+
+/** 사용자가 보이거나 숨긴다 (트레이, 단축키, 회사원 모드 숨기기, 다시 실행). 보이기는 전체 화면 앱 위에서도 보인다 */
 export function setVisible(visible: boolean): void {
   const changed = hidden === visible;
   hidden = !visible;
-  if (stage) {
-    if (visible) stage.showInactive();
-    else stage.hide();
-  }
+  if (visible) revealed = covered;
   if (changed && !visible) {
     hiddenPanels = [...panels.values()].filter((w) => !w.isDestroyed() && w.isVisible());
     for (const [name, w] of panels) if (hiddenPanels.includes(w)) hidePanel(name, w);
@@ -248,15 +298,16 @@ export function setVisible(visible: boolean): void {
     }
     hiddenPanels = [];
   }
-  send('stage.visibility', { visible });
+  applyStage();
 }
 
-export const toggle = () => setVisible(hidden);
+export const toggle = () => setVisible(!shown());
 
 /** 위치 초기화 (SET-16): 끌어 둔 스테이지 자리와 기억한 패널 위치를 지우고 스테이지를 아래 가운데에, 열린 패널을 가운데로 옮긴다 */
 export function resetPositions(): void {
   store?.write(WINDOWS_FILE, {});
   store?.write(PLACE_FILE, {});
+  kept = null;
   for (const w of BrowserWindow.getAllWindows()) if (w !== stage) w.center();
   place();
   setVisible(true);
@@ -291,7 +342,7 @@ export function createStage(): void {
   win.setIgnoreMouseEvents(true);
   place();
   win.once('ready-to-show', () => {
-    if (!hidden) win.showInactive();
+    if (shown()) win.showInactive();
   });
   win.on('unresponsive', () => {
     report('unresponsive', '스테이지가 응답하지 않아 다시 만듭니다');
@@ -311,12 +362,20 @@ export function createStage(): void {
     }
     const p = prepared.get(frameName);
     if (url !== 'about:blank' || !p) return { action: 'deny' };
-    const { title, width, height, focusable, resizable } = p;
+    const { title, focusable, resizable } = p;
+    // 작업 영역보다 큰 창은 작업 영역에 맞춰 줄이고 내용은 창 안에서 스크롤한다 (body.panel). 기억한 자리도 작업 영역 안으로 맞추고
+    // 기억한 자리가 없으면 캐릭터 모니터 가운데에 둔다. useContentSize라 제목 표시줄 높이를 따로 뺀다
     const saved = savedBounds()[frameName];
-    const at = visible(saved) ? { x: saved.x, y: saved.y } : { center: true };
+    const wa = (visible(saved) ? screen.getDisplayMatching(saved) : currentDisplay()).workArea;
+    const width = Math.min(p.width, wa.width);
+    const height = Math.min(p.height, wa.height - TITLE_BAR_H);
+    const outer = { width, height: height + TITLE_BAR_H };
+    const at = visible(saved) ? saved : { x: Math.round(wa.x + (wa.width - outer.width) / 2), y: Math.round(wa.y + (wa.height - outer.height) / 2) };
+    const { x, y } = clampIn(wa, { x: at.x, y: at.y, ...outer });
     return {
+      // show: true는 포커스를 받지 않는 창도 앱을 앞으로 가져와(Mac) 작업 앱이 키보드를 잃는다. 숨긴 채 만들고 did-create-window에서 띄운다
       action: 'allow',
-      overrideBrowserWindowOptions: { title, width, height, focusable, resizable, useContentSize: true, show: true, ...at, ...panelMaterial },
+      overrideBrowserWindowOptions: { title, width, height, x, y, focusable, resizable, useContentSize: true, show: false, ...panelMaterial },
     };
   });
   // Windows 기본 메뉴 막대와 그 단축키(Ctrl+R, Ctrl+W)를 패널에서 빼고 패널 안의 링크로 창을 열거나 이동하지 못하게 한다
@@ -333,10 +392,16 @@ export function createStage(): void {
       child.on('closed', () => panels.get(frameName) === child && panels.delete(frameName));
       return;
     }
-    const keepAlive = prepared.get(frameName)?.keepAlive === true;
+    const p = prepared.get(frameName);
+    const keepAlive = p?.keepAlive === true;
     prepared.delete(frameName);
     panels.set(frameName, child);
     child.removeMenu();
+    // 맨 위에 보이기만 하고 키보드 포커스는 사용자가 누르거나 키를 쳐서 연 창에만 준다. 모듈이 저절로 연 창(친구 신청, 자리 안내)은
+    // 그림을 그리는 중인 앱의 키보드를 가져가지 않는다
+    raise(child);
+    if (p?.user && child.isFocusable()) child.focus();
+    log.info(`[win] ${frameName}`);
     // 저장하지 않은 일이 있는 패널은 beforeunload로 닫기를 막고 창 안에 묻는다 (ctx.ui.guard). 앱을 끝낼 때는 막지 않는다
     child.webContents.on('will-prevent-unload', (e) => {
       if (quitting) e.preventDefault();

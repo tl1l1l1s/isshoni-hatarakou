@@ -13,6 +13,8 @@ export interface OpenWindow {
 }
 
 const nameOf = (id: string) => `panel:${id}`;
+/** 실행 화면이나 OS 알림을 누른 뒤 이 시간 안에 여는 창은 사용자가 연 창이다. 패널 안의 누르기와 키는 Chromium 사용자 활성화(5초)로 본다 */
+const USER_OPEN_MS = 5_000;
 
 /** 패널 창: window.open으로 연 창에 같은 JS 힙의 React portal로 그린다 (10.4).
  *  모듈은 ctx.ui.open만 부르므로 창마다 렌더러를 따로 두는 방식으로 바꿔도 모듈 코드는 그대로다. */
@@ -28,6 +30,8 @@ export class WindowClient {
   private guards = new Map<string, Set<() => string | null>>();
   /** 묻지 않고 닫는 창. 스크립트로 닫아도 beforeunload가 오므로 여기 있으면 막지 않는다 */
   private leaving = new WeakSet<Window>();
+  /** 실행 화면을 누르거나 OS 알림을 누른 시각 (touch('')) */
+  private userAt = 0;
 
   constructor(private bridge: Bridge, private onKey: (w: OpenWindow, e: KeyboardEvent) => void, private material = false) {
     bridge.on('win.visibility', ({ name, visible }) => {
@@ -43,11 +47,13 @@ export class WindowClient {
   }
 
   private async showNow(decl: WindowDecl, ctx: Ctx): Promise<void> {
+    // 사용자가 연 창만 키보드 포커스를 가져간다. 모듈 상태로 저절로 여는 창은 그리는 중인 앱의 키보드를 뺏지 않는다
+    const user = this.byUser();
     const existing = this.open.get().find((w) => w.id === decl.id);
     if (existing && !existing.win.closed) {
       this.touch(decl.id);
       // 포커스를 받지 않는 창은 렌더러의 focus()로 앞에 오지 않으므로 메인이 맨 위로 올린다
-      await this.bridge.invoke('win.show', { name: nameOf(decl.id) });
+      await this.bridge.invoke('win.show', { name: nameOf(decl.id), user });
       return;
     }
     const name = nameOf(decl.id);
@@ -60,6 +66,7 @@ export class WindowClient {
       focusable: decl.focusable ?? false,
       resizable: decl.resizable ?? false,
       keepAlive,
+      user,
     });
     const [win, mod] = [window.open('', name), await decl.component()];
     if (!win) return;
@@ -145,6 +152,12 @@ export class WindowClient {
 
   touch(id: string): void {
     this.used.set(id, Date.now());
+    if (id === '') this.userAt = Date.now();
+  }
+
+  /** 사용자가 방금 실행 화면이나 OS 알림을 눌렀거나 열린 패널에서 누르거나 키를 쳤는지 */
+  private byUser(): boolean {
+    return Date.now() - this.userAt < USER_OPEN_MS || this.open.get().some((w) => !w.win.closed && w.win.navigator.userActivation.isActive);
   }
 
   /** 열려 있고 보이는 패널인지 */

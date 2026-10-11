@@ -9,6 +9,7 @@
 //   node scripts/ops.ts tunable <모듈> [<키> <JSON 값>]     서버 조정값 보기와 바꾸기 (OPS-12)
 //        --from <시각> --until <시각>  기간 한정 값을 더한다. 시각은 2026-10-10T00:00+09:00 형식이다
 //        <키> --clear                  키를 지워 앱 기본값으로 돌린다
+//   node scripts/ops.ts versions                           기기마다 앱 버전, 방 프로토콜, 업데이트 상태, 마지막으로 켠 시각 (OPS-7)
 // 환경 변수: GOOGLE_APPLICATION_CREDENTIALS(서비스 계정 JSON 경로), FIREBASE_DATABASE_URL
 //            에뮬레이터에는 FIREBASE_DATABASE_EMULATOR_HOST를 함께 넣는다
 import { parseArgs } from 'node:util';
@@ -27,6 +28,24 @@ export function addPeriod(cur: unknown, entry: { value: unknown; from: number; u
   // 배열 값(레벨 표 같은 것)은 기간 목록이 아니라 값 하나다. 목록의 빈 칸(null)은 뺀다
   const list = cur === null || cur === undefined ? [] : isPeriodList(cur) ? cur : [{ value: cur }];
   return [...list.filter((e) => e !== null && (e.until === undefined || e.until > now)), entry];
+}
+
+/** 앱이 켤 때마다 users/{uid}/private/devices/{deviceId}에 남기는 기록 (OPS-7) */
+export interface DeviceRecord { ver?: string; proto?: number; upd?: string; at?: number }
+
+/** 기기 기록을 사람마다 한 줄씩. 오래 켜지 않은 기기도 보이도록 모두 적는다 */
+export function versionLines(users: Record<string, { public?: { name?: string }; private?: { devices?: Record<string, DeviceRecord> } }>): string[] {
+  return Object.entries(users).flatMap(([uid, u]) =>
+    Object.entries(u.private?.devices ?? {}).map(([id, d]) => {
+      const at = typeof d.at === 'number' ? new Date(d.at).toLocaleString('ko-KR') : '?';
+      return `${u.public?.name ?? '이름 없음'} (${uid}) 기기 ${id}: 앱 ${d.ver ?? '?'}, 프로토콜 ${d.proto ?? '?'}, 업데이트 ${d.upd || '?'}, 켠 시각 ${at}`;
+    }),
+  );
+}
+
+/** 모든 사용자의 기기 기록. 친구 몇 명 규모라 users를 한 번에 읽는다 */
+export async function readVersions(db: ReturnType<typeof getDatabase>) {
+  return ((await db.ref('users').get()).val() ?? {}) as Parameters<typeof versionLines>[0];
 }
 
 const time = (s: string | undefined, what: string): number => {
@@ -125,8 +144,11 @@ async function main(): Promise<void> {
     }
     // 앱은 모듈이 선언한 schema에 맞지 않는 값을 무시하고 기본값을 쓴다
     console.log(`mod/${mod}/g/tunables: ${JSON.stringify((await ref.get()).val() ?? {}, null, 2)}`);
+  } else if (cmd === 'versions') {
+    const lines = versionLines(await readVersions(db));
+    console.log(lines.length ? lines.join('\n') : '기기 기록이 없습니다. 앱을 한 번 켜면 생깁니다.');
   } else {
-    fail('명령: mail, mails, unmail, shout, reports, tunable. 파일 맨 위 주석에 사용법이 있습니다.');
+    fail('명령: mail, mails, unmail, shout, reports, tunable, versions. 파일 맨 위 주석에 사용법이 있습니다.');
   }
 }
 

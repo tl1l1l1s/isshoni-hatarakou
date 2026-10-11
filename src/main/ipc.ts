@@ -6,16 +6,16 @@ import log from 'electron-log/main';
 import { z } from 'zod';
 import type { AppKey } from '@shared/appkey';
 import type { CoreInvokeMap } from '../preload/api';
-import { ackReports, pendingReports, report, setCrashConfig } from './crash';
+import { ackReports, pendingReports, report, setCrashConfig, skippedLine } from './crash';
 import { logDir, writeDiagnose } from './log';
-import { postJson } from './net';
+import { getJson, postJson } from './net';
 import { osName, platform, selfAppKey, panelMaterial } from './platform';
 import { getFrameOrigins, setFrameOrigins } from './protocol';
 import type { Store } from './store';
 import { installUpdate, updateState } from './updater';
 import {
-  chooseDisplay, displayLines, dragStage, effectsBounds, getStage, listDisplays, pickEscape, prepare, prepareEffects, reloadStage, resetPositions, send, setOpacity252, setPanelVisible,
-  setPanelAlwaysOnTop, setRects, setSize, setVisible, workArea,
+  chooseDisplay, displayLines, dragStage, effectsBounds, getStage, listDisplays, pickEscape, prepare, prepareEffects, reloadStage, resetPositions, send, setCoverHide, setOpacity252,
+  setPanelAlwaysOnTop, setPanelVisible, setRects, setSize, setVisible, workArea,
 } from './windows/manager';
 
 type Routes = {
@@ -31,6 +31,7 @@ const rect = z.object({ x: z.number(), y: z.number(), width: z.number(), height:
 const on = z.object({ on: z.boolean() });
 const APP_KEY = /^(win|mac):[^/\\]{1,200}$/;
 const panel = z.object({ name: z.string().min(1).max(64) });
+const path = z.object({ path: z.string() });
 
 // 사용자가 더한 그림 앱 (NFR-25). 메인이 들고 있어야 렌더러가 다시 만들어지는 동안에도 보호한다
 const PEN_FILE = 'device/pen-apps.json';
@@ -45,8 +46,9 @@ export function registerIpc(store: Store): void {
   const pens = store.read(PEN_FILE);
   setPenApps(store, Array.isArray(pens) ? pens : [], false);
   const routes: Routes = {
-    'store.read': [z.object({ path: z.string() }), ({ path }) => store.read(path)],
+    'store.read': [path, ({ path }) => store.read(path)],
     'store.write': [z.object({ path: z.string(), data: z.unknown() }), ({ path, data }) => store.write(path, data)],
+    'store.quarantine': [path, ({ path }) => store.quarantine(path)],
     'stage.setSize': [z.object({ width: size, height: size }), ({ width, height }) => setSize(width, height)],
     'stage.setInteractive': [z.object({ rects: z.array(rect).max(256) }), ({ rects }) => setRects(rects)],
     'win.prepare': [
@@ -58,10 +60,11 @@ export function registerIpc(store: Store): void {
         focusable: z.boolean(),
         resizable: z.boolean(),
         keepAlive: z.boolean().optional(),
+        user: z.boolean().optional(),
       }),
       prepare,
     ],
-    'win.show': [panel, ({ name }) => setPanelVisible(name, true)],
+    'win.show': [panel.extend({ user: z.boolean().optional() }), ({ name, user }) => setPanelVisible(name, true, user)],
     'win.hide': [panel, ({ name }) => setPanelVisible(name, false)],
     'win.setAlwaysOnTop': [panel.extend({ on: z.boolean() }), ({ name, on }) => setPanelAlwaysOnTop(name, on)],
     'csp.frameOrigins.get': [none, getFrameOrigins],
@@ -76,6 +79,7 @@ export function registerIpc(store: Store): void {
     'clipboard.write': [z.object({ text: z.string().max(10_000) }), ({ text }) => clipboard.writeText(text)],
     'shell.openExternal': [z.object({ url: z.string().max(2000).regex(/^https?:\/\//i) }), ({ url }) => void shell.openExternal(url)],
     'net.post': [z.object({ url: z.string().max(2000), json: z.string().max(4000) }), ({ url, json }) => postJson(url, json)],
+    'net.get': [z.object({ url: z.string().max(2000) }), ({ url }) => getJson(url)],
     'log.write': [
       z.object({ level: z.enum(['info', 'warn', 'error']), scope: z.string().max(64), message: z.string() }),
       ({ level, scope, message }) => log[level](`[${scope}] ${message.slice(0, 4000)}`),
@@ -96,12 +100,14 @@ export function registerIpc(store: Store): void {
         writeDiagnose([
           ...displayLines(),
           `자동 실행 ${platform.autoStart.get() ? '켜짐' : '꺼짐'}, 더한 그림 앱 ${platform.penApps.user.size}개`,
+          skippedLine() || '생략한 자동 오류 보고 없음',
           ...lines,
         ]),
     ],
     'update.state': [none, updateState],
     'update.install': [none, () => void installUpdate()],
     'stage.setVisible': [z.object({ visible: z.boolean() }), ({ visible }) => setVisible(visible)],
+    'stage.coverHide': [on, ({ on }) => setCoverHide(on)],
     'stage.reload': [none, reloadStage],
     'effects.prepare': [none, prepareEffects],
     'effects.bounds': [panel, ({ name }) => effectsBounds(name)],
@@ -137,7 +143,8 @@ export function registerIpc(store: Store): void {
 const notes: Notification[] = [];
 function showNotification({ id, title, body }: CoreInvokeMap['notify.show']['args']): void {
   if (!Notification.isSupported()) return;
-  const n = new Notification({ title, body });
+  // OS 알림 소리는 내지 않는다. 앱의 알림음이 채팅 알림음 설정과 회사원 모드를 따른다 (D5)
+  const n = new Notification({ title, body, silent: true });
   n.on('click', () => send('notify.click', { id }));
   notes.push(n);
   if (notes.length > 20) notes.shift();

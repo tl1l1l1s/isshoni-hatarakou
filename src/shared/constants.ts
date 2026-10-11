@@ -36,9 +36,10 @@ export const ROOM_EVENT_MAX_CHARS = 1024;
 export const ROOM_EVENT_TYPE_MAX = 64;
 export const ROOM_EVENT_WINDOW = 50;
 
-/** 메인 프로세스 활동 샘플 간격과 클릭 통과 커서 확인 (10.8.1) */
+/** 메인 프로세스 활동 샘플 간격과 클릭 통과 커서 확인 (10.8.1). 커서가 스테이지에서 CURSOR_NEAR_PX 안이면 CURSOR_POLL_NEAR_MS마다 본다 */
 export const ACTIVITY_SAMPLE_MS = 500;
 export const CURSOR_POLL_MS = 50;
+export const CURSOR_POLL_NEAR_MS = 8;
 export const CURSOR_NEAR_PX = 40;
 
 /** 그리기 fps 상한 (10.8.2, NFR-10) */

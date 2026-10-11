@@ -13,8 +13,10 @@ const SOAK_SEC = arg('--soak', 300);
 const CPU_SEC = 15;
 const SOAK_STEP_SEC = 30;
 const DANCE_SEC = 20;
-/** 가짜 친구에 더해 5좌석을 채우는 가짜 멤버 수 */
-const EXTRA_SEATS = 3;
+/** 방 정원 (src/shared/constants.ts의 ROOM_CAP_MAX). 정원을 넘으면 늦게 들어온 내 앱이 방에서 나온다 */
+const ROOM_CAP_MAX = 5;
+/** 나와 가짜 친구에 더해 방을 정원까지 채우는 가짜 멤버 수 */
+const EXTRA_SEATS = ROOM_CAP_MAX - 2;
 const PANELS = ['설정', '캐릭터 만들기', '마이홈', '대화하기'];
 
 const MB = (b: number) => Math.round(b / 1048576);
@@ -74,6 +76,8 @@ type Win = Window & {
   };
   __timers?: { intervals: Set<unknown>; timeouts: Set<unknown> };
   __seats?: () => void;
+  /** 친구 좌석에 넣을 모듈 필드 (m). 없으면 가짜 친구 기록 그대로 */
+  __m?: Record<string, unknown>;
 };
 
 /** 측정 하나. 2초 쉬어 안정시킨 뒤 15초 CPU를 재고 끝에 메모리를 읽는다 */
@@ -162,7 +166,8 @@ const countTimers = (s: Session) =>
     w.__timers = live;
   });
 
-/** 가짜 친구 기록을 복제해 방을 5좌석으로 채운다. seenAt은 sample마다 __seats로 새로 써서 150초 거름을 피한다 */
+/** 가짜 친구 기록을 복제해 방을 정원까지 채운다. seenAt은 sample마다 __seats로 새로 써서 150초 거름을 피한다.
+ *  __m이 있으면 가짜 친구와 복제한 좌석의 모듈 필드를 그 값으로 둔다 */
 const fillSeats = (s: Session) =>
   s.stage.evaluate((n) => {
     const w = window as unknown as Win;
@@ -170,15 +175,24 @@ const fillSeats = (s: Session) =>
     const base = hub.read('rooms/DEVDEV/members/devfriend_dev') as Record<string, unknown>;
     w.__seats = () =>
       hub.writeMany(
-        Object.fromEntries(
-          Array.from({ length: n }, (_, i) => `devextra${i}`).flatMap((uid, i) => [
+        Object.fromEntries([
+          ['rooms/DEVDEV/members/devfriend_dev/m', w.__m ?? base.m],
+          ...Array.from({ length: n }, (_, i) => `devextra${i}`).flatMap((uid, i) => [
             [`rooms/DEVDEV/roster/${uid}`, hub.now()],
-            [`rooms/DEVDEV/members/${uid}_dev`, { ...base, uid, name: `친구 ${i + 2}`, joinedAt: (base.joinedAt as number) + i + 1, seenAt: hub.now() }],
+            [`rooms/DEVDEV/members/${uid}_dev`, { ...base, uid, name: `친구 ${i + 2}`, joinedAt: (base.joinedAt as number) + i + 1, seenAt: hub.now(), m: w.__m ?? base.m }],
           ]),
-        ),
+        ]),
       );
     w.__seats();
   }, EXTRA_SEATS);
+
+/** 친구 좌석의 모듈 필드를 바꾼다. null이면 가짜 친구 기록 그대로 */
+const seatsM = (s: Session, m: Record<string, unknown> | null) =>
+  s.stage.evaluate((x) => {
+    const w = window as unknown as Win;
+    w.__m = x ?? undefined;
+    w.__seats?.();
+  }, m);
 
 const fake = (s: Session, p: { idle?: number; app?: string | null }) =>
   s.app.evaluate((_, q) => {
@@ -210,13 +224,19 @@ await verify('measure', async (s) => {
   await at('방 2좌석 깨어 있음');
   await fillSeats(s);
   await expect(s.stage.getByText(`친구 ${EXTRA_SEATS + 1}`)).toBeVisible();
-  await at('방 5좌석 깨어 있음');
+  await at(`방 ${ROOM_CAP_MAX}좌석 깨어 있음`);
+  // 깨어 있는 친구 9명이 레벨 티어 5(lv 300)라 이름표 배지가 광택을 낼 때 (GRW-07). 광택이 계속 다시 그리면 이 줄의 CPU가 오른다
+  await seatsM(s, { growth: { lv: 300, xp: 50, rd: 1 }, focus: { awake: true } });
+  await expect(s.stage.locator('[data-tier="5"]')).toHaveCount(EXTRA_SEATS + 1);
+  await at(`방 ${ROOM_CAP_MAX}좌석 깨어 있음 티어 5`);
+  await seatsM(s, null);
+  // 집중 시간 규칙(입력 없이 20분 지나면 멈춤)을 넘겨야 내 좌석도 잠든다
   await fake(s, { idle: 1201 });
   await expect.poll(() => s.stage.evaluate(() => {
     const c = (window as unknown as { core: { self: { get(): { m: { focus?: { awake?: boolean } } } } } }).core;
     return c.self.get().m.focus?.awake;
   })).toBe(false);
-  await at('방 5좌석 잠듦');
+  await at(`방 ${ROOM_CAP_MAX}좌석 잠듦`);
   await fake(s, { idle: 0 });
 
   // 패널을 열고 닫은 뒤 메모리가 돌아오는지. 한 번 뒤와 세 번 뒤를 비교해 캐시인지 누수인지 본다

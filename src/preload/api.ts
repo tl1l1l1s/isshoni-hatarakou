@@ -15,15 +15,18 @@ export interface CoreInvokeMap {
   /** userData 아래 상대 경로에 쓸 값. 메인이 파일마다 마지막 값을 들고 있다가 모아서 원자적으로 쓴다 (임시 파일 뒤 이름 바꾸기).
    *  종료와 로그오프 때는 들고 있는 값을 동기로 쓴다 */
   'store.write': { args: { path: string; data: unknown }; result: void };
-  /** 좌석 영역 크기로 스테이지 창 크기를 맞춘다. 창은 작업 영역 아래 가운데에 붙는다 */
+  /** 읽어 보니 모양이 맞지 않는 파일을 <경로>.bak으로 옮긴다. 다음 읽기는 null이다 */
+  'store.quarantine': { args: { path: string }; result: void };
+  /** 좌석 영역 크기로 스테이지 창 크기를 맞춘다. 창은 작업 영역 아래 가운데에 붙는다. 폭만 바뀌면 왼쪽 끝을 그대로 둔다 */
   'stage.setSize': { args: { width: number; height: number }; result: void };
   /** 클릭을 받을 영역(창 안 CSS 픽셀). 바뀔 때만 보낸다 (10.8.1 클릭 통과) */
   'stage.setInteractive': { args: { rects: Rect[] }; result: void };
   /** window.open 직전에 패널 창 옵션을 알린다. name은 window.open의 두 번째 인자.
-   *  keepAlive 창은 사용자가 닫으면 메인이 숨기기만 한다 (SND-04 메모) */
-  'win.prepare': { args: { name: string; title: string; width: number; height: number; focusable: boolean; resizable: boolean; keepAlive?: boolean }; result: void };
-  /** 숨긴 keepAlive 패널을 다시 보이거나 숨긴다. 이미 열린 패널을 다시 열 때도 win.show로 맨 위로 올린다 */
-  'win.show': { args: { name: string }; result: void };
+   *  keepAlive 창은 사용자가 닫으면 메인이 숨기기만 한다 (SND-04 메모). 창은 작업 영역보다 크면 줄여서 열고
+   *  user는 사용자가 누르거나 키를 쳐서 연 창이다. 메인은 모든 패널을 앞 앱을 바꾸지 않고 띄우고 user인 창에만 키보드 포커스를 준다 */
+  'win.prepare': { args: { name: string; title: string; width: number; height: number; focusable: boolean; resizable: boolean; keepAlive?: boolean; user?: boolean }; result: void };
+  /** 숨긴 keepAlive 패널을 다시 보이거나 숨긴다. 이미 열린 패널을 다시 열 때도 win.show로 맨 위로 올린다. user면 포커스도 준다 */
+  'win.show': { args: { name: string; user?: boolean }; result: void };
   'win.hide': { args: { name: string }; result: void };
   /** 열린 패널을 다른 일반 창 위에 고정하거나 해제한다 */
   'win.setAlwaysOnTop': { args: { name: string; on: boolean }; result: void };
@@ -41,6 +44,8 @@ export interface CoreInvokeMap {
   'shell.openExternal': { args: { url: string }; result: void };
   /** 메인이 허락한 호스트(디스코드 웹훅)에만 JSON을 POST한다. 모듈은 ctx.net.post로 쓴다 */
   'net.post': { args: { url: string; json: string }; result: { ok: boolean; status: number } };
+  /** 메인이 허락한 주소(유튜브 oEmbed)에서만 JSON을 읽는다. ok가 아니면 json은 null. 모듈은 ctx.net.get으로 쓴다 */
+  'net.get': { args: { url: string }; result: { ok: boolean; status: number; json: unknown } };
   /** 그림 파일 고르기 대화상자. 고르지 않으면 null (OUR-03) */
   'dialog.openImage': { args: Record<string, never>; result: { name: string; bytes: Uint8Array } | null };
   'log.write': { args: { level: 'info' | 'warn' | 'error'; scope: string; message: string }; result: void };
@@ -61,12 +66,15 @@ export interface CoreInvokeMap {
   'win.resetPositions': { args: Record<string, never>; result: void };
   /** 로그 폴더의 진단 요약을 새로 쓴다. 메인이 버전, OS, 모니터 줄을 앞에 붙인다 (NFR-21) */
   'diag.write': { args: { lines: string[] }; result: void };
-  /** 받아 둔 업데이트 버전. 없으면 null (NFR-19) */
-  'update.state': { args: Record<string, never>; result: { version: string | null } };
+  /** 받아 둔 업데이트 버전. 없으면 null (NFR-19). status는 진단 요약의 업데이트 줄(꺼짐, 확인 전, 오류와 이유) */
+  'update.state': { args: Record<string, never>; result: { version: string | null; status?: string } };
   /** 받아 둔 업데이트를 설치하고 다시 시작한다 */
   'update.install': { args: Record<string, never>; result: void };
   /** 스테이지를 보이거나 숨긴다 (표시 모드 hidden). 바뀌면 stage.visibility가 온다 */
   'stage.setVisible': { args: { visible: boolean }; result: void };
+  /** 전체 화면 앱 위에서 숨기기 (NFR-04). 켜 두면 그림 앱이 아닌 앱이 캐릭터 모니터를 꽉 채우는 동안 메인이 스테이지를 숨기고
+   *  stage.visibility로 알린다. 사용자가 숨긴 것과 따로 둔다 */
+  'stage.coverHide': { args: { on: boolean }; result: void };
   /** 스테이지를 다시 읽는다. 연결 해제(ACC-05) 뒤 신원 단계부터 다시 시작한다 */
   'stage.reload': { args: Record<string, never>; result: void };
   /** 효과 창을 열기 직전에 부른다. 캐릭터가 있는 모니터 전체 영역(DIP)을 돌려주고 이어서 window.open('', 'effects:<번호>')로 연다.
@@ -97,9 +105,12 @@ export interface CoreInvokeMap {
 export interface CoreEventMap {
   activity: ActivitySample;
   lifecycle: { type: 'suspend' | 'resume' | 'lock' | 'unlock' | 'shutdown' };
+  /** 스테이지가 지금 보이는지. 사용자가 숨겼거나 전체 화면 앱 위라서 숨었으면 false */
   'stage.visibility': { visible: boolean };
   /** 업데이트를 다 받았다 (Windows만) */
   'update.ready': { version: string };
+  /** 업데이트 상태 줄이 바뀌었다 (받음, 오류와 이유). 처음 값은 update.state의 status다 */
+  'update.status': { status: string };
   'notify.click': { id: string };
   'pick.cancel': Record<string, never>;
   /** 캐릭터가 있는 모니터의 작업 영역 크기가 바뀌었다 (모니터 바꾸기, 배율과 해상도 변경) */

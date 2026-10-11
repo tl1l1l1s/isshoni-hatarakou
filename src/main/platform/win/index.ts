@@ -1,4 +1,4 @@
-import { app } from 'electron';
+import { app, screen } from 'electron';
 import { winAppKey, type AppKey } from '@shared/appkey';
 import type { Platform } from '../ports';
 
@@ -20,9 +20,11 @@ export const win: Omit<Platform, 'idleSeconds' | 'cursorPoint'> = {
       try {
         const { activeWindow } = await import('get-windows');
         const w = await activeWindow();
+        // get-windows는 물리 픽셀을 준다. 리눅스에는 바꾸는 함수가 없어 그대로 둔다
+        const bounds = w && (screen.screenToDipRect?.(null, w.bounds) ?? w.bounds);
         // 관리자 권한 창처럼 경로를 못 읽으면 이유가 있는 알 수 없음으로 둔다
-        if (!w?.owner.path) return { appKey: null, unknownReason: 'elevated-or-unknown' };
-        return { appKey: winAppKey(w.owner.path), unknownReason: null };
+        if (!w?.owner.path) return { appKey: null, unknownReason: 'elevated-or-unknown', ...(bounds && { bounds }) };
+        return { appKey: winAppKey(w.owner.path), unknownReason: null, ...(bounds && { bounds }) };
       } catch {
         return { appKey: null, unknownReason: 'error' };
       }
