@@ -96,7 +96,7 @@ function FriendsTab({ ctx }: { ctx: Ctx }) {
                   ))}
                 </div>
                 <div className={css.row}>
-                  <input maxLength={GIFT_MSG_MAX} value={msg} aria-label="함께 보낼 말" placeholder={`함께 보낼 말 (${GIFT_MSG_MAX}자)`} onChange={(e) => setMsg(e.target.value)} />
+                  <input maxLength={GIFT_MSG_MAX} value={msg} aria-label="함께 보낼 말" placeholder={`${GIFT_MSG_MAX}자까지`} onChange={(e) => setMsg(e.target.value)} />
                   <button disabled={pick === null || busy} onClick={() => send(f, mallangi[pick!]!)}>보내기</button>
                 </div>
               </div>

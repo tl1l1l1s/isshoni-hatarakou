@@ -16,7 +16,7 @@ export const coreSettings = {
     scale: z.number().min(SCALE.min).max(SCALE.max).default(1),
     /** 이름표 배지와 머리 위 말풍선 (SET-14) */
     showHead: z.boolean().default(true),
-    /** 영상 겹침 우회 (NFR-04, SET-04) */
+    /** 화면 공유 깜빡임 줄이기 (NFR-04, SET-04) */
     opacity252: z.boolean().default(false),
     /** 표시 모드 (ctx.mode). hidden은 이번 실행에만 두므로 저장하지 않는다 */
     mode: z.enum(['normal', 'quiet']).default('normal'),

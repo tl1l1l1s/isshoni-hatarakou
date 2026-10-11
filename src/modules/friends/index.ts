@@ -47,7 +47,7 @@ export default defineModule<FriendsApi>({
       },
       run: async (ctx, args) => {
         const t = Target.parse(args);
-        ctx.ui.toast(await request(ctx, t.uid, t.name).catch(() => '친구 신청을 보내지 못했어요. 잠시 뒤에 다시 해 주세요.'));
+        ctx.ui.toast(await request(ctx, t.uid, t.name).catch(() => '친구 신청을 보내지 못했어요. 잠시 뒤에 다시 눌러 주세요.'));
       },
     },
   ],

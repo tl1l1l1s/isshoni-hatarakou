@@ -27,7 +27,7 @@ export default function LauncherWindow({ ctx }: { ctx: Ctx }) {
     try {
       await ctx.commands.run(id);
     } catch {
-      ctx.ui.toast('지금은 열 수 없어요');
+      ctx.ui.toast('지금은 열 수 없어요.');
     }
   };
   // 내 정보에 저장하지 않은 일이 있으면 돌아가기 전에 묻는다

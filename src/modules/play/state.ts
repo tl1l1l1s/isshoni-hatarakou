@@ -105,7 +105,7 @@ function send(ctx: Ctx, type: string, payload: unknown): boolean {
     return true;
   }
   if (ctx.room.emit(type, payload)) return true;
-  ctx.ui.toast(ctx.connection.online() ? '보내지 못했어요. 잠시 뒤에 다시 해 주세요.' : OFFLINE);
+  ctx.ui.toast(ctx.connection.online() ? '보내지 못했어요. 잠시 뒤에 다시 눌러 주세요.' : OFFLINE);
   return false;
 }
 

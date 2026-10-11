@@ -174,7 +174,7 @@ export default function DrawPanel({ ctx, board, under, dirty, onDone, onCancel }
       {board && (
         <label>
           칠판 글씨
-          <textarea rows={3} maxLength={62} placeholder="세 줄까지 적을 수 있어요" value={text} onChange={(e) => setText(e.target.value)} />
+          <textarea rows={3} maxLength={62} placeholder="세 줄까지" value={text} onChange={(e) => setText(e.target.value)} />
         </label>
       )}
       <div className={css.actions}>

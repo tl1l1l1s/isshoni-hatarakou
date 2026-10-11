@@ -137,7 +137,7 @@ function Trash({ ctx, items, reload }: { ctx: Ctx; items: TrashRecord[] | null; 
     if (!w) return;
     setBusy(true);
     w.restore(t)
-      .then(() => ctx.ui.toast(`캐릭터 ${t.slot + 1}에 되돌렸어요`), (e: Error) => ctx.ui.toast(e.message))
+      .then(() => ctx.ui.toast(`캐릭터 ${t.slot + 1}에 되돌렸어요.`), (e: Error) => ctx.ui.toast(e.message))
       .finally(() => {
         setBusy(false);
         reload();

@@ -28,7 +28,7 @@ export default function ReportTab({ ctx }: { ctx: Ctx }) {
         },
         (e: Error) => {
           ctx.log.warn(`버그 제보 보내기 실패: ${e.message}`);
-          setMsg('보내지 못했어요. 잠시 뒤에 다시 해 주세요.');
+          setMsg('보내지 못했어요. 잠시 뒤에 다시 눌러 주세요.');
         },
       )
       .finally(() => setBusy(false));
