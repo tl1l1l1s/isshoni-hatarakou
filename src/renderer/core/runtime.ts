@@ -88,7 +88,7 @@ export class CoreRuntime {
   private awayCount = new Map<string, number>();
   /** 좌석마다 지금 도는 detach 효과를 끝내는 함수. 새 detach 효과가 오면 앞의 것을 끝내 같은 캐릭터가 둘로 보이지 않게 한다 */
   private detached = new Map<string, () => void>();
-  /** 서버 연결이 끊긴 지 OFFLINE_SHOW_MS가 지났는지 (0031). 실행 화면 칩과 창 위쪽 띠가 본다 */
+  /** 서버 연결이 끊긴 지 OFFLINE_SHOW_MS가 지났는지 (0033). 실행 화면 칩과 창 위쪽 띠가 본다 */
   readonly offline = createStore(false);
   /** 좌석 계층이 만든 뷰와 그 칸. 효과 좌표를 여기서 구한다. 올라탄 좌석은 올라탄 자리의 뷰다 */
   readonly seatViews = new Map<string, { view: CharacterView; el: HTMLElement }>();
@@ -270,7 +270,7 @@ export class CoreRuntime {
     });
   }
 
-  /** ctx.self.setName. 사용자가 저장을 눌렀을 때만 부르므로 끊겨 있으면 쓰지 않고 바로 알린다 (0031).
+  /** ctx.self.setName. 사용자가 저장을 눌렀을 때만 부르므로 끊겨 있으면 쓰지 않고 바로 알린다 (0033).
    *  서버가 받은 뒤에 이 PC의 이름을 바꿔서 실패한 이름이 이 PC에만 남지 않게 한다 */
   private async saveName(name: string, owner: string): Promise<void> {
     if (!this.deps.server.connection.online()) throw new Error('연결이 끊겨서 저장하지 못했어요. 연결되면 다시 해 주세요.');
@@ -755,7 +755,7 @@ export class CoreRuntime {
         current: () => this.session.current(),
         onChange: (fn) => scope.add(this.session.onChange(fn)),
         join: (code) => this.session.join(code),
-        // 모듈이 부르는 나가기는 사용자가 스스로 나가는 것이라 roster에서도 뺀다 (0031)
+        // 모듈이 부르는 나가기는 사용자가 스스로 나가는 것이라 roster에서도 뺀다 (0033)
         leave: () => this.session.leave(true),
         create: () => this.session.create(),
         beforeRemove: (fn) => {
@@ -763,7 +763,7 @@ export class CoreRuntime {
           return scope.add(() => this.beforeRemove.delete(fn));
         },
         remove: async (code) => {
-          // 끊긴 채로 지우면 이 PC에서만 지워진 것처럼 보이므로 시작하지 않는다 (0031)
+          // 끊긴 채로 지우면 이 PC에서만 지워진 것처럼 보이므로 시작하지 않는다 (0033)
           if (!server.connection.online()) throw new Error('연결이 끊겨서 방을 지우지 못했어요. 연결되면 다시 해 주세요.');
           for (const fn of this.beforeRemove) await fn(code);
           // 주인 앱이 deleteWithRoom 컬렉션을 먼저 지우고 deletedAt을 쓴다 (10.7.2 방 주인과 방 보존)

@@ -230,7 +230,7 @@ export class RoomSession {
   }
 
   /** 방 이벤트를 보낸다. 방 밖이거나 연결이 끊겼거나 이 이름으로 최근 1분 안에 perMinute번 보냈으면 보내지 않고 false.
-   *  끊긴 채로 보내면 이 PC에서만 재생되고 친구에게는 다시 연결된 뒤에 늦게 가므로 보내지 않는다 (0031).
+   *  끊긴 채로 보내면 이 PC에서만 재생되고 친구에게는 다시 연결된 뒤에 늦게 가므로 보내지 않는다 (0033).
    *  보낸 앱이 60초 뒤에 지운다. payload JSON이 1024자를 넘으면 예외 */
   emit(type: string, payload: unknown, perMinute: number): boolean {
     const code = this.code;

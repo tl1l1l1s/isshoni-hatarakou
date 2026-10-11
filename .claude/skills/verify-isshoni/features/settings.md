@@ -7,7 +7,7 @@
 - `set03-quiet`는 회사원 모드를 켜면 머리 위 말풍선이 숨고 메뉴에서 마이홈과 스티커 사진이 빠지며 상태칩에 `숨기기` 칩이 생기고 OS 알림(채팅, 마이홈, 일정, 친구, 뽀모도로, 사진)이 하나도 뜨지 않는 것이다 (SET-03).
 - `set03-hide`는 `숨기기` 칩을 누르면 실행 화면과 열린 창이 함께 숨고 다시 띄우면 함께 돌아오는 것이다 (SET-03).
 - `set04-video`는 영상 겹침 우회 체크가 다시 연 설정 창에도 남는 것이다 (SET-04).
-- `nfr04-cover`는 그림 앱이 아닌 앱의 창이 캐릭터 모니터를 꽉 채우면 실행 화면이 숨고 끝나면 돌아오며 `전체 화면 앱 위에서 숨기기`를 끄면 숨지 않는 것이다 (NFR-04). 사용자가 숨긴 화면과는 따로 둔다.
+- `nfr04-cover`는 펜 입력 보호 목록에 없는 앱의 창이 캐릭터 모니터를 꽉 채우면 실행 화면이 숨고 끝나면 돌아오며 `전체 화면 앱 위에서 숨기기`를 끄면 숨지 않는 것이다 (NFR-04). 사용자가 숨긴 화면과는 따로 둔다.
 - `set05-theme`는 테마를 어둡게나 밝게로 고르면 창 밝기가 바로 바뀌는 것이다 (SET-05).
 - `set12-privacy`는 일반 탭에 버전이 보이고 개인정보 처리방침을 펼치면 저장하는 것과 볼 수 있는 사람이 보이는 것이다 (SET-12).
 - `set13-pixel`은 도트 그림으로 보기를 켜면 캐릭터가 큰 점으로 그려지는 것이다 (SET-13).
@@ -43,7 +43,7 @@ Preconditions:
 - **테마.** `await st.emulateMedia({ colorScheme: null })` 다음에 `await st.getByLabel('테마').selectOption('dark')`를 실행한다. `st.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches)`가 true가 되고 창 바탕이 어두워진다. `light`를 고르면 false가 된다.
 - **상태칩 자리.** `await st.getByLabel('상태칩 자리').selectOption('right')`를 실행한다. `button[title="메뉴"]`(▼)의 상자가 내 캐릭터 클릭 영역 `[aria-label="내 캐릭터 쓰다듬기"]` 상자보다 오른쪽에 있고 첫 `canvas` 상자가 그 클릭 영역 상자를 감싼다. `left`면 ▼가 왼쪽에 있고 `below`면 ▼가 클릭 영역 아래에 있다.
 - **도트 그림.** `await st.getByLabel('도트 그림으로 보기').check()`를 실행한다. 크기 배율 100%에서 첫 `canvas`의 `width`와 `height`가 53과 67이고 `style.imageRendering`이 `pixelated`다. 실행 화면 캐릭터가 큰 점과 체크무늬 디더링으로 보인다.
-- **전체 화면 앱 위에서 숨기기.** 사용자가 만들 수 없는 앞 창을 메인에서 정한다. `const bw = await s.app.browserWindow(s.stage)`로 스테이지 창을 잡고 `const d = await s.app.evaluate(({ screen }, b) => screen.getDisplayMatching(b).bounds, await bw.evaluate((w) => w.getBounds()))`로 모니터 영역을 읽는다. `fakePlatform.app = 'win:vlc.exe'`와 `fakePlatform.bounds = d`를 넣으면 1초 안에 `bw.evaluate((w) => w.isVisible())`이 false가 되고 `core.displayMode.get()`이 `hidden`이다. `fakePlatform.bounds = null`이면 다시 true가 되고 표시 모드가 돌아온다. 앞 앱을 `fakePlatform.pens`에 넣은 그림 앱으로 두거나 영역을 모니터보다 8px씩 크게(최대화 창) 두면 숨지 않는다. 숨은 동안 메인에서 `app.emit('second-instance')`(다시 실행, 트레이 보이기와 같은 길)를 부르면 그 전체 화면이 끝날 때까지 보인다. 체크를 풀면 전체 화면 영역이어도 보이고 다시 체크하면 바로 숨는다. `stage.setVisible`로 사용자가 숨긴 화면은 전체 화면이 끝나도 숨은 채다.
+- **전체 화면 앱 위에서 숨기기.** 사용자가 만들 수 없는 앞 창을 메인에서 정한다. `const bw = await s.app.browserWindow(s.stage)`로 스테이지 창을 잡고 `const d = await s.app.evaluate(({ screen }, b) => screen.getDisplayMatching(b).bounds, await bw.evaluate((w) => w.getBounds()))`로 모니터 영역을 읽는다. `fakePlatform.app = 'win:vlc.exe'`와 `fakePlatform.bounds = d`를 넣으면 1초 안에 `bw.evaluate((w) => w.isVisible())`이 false가 되고 `core.displayMode.get()`이 `hidden`이다. `fakePlatform.bounds = null`이면 다시 true가 되고 표시 모드가 돌아온다. 앞 앱을 `fakePlatform.pens`에 넣은 펜 입력 보호 앱으로 두거나 영역을 모니터보다 8px씩 크게(최대화 창) 두면 숨지 않는다. 숨은 동안 메인에서 `app.emit('second-instance')`(다시 실행, 트레이 보이기와 같은 길)를 부르면 그 전체 화면이 끝날 때까지 보인다. 체크를 풀면 전체 화면 영역이어도 보이고 다시 체크하면 바로 숨는다. `stage.setVisible`로 사용자가 숨긴 화면은 전체 화면이 끝나도 숨은 채다.
 - **위치 초기화.** 화면 탭 맨 아래 `위치 초기화`를 누르면 설정 창 위쪽에 `위치를 처음으로 되돌렸어요`가 뜬다. 끌어 옮긴 캐릭터가 돌아오는 것은 `osclick.ts` 6번 항목이 본다.
 - **저장하지 않은 닉네임.** 창에 `st.on('dialog', () => {})`를 먼저 붙인다(Gotchas). 계정 탭에서 닉네임을 바꾸고 ESC를 누르면 `alertdialog "닉네임을 저장하지 않았어요. 닫을까요?"`가 뜬다. `계속하기`를 누르고 `화면` 탭을 누르면 다시 묻고 `계속하기`를 누르면 계정 탭에 남는다. 메인에서 `BrowserWindow.getAllWindows().find((w) => w.getTitle() === '설정')?.close()`를 실행하면(제목 표시줄 ×와 같다) 창이 닫히지 않고 같은 물음이 뜨며 `닫기`를 누르면 닫힌다. `저장`을 누른 뒤에는 같은 닫기로 묻지 않고 닫힌다.
 - **다시 열기.** `await st.close()` 뒤에 설정 창을 다시 열고 화면 탭을 누른다. 고른 테마, `도트 그림으로 보기`, `영상 겹침 우회` 값이 그대로다.

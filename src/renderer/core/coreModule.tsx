@@ -235,7 +235,7 @@ function DisplayTab({ core, ctx }: { core: CoreRuntime; ctx: Ctx }) {
       <Field ctx={ctx} decl={coreSettings} name="opacity252" />
       <p>화면 공유 영상이 깜빡일 때만 켜요. Windows 전용이에요.</p>
       <Field ctx={ctx} decl={coreSettings} name="coverHide" />
-      <p>영상, 게임, 발표를 전체 화면으로 띄우면 캐릭터를 숨기고 끝나면 다시 띄워요. 그림 앱 위에서는 숨기지 않아요.</p>
+      <p>영상, 게임, 발표를 전체 화면으로 띄우면 캐릭터를 숨기고 끝나면 다시 띄워요. 펜 입력 보호 앱 위에서는 숨기지 않아요.</p>
       <hr />
       <p>이름표를 끌어서 캐릭터를 옮길 수 있어요.</p>
       <button onClick={() => void core.registry.run('core.resetPositions').then(() => ctx.ui.toast('위치를 처음으로 되돌렸어요'), (e: Error) => ctx.ui.toast(e.message))}>

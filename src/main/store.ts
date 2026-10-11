@@ -43,7 +43,7 @@ export function writeJsonAtomic(root: string, rel: string, data: unknown): void 
 export type Store = ReturnType<typeof createStore>;
 
 /** 파일을 쓰기 전에 모으는 시간. 집중 시간 파일은 1초마다 바뀌므로 길게 모은다. 끝낼 때와 절전, 로그오프 때는 flush가 바로 쓰고
- *  갑자기 꺼지면 그동안의 집중 시간만 잃는다. 나머지는 작은 파일이라 짧게 모아 바꾼 설정을 거의 바로 남긴다 (ADR 0030) */
+ *  갑자기 꺼지면 그동안의 집중 시간만 잃는다. 나머지는 작은 파일이라 짧게 모아 바꾼 설정을 거의 바로 남긴다 (ADR 0032) */
 export function storeDelay(rel: string): number {
   return /^accounts\/[^/]+\/modules\/focus\.json$/.test(rel) ? 15_000 : 200;
 }

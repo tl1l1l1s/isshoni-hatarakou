@@ -140,7 +140,7 @@ body.panel.material { background: color-mix(in srgb, var(--bg) 40%, transparent)
 }
 :where(body.panel) input[type='color'] { width: 32px; height: 26px; padding: 0; border: 0; border-radius: var(--radius-s); background: none; cursor: pointer; }
 
-/* 읽지 않은 수 배지 (0031). 모듈은 <span data-unread>3</span>을 쓴다. 상태칩 단추 안에서는 코어가 단추 오른쪽 위에 붙인다 */
+/* 읽지 않은 수 배지 (0033). 모듈은 <span data-unread>3</span>을 쓴다. 상태칩 단추 안에서는 코어가 단추 오른쪽 위에 붙인다 */
 [data-unread] {
   display: inline-block; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 8px; vertical-align: middle;
   background: var(--danger); color: #fff; font: 600 11px/16px system-ui, sans-serif; text-align: center;

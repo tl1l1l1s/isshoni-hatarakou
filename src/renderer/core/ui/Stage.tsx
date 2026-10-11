@@ -675,7 +675,7 @@ function SeatMenu({ core, seat, left, maxHeight, onClose }: { core: CoreRuntime;
 
 const STATE_LABEL = { online: '접속 중', away: '자리비움', busy: '바쁨' } as const;
 
-/** 서버 연결이 끊긴 지 5초가 지나면 상태칩 줄에 보인다 (0031). 펜으로는 title을 보기 어려워 누르면 알림으로 풀어 준다 */
+/** 서버 연결이 끊긴 지 5초가 지나면 상태칩 줄에 보인다 (0033). 펜으로는 title을 보기 어려워 누르면 알림으로 풀어 준다 */
 function OfflineChip({ core }: { core: CoreRuntime }) {
   if (!use(core.offline)) return null;
   return (

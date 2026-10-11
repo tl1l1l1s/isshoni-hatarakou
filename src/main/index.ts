@@ -19,7 +19,7 @@ import { startUpdater } from './updater';
 import { checkCover, createStage, dragging, getRects, getStage, place, send, setVisible, toggle, useStore } from './windows/manager';
 
 registerScheme();
-// 앱 글은 한국어뿐이다. OS 언어가 영어여도 날짜 칸이 연 월 일 순서로 보이고 숫자와 날짜 형식이 한국어를 따른다 (ADR 0030)
+// 앱 글은 한국어뿐이다. OS 언어가 영어여도 날짜 칸이 연 월 일 순서로 보이고 숫자와 날짜 형식이 한국어를 따른다 (ADR 0032)
 app.commandLine.appendSwitch('lang', 'ko');
 
 // 데이터 폴더를 지금 이름에 고정한다. productName을 바꿔도 설정, 저장 파일, 로그인이 그대로 남는다 (ADR 0024).
