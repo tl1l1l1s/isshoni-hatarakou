@@ -103,7 +103,8 @@ function SettingsWindow({ core }: { core: CoreRuntime }) {
   );
 }
 
-const TAB = { flex: '0 1 auto', minWidth: 0 };
+// 옆 여백을 줄여서 Windows처럼 글자가 넓은 글꼴에서도 일곱 탭이 한 줄에 들어간다
+const TAB = { flex: '0 1 auto', minWidth: 0, paddingInline: 8 };
 
 /** 일반 탭: 모듈 설정, 펜 입력 보호 앱, 시스템(자동 실행, 버전, 진단 기록). 화면 항목은 화면 탭에 있다 */
 function General({ core }: { core: CoreRuntime }) {
