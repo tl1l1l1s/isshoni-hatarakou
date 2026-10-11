@@ -18,7 +18,7 @@ export class FakePlatform implements Platform {
   };
   penApps = { user: new Set<AppKey>(), isPen: (k: AppKey) => this.pens.has(k) || this.penApps.user.has(k) };
   autoStart = { get: () => this.autoStartOn, set: (on: boolean) => void (this.autoStartOn = on) };
-  overlay = { options: { frame: false, transparent: true, skipTaskbar: true }, afterCreate: () => {}, setOpacity252: () => {} };
+  overlay = { options: { frame: false, transparent: true, skipTaskbar: true, hasShadow: false }, afterCreate: () => {}, setOpacity252: () => {} };
   idleSeconds = () => this.idle;
   cursorPoint = () => this.cursor;
 }
