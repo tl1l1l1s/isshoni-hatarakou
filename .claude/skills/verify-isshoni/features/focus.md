@@ -9,7 +9,7 @@
 - `focus-accumulate`는 등록한 앱이 앞에 있을 때 오늘 시간과 앱별 시간이 늘어나는 것이다 (FOC-02, CHR-05).
 - `focus-drawer`는 포커스 기록 창 아래에 `뽀모도로`와 `달성표` 단추가 보이는 것이다. 단추 뒤는 [뽀모도로](./pomodoro.md)와 [달성표](./goals.md)에 있다.
 - `focus-mini`는 작게 보기로 기록 미니 창이 되고 크게 보기로 돌아오는 것이다 (FOC-04).
-- `focus-elsewhere`는 다른 기기에서 쓰는 중이면 시간이 멈추고 여기서 계속 쓰기를 누르면 다시 쌓이는 것이다 (FOC-08, ACC-12).
+- `focus-elsewhere`는 다른 기기에서 쓰는 중이면 시간이 멈추고 여기서 계속 쓰기를 누르면 다시 쌓이며 그 뒤에 다른 기기가 늦게 올린 마지막 기록도 더해지는 것이다 (FOC-08, ACC-12).
 - `focus-save`는 시간이 쌓일 때마다 누적이 바로 메인과 이 PC의 파일에 남아 로그오프 직전의 시간도 사라지지 않는 것이다 (FOC-02).
 
 ## How to get to it (user POV)
@@ -46,6 +46,7 @@ Preconditions:
   ```
   실행 화면에 `다른 기기에서 쓰는 중이에요`와 `button "여기서 계속 쓰기"`가 보인다. 열어 둔 포커스 기록 창의 `오늘` 칸이 3초 넘게 그대로다.
 - **다시 가져오기.** `await s.stage.getByRole('button', { name: '여기서 계속 쓰기' }).click()`을 실행한다. 몇 초 안에 `오늘` 칸이 다시 늘어난다.
+- **늦게 올린 다른 기기 기록.** 다시 가져온 뒤 다른 기기가 마지막 기록을 올린 것처럼 `server.docs({ scope: 'user', module: 'focus', uid, path: ['dev'] }).set('other-pc', { v: 1, total: 600, day: <오늘 날짜 키>, today: 600 })`를 쓴다. 포커스 기록 창의 `오늘`이 10분 늘고 레벨 보상 창의 남은 시간도 그만큼 준다. 이 PC는 기기별 기록을 구독하므로 가져온 뒤에 올라온 기록도 더한다 (F1).
 - **바로 저장.** 새 세션에서 `fakePlatform.app`을 기본 등록 앱 `win:clipstudiopaint.exe`로 두고 `core.host.api('focus').todaySec()`이 2 이상이 되기를 기다린다. `window.bridge.invoke('store.read', { path: 'accounts/<uid>/modules/focus.json' })`의 `data.todaySec`이 그 값과 1초 안으로 같다. `app.getPath('userData')` 아래 같은 경로의 파일도 1초 안에 같은 값으로 내려가고 2.5초 뒤 다시 읽으면 늘어 있다. uid는 `window.core.deps.uid`이다.
 - **처음 잠든 까닭 (focus-hint).** 새 세션에서 시작하기를 누르면 내 머리 위에 `클립 스튜디오 쓰면 일어나요`가 보이고 포커스 기록 창 큰 숫자 아래에 `등록한 앱을 쓰면 깨어나고 시간이 쌓여요.`가 보인다. `fakePlatform.app`을 `win:clipstudiopaint.exe`로 바꾸면 10초 안에 둘 다 사라진다. 다시 `win:explorer.exe`로 바꿔 잠들면 안내 줄은 돌아오고 말풍선은 뜨지 않는다.
 - **증거.** 등록 뒤 설정 창, 알림이 뜬 설정 창, 말풍선이 뜬 실행 화면, 포커스 기록 창, 미니 창, 다른 기기 안내가 뜬 실행 화면, 멈춘 포커스 기록 창을 `s.shot`으로 남긴다.

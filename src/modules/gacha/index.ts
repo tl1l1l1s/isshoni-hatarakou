@@ -15,7 +15,7 @@ const Inventory = z.array(
   z.object({ key: z.string(), room: z.string(), itemId: z.string(), name: z.string(), file: z.string(), n: z.number(), at: z.number() }),
 );
 /** 보관함 사본과 서버가 아직 받지 않은 방 작업 초 */
-const LocalData = z.object({ inv: Inventory, pending: z.record(z.string(), z.object({ sec: z.number().min(0), earned: z.number().min(0) })) });
+const LocalData = z.object({ inv: Inventory, pending: z.record(z.string(), z.object({ sec: z.number(), earned: z.number() })) });
 
 export default defineModule<GachaApi>({
   id: 'gacha',

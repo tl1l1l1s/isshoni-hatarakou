@@ -12,6 +12,7 @@
 
 ## How to get to it (user POV)
 
+- 실행 화면 ▼ 메뉴에서 `뽀모도로`를 누른다. 첫 묶음의 `레벨 보상` 다음에 있다.
 - 실행 화면 ▼ 메뉴에서 `포커스 기록`을 누르고 창 아래 `뽀모도로`를 누른다. 도는 동안 이 단추에 남은 시간이 함께 보인다.
 
 ## Driving it with drive.ts
@@ -20,7 +21,7 @@ Preconditions:
 
 - 새 `verify()` 세션에서 시작하기를 눌러 실행 화면에 있다.
 
-- **창 열기.** `const rec = await menu(s, '포커스 기록', '포커스 기록')`, `await rec.getByRole('button', { name: '뽀모도로' }).click()`, `const w = await windowTitled(s.app, '뽀모도로')`를 실행한다. `button "25 / 5"`가 눌려 있고 `spinbutton "집중 (분)"`은 25이며 꺼져 있다.
+- **창 열기.** `const w = await menu(s, '뽀모도로', '뽀모도로')`를 실행한다. 포커스 기록 창 서랍으로 열려면 `const rec = await menu(s, '포커스 기록', '포커스 기록')`, `await rec.getByRole('button', { name: '뽀모도로' }).click()`, `const w = await windowTitled(s.app, '뽀모도로')`를 실행한다. `button "25 / 5"`가 눌려 있고 `spinbutton "집중 (분)"`은 25이며 꺼져 있다.
 - **1분으로 시작.** `await w.getByRole('button', { name: '직접' }).click()`, `await w.getByRole('spinbutton', { name: '집중 (분)' }).fill('1')`, `await w.getByRole('button', { name: '시작' }).click()`을 실행한다. 창에 `집중 1/4`와 `0:59` 같은 남은 시간이 보이고 실행 화면 머리 위에 `집중 1분 남음`이 보인다. 포커스 기록 창 단추는 `뽀모도로 0:5N`이 된다.
 - **일시정지.** `일시정지`를 누르면 `다시 시작` 단추가 생기고 머리 위 말풍선이 사라진다. `다시 시작`을 누르면 이어진다.
 - **끝날 때.** 1분을 기다린다. 실행 화면에 `집중이 끝났어요. 5분 쉬어요.` 알림이 뜨고 창에 `짧은 휴식`이 보이며 머리 위가 `휴식 5분 남음`이 된다.
