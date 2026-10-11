@@ -12,7 +12,8 @@ export default function AccountTab({ ctx, windowId, code: showCode = true, focus
   const [name, setName] = useState(ctx.self.name());
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
-  const code = ctx.self.friendCode();
+  const [code, setCode] = useState(() => ctx.self.friendCode());
+  useEffect(() => ctx.self.onChange((s) => setCode(s.friendCode)), [ctx]);
   const typed = useRef(name);
   typed.current = name;
   useEffect(

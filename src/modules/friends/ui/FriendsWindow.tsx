@@ -17,7 +17,8 @@ export default function FriendsWindow({ ctx }: { ctx: Ctx }) {
   const [input, setInput] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const code = ctx.self.friendCode();
+  const [code, setCode] = useState(() => ctx.self.friendCode());
+  useEffect(() => ctx.self.onChange((s) => setCode(s.friendCode)), [ctx]);
   const [hidden, setHidden] = useState(() => ctx.settings.get<{ appearOffline: boolean }>().appearOffline);
   useEffect(() => ctx.settings.onChange((v) => setHidden(v.appearOffline === true)), [ctx]);
 

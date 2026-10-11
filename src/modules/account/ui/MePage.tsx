@@ -32,10 +32,17 @@ export default function MePage({ ctx, windowId }: SlotProps) {
     requestAnimationFrame(() => nav.current?.scrollIntoView({ block: 'start' }));
   };
   const [name, setName] = useState(ctx.self.name());
-  useEffect(() => ctx.self.onChange((s) => setName(s.name)), [ctx]);
+  const [code, setCode] = useState(() => ctx.self.friendCode());
+  useEffect(
+    () =>
+      ctx.self.onChange((s) => {
+        setName(s.name);
+        setCode(s.friendCode);
+      }),
+    [ctx],
+  );
   const rank = useRank(ctx);
   const [trash, reload] = useTrash(ctx);
-  const code = ctx.self.friendCode();
   const level = ctx.modules.get('growth')?.levelText();
   const copy = () => ctx.shell.copy(code ?? '').then(() => ctx.ui.toast('친구 코드를 복사했어요.'), () => ctx.ui.toast('복사하지 못했어요. 코드를 직접 알려 주세요.'));
   // 친구가 있을 때만 왕관을 씌운다. 혼자서 1위는 뜻이 없다

@@ -72,6 +72,8 @@ export class CoreRuntime {
   readonly seats = createStore<SeatView[]>([]);
   /** ctx.seats.refresh가 올린다. 스테이지만 다시 그리고 seats 구독자(onMembers)는 부르지 않아 되풀이되지 않는다 */
   readonly seatsDrawn = createStore(0);
+  /** setProfile이 늦게 읽은 프로필을 채우면 올린다. ctx.self.onChange가 친구 코드 변화를 알린다 */
+  private readonly profileRead = createStore(0);
   /** 좌석 계층이 그린 뒤 알려 주는 anchor와 클릭 영역 (ctx.seats.list) */
   readonly seatGeometry = new Map<string, { anchors: Anchors; hit: Box }>();
   /** 알림. id는 띄운 시각이고 at은 띄울 패널 id다. null이면 실행 화면 (ctx.ui.toast) */
@@ -243,6 +245,7 @@ export class CoreRuntime {
    *  서버에 이름이 없으면 그동안 보이던 이름(fillName)을 한 번 올린다 */
   setProfile(p: CoreDeps['profile']): void {
     this.deps.profile = p;
+    this.profileRead.set((n) => n + 1);
     if (this.nameEdited) return;
     const cur = this.self.get().name;
     if (p?.name) {
@@ -849,13 +852,14 @@ export class CoreRuntime {
           );
         },
         onChange: (fn) => {
-          let last = { name: this.self.get().name, look: this.self.get().look };
-          return scope.add(
-            this.self.subscribe(() => {
-              const { name, look } = this.self.get();
-              if (name !== last.name || look !== last.look) fn((last = { name, look }));
-            }),
-          );
+          const read = () => ({ name: this.self.get().name, look: this.self.get().look, friendCode: this.deps.profile?.friendCode ?? null });
+          let last = read();
+          const check = () => {
+            const s = read();
+            if (s.name !== last.name || s.look !== last.look || s.friendCode !== last.friendCode) fn((last = s));
+          };
+          const offs = [this.self.subscribe(check), this.profileRead.subscribe(check)];
+          return scope.add(() => offs.forEach((off) => off()));
         },
       },
       net: {

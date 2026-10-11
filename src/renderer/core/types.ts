@@ -361,8 +361,8 @@ export interface Ctx {
     setProfile(fields: Record<string, unknown>): void;
     /** manifest accountPresence 필드를 users/{uid}/presence/m/<id>에 합쳐 쓴다. 선언하지 않은 키나 schema에 맞지 않는 값은 예외 */
     setPresence(fields: Record<string, unknown>): void;
-    /** 내 이름이나 외형이 바뀌면 부른다 */
-    onChange(fn: (s: { name: string; look: Sha256 | null }) => void): Dispose;
+    /** 내 이름, 외형, 친구 코드가 바뀌면 부른다. 오프라인으로 켜면 친구 코드는 연결된 뒤 프로필을 읽을 때 생긴다 */
+    onChange(fn: (s: { name: string; look: Sha256 | null; friendCode: string | null }) => void): Dispose;
     /** 이 PC가 이 계정을 쓰는 기기인지. 다른 기기가 가져가면 false가 되고 여기서 계속 쓰기를 누르면 true로 돌아온다 (ACC-12) */
     activeDevice(): boolean;
     onActiveDevice(fn: (active: boolean) => void): Dispose;

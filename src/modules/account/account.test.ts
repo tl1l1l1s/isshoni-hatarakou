@@ -72,6 +72,16 @@ describe('오프라인 부팅의 이름', () => {
     expect(await a.localName()).toBe('다른 PC에서 정함');
   });
 
+  it('늦게 읽은 프로필의 친구 코드는 이름이 같아도 onChange로 알린다', async () => {
+    const a = await boot('옛 이름', undefined);
+    const seen: (string | null)[] = [];
+    a.ctx.self.onChange((s) => seen.push(s.friendCode));
+    expect(a.ctx.self.friendCode()).toBe(null);
+    a.core.setProfile({ name: '옛 이름', friendCode: 'QAC4AAAA' });
+    expect(a.ctx.self.friendCode()).toBe('QAC4AAAA');
+    expect(seen).toEqual(['QAC4AAAA']);
+  });
+
   it('프로필을 읽기 전에 사용자가 정한 이름은 늦게 온 서버 이름보다 앞선다', async () => {
     const a = await boot('옛 이름', undefined);
     await a.ctx.self.setName('지금 정함');
