@@ -110,6 +110,8 @@ test('저장 직후 재시작하면 캐릭터·설정·목록은 남고 핀과 �
     const appearance = await s.stage.evaluate(() => ((window as unknown as W).core.host.api('wardrobe') as WardrobeApi).appearance());
     const p = await menu(s, '플레이리스트', '플레이리스트');
     await s.app.context().route('**/embed/**', r => r.fulfill({ contentType: 'text/html', body: '<html>검증용 플레이어</html>' }));
+    // 곡 제목은 더할 때 유튜브 oEmbed에서 받는다. 네트워크에 기대지 않게 메인의 응답을 정해 둔다
+    await s.app.evaluate(({ net }) => void (net.fetch = async () => new Response(JSON.stringify({ title: '검증용 곡' }))));
     await p.getByLabel('유튜브 링크').fill('https://youtu.be/dQw4w9WgXcQ');
     await p.getByRole('button', { name: '+ 추가' }).click();
     await p.locator('button[title="재생"]').click();
@@ -147,7 +149,7 @@ test('저장 직후 재시작하면 캐릭터·설정·목록은 남고 핀과 �
     const restored = await s.stage.evaluate(() => ((window as unknown as W).core.host.api('wardrobe') as WardrobeApi).appearance());
     expect(restored).toEqual(appearance);
     const p2 = await menu(s, '플레이리스트', '플레이리스트');
-    await expect(p2.getByText('제목 없는 곡 (dQw4w9WgXcQ)', { exact: true })).toBeVisible();
+    await expect(p2.getByText('검증용 곡', { exact: true })).toBeVisible();
     await expect(p2.getByRole('button', { name: '항상 위에 고정' })).toHaveAttribute('aria-pressed', 'false');
     expect(await (await s.app.browserWindow(p2)).evaluate(w => w.isAlwaysOnTop())).toBe(false);
     await expect(p2.locator('button[title="재생"]')).toBeVisible();
