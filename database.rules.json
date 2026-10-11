@@ -1201,6 +1201,9 @@
             "unlock": {
               ".validate": "newData.hasChildren(['at', 'v']) && newData.child('at').isNumber() && newData.child('v').isNumber() && newData.child('v').val() <= 1"
             },
+            "active": {
+              ".validate": "newData.hasChildren(['i', 'v']) && newData.child('i').isNumber() && newData.child('i').val() >= 0 && newData.child('i').val() <= 2 && newData.child('v').isNumber() && newData.child('v').val() <= 1"
+            },
             "$other": {
               ".validate": false
             }

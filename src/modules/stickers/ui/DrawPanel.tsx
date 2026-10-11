@@ -63,7 +63,8 @@ export default function DrawPanel({ ctx, board, under, dirty, onDone, onCancel }
   const underAt = under && fitIn(under.width, under.height, FULL);
   dirty.current = () => p.dirty() || text.trim() !== '';
 
-  // ESC는 꾸미기 창이 아니라 그림판만 닫는다. 그린 것이 있으면 창 안에서 먼저 묻고 묻는 동안의 ESC는 코어가 계속하기로 받는다
+  // ESC는 꾸미기 창이 아니라 그림판만 닫는다. 그린 것이 있으면 창 안에서 먼저 묻고 묻는 동안의 ESC는 코어가 계속하기로 받는다.
+  // 창의 물음은 저장하지 않은 꾸미기도 말하므로 그림판만 닫는 물음은 글을 따로 준다
   useEffect(() => {
     const doc = pad.current?.ownerDocument;
     if (!doc) return;
@@ -72,7 +73,7 @@ export default function DrawPanel({ ctx, board, under, dirty, onDone, onCancel }
       e.preventDefault();
       if (!dirty.current()) return onCancel();
       asking.current = true;
-      void ctx.ui.confirmLeave('stickers.edit').then((ok) => {
+      void ctx.ui.confirmLeave('stickers.edit', { text: '그린 그림이 사라져요. 닫을까요?' }).then((ok) => {
         asking.current = false;
         if (ok) onCancel();
       });

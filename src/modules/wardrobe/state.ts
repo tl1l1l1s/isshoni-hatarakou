@@ -4,7 +4,7 @@ import type {} from '@modules/growth/api';
 import { Appearance } from '@shared/schemas';
 import type { Sha256 } from '@shared/schemas';
 import {
-  activeOf, animalUnlocked, CharRecord, expiredTrash, fileRefs, fromExport, lockedText, mergeChars, remapFiles,
+  ActiveRecord, activeOf, animalUnlocked, CharRecord, expiredTrash, fileRefs, fromExport, lockedText, mergeChars, remapFiles,
   SLOT_COUNT, toExport, toTrash, trashKey, TrashRecord, TRASH_KEEP_MS, UnlockRecord, type Local,
 } from './logic';
 import { conflictsOf, syncedAfter, withSynced, type Conflict } from './sync';
@@ -87,16 +87,21 @@ export function createWardrobe(ctx: Ctx) {
     if (i === get().active) await publish();
   };
 
+  // 다시 설치한 PC나 다른 PC가 같은 캐릭터로 시작하도록 서버에도 남긴다
+  const saveActive = () => void user.set('active', { i: get().active, v: 1 }).catch(warn('지금 슬롯 기록 실패'));
   const setActive = async (i: number) => {
     if (i === get().active) return;
     set((l) => ({ ...l, active: i }));
+    saveActive();
     await publish();
   };
 
   /** 부팅 때 서버와 맞춘다. 슬롯마다 늦게 고친 쪽이 이기고 진 쪽은 휴지통에 간다. 10일 지난 휴지통은 지운다 */
   // ponytail: 켤 때 한 번만 맞춘다. 두 PC를 동시에 켜 두는 일이 잦아지면 chars를 watch한다
   const sync = async () => {
-    const [chars, unlock] = await Promise.all([user.get<Record<number, unknown>>('chars'), user.get('unlock')]);
+    // 한 번도 서버와 맞춘 적 없는 PC는 서버의 지금 슬롯을 따른다 (synced는 맞춘 뒤에 생긴다)
+    const firstSync = !get().synced?.some((x) => x !== null);
+    const [chars, unlock, active] = await Promise.all([user.get<Record<number, unknown>>('chars'), user.get('unlock'), user.get('active')]);
     const remote = get().chars.map((_, i) => {
       const r = CharRecord.safeParse(chars?.[i]);
       return r.success ? { appearance: r.data.appearance, mtime: r.data.mtime } : null;
@@ -116,6 +121,9 @@ export function createWardrobe(ctx: Ctx) {
     if (u.success && (at === null || u.data.at < at)) set((l) => ({ ...l, unlockedAt: u.data.at }));
     else if (!u.success && at !== null) void user.set('unlock', { at, v: 1 }).catch(warn('해금 기록 실패'));
     unlocked();
+    const a = ActiveRecord.safeParse(active);
+    if (!a.success) saveActive();
+    else if (firstSync && a.data.i !== get().active) set((l) => ({ ...l, active: a.data.i }));
     if (appearance() !== before) await publish();
 
     const rows = await trashDoc().list({ limit: 50 });

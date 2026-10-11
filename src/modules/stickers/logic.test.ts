@@ -100,12 +100,23 @@ describe('슬롯', () => {
     expect(fresh('sticker', BOARD_ITEM, h('a')).y).toBeLessThan(fresh('sticker', 'R1/a', h('a')).y!);
   });
 
-  it('같은 자리에 붙은 것이 있으면 비켜서 겹치지 않는다', () => {
+  it('같은 자리에 붙은 것이 있으면 그림 크기의 절반 넘게 비켜서 둘로 보인다', () => {
+    for (const [slot, item, img] of [['sticker', 'R1/a', sq], ['sticker', BOARD_ITEM, { width: 300, height: 100 }], ['desk.items', 'R1/a', sq], ['floor', 'R1/a', { width: 50, height: 200 }]] as const) {
+      const placed: Equip[] = [];
+      for (let i = 0; i < CAP; i++) placed.push(fresh(slot, item, h('a'), img, placed));
+      expect(new Set(placed.map((e) => `${e.x} ${e.y}`)).size).toBeGreaterThanOrEqual(8);
+      // 둘째 것은 첫째 것에서 그림 폭의 절반 넘게 떨어진다
+      const [a, b] = placed.map((e) => placeOf(img, e, view));
+      expect(Math.hypot(b!.cx - a!.cx, b!.cy - a!.cy)).toBeGreaterThanOrEqual((a!.w * placed[0]!.scale!) / 2);
+      // 다 비켜도 가운데는 view 안에 남는다
+      for (const e of placed) {
+        const p = placeOf(img, e, view);
+        expect([p.cx >= 0 && p.cx <= view.width, p.cy >= 0 && p.cy <= view.height]).toEqual([true, true]);
+      }
+    }
     const placed: Equip[] = [];
     for (let i = 0; i < CAP; i++) placed.push(fresh('sticker', 'R1/a', h('a'), sq, placed));
     expect(new Set(placed.map((e) => `${e.x} ${e.y}`)).size).toBe(CAP);
-    // 다 비켜도 view 안에 남는다
-    for (const e of placed) expect(placeOf(sq, e, view).cx).toBeLessThan(view.width);
     expect(fresh('sticker', 'R1/a', h('a'), sq, [{ item: 'x', file: null, x: 0.5, y: 0 }])).toMatchObject({ x: 0, y: -0.3 });
   });
 });

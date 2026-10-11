@@ -40,6 +40,9 @@ describe.skipIf(!process.env.FIREBASE_DATABASE_EMULATOR_HOST)('wardrobe 규칙 (
     await assertSucceeds(ref('alice', 'trash/5_2').set({ ...char, slot: 2, at: 9 }));
     await assertSucceeds(ref('alice', 'trash/5_2').remove());
     await assertSucceeds(ref('alice', 'unlock').set({ at: 9, v: 1 }));
+    await assertSucceeds(ref('alice', 'active').set({ i: 2, v: 1 }));
+    await assertFails(ref('alice', 'active').set({ i: 3, v: 1 }));
+    await assertFails(ref('bob', 'active').set({ i: 0, v: 1 }));
     await assertFails(ref('alice', 'other').set(1));
     await assertFails(ref('bob', 'chars/0').set(char));
     await assertFails(ref('bob', 'chars').get());

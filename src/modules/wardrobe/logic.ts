@@ -142,6 +142,8 @@ export const TrashRecord = z.object({ appearance: ServerAppearance, mtime: z.num
 export type TrashRecord = z.infer<typeof TrashRecord>;
 /** mod/wardrobe/u/{uid}/unlock */
 export const UnlockRecord = z.object({ at: z.number(), v: z.literal(1) });
+/** mod/wardrobe/u/{uid}/active. 지금 쓰는 슬롯. 처음 맞추는 PC(새로 설치, 다른 PC)가 받아 쓴다 */
+export const ActiveRecord = z.object({ i: z.number().int().min(0).max(SLOT_COUNT - 1), v: z.literal(1) });
 
 export const trashKey = (t: Pick<TrashRecord, 'mtime' | 'slot'>) => `${t.mtime}_${t.slot}`;
 export const toTrash = (c: Char, slot: number, at: number): TrashRecord => ({ ...c, slot, at, v: 1 });

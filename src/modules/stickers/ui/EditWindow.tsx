@@ -34,13 +34,17 @@ export default function EditWindow({ ctx }: { ctx: Ctx }) {
   const overlay = useRef<HTMLDivElement>(null);
   const drag = useRef<Drag | null>(null);
   const listEl = useRef<HTMLOListElement>(null);
-  // 그림판이 열려 있으면 그린 것이 있는지 그림판이 알려 준다
+  // 그림판이 열려 있으면 그린 것이 있는지 그림판이 알려 준다. 창을 닫으면 둘 다 사라지므로 둘 다 있으면 함께 말한다
   const padDirty = useRef<() => boolean>(() => false);
   const unsaved = useRef<() => string | null>(() => null);
-  unsaved.current = () =>
-    pad && padDirty.current() ? '그린 그림이 사라져요. 닫을까요?'
-    : JSON.stringify(edit) !== JSON.stringify(editOf(base)) ? '꾸미기를 저장하지 않았어요. 닫을까요?'
-    : null;
+  unsaved.current = () => {
+    const drawn = !!pad && padDirty.current();
+    const deco = JSON.stringify(edit) !== JSON.stringify(editOf(base));
+    return drawn && deco ? '그린 그림과 저장하지 않은 꾸미기가 사라져요. 닫을까요?'
+      : drawn ? '그린 그림이 사라져요. 닫을까요?'
+      : deco ? '꾸미기를 저장하지 않았어요. 닫을까요?'
+      : null;
+  };
 
   useEffect(() => wardrobe.onChange(setBase), [wardrobe]);
   // 저장하지 않은 꾸미기나 그림판에 그린 것이 있으면 ESC와 창 닫기 단추에서 묻는다

@@ -3,7 +3,7 @@ import type { Ctx } from '@core/types';
 import type { Appearance, Sha256 } from '@shared/schemas';
 import { DESKS, deskPng } from '../desks';
 import { bakeFace, faceEdit } from '../face';
-import { CUSTOM_DESK, EXPORT_MAX_CHARS, EXPORT_NAME, faceOf, lockedText, SLOT_COUNT, trashKey, withDesk, withFace, withPoseFile } from '../logic';
+import { CUSTOM_DESK, EXPORT_MAX_CHARS, EXPORT_NAME, faceOf, SLOT_COUNT, trashKey, withDesk, withFace, withPoseFile } from '../logic';
 import type { Face, PoseId, TrashRecord } from '../logic';
 import { wardrobeOf, type Wardrobe } from '../state';
 import FacePanel, { PoseThumb } from './FacePanel';
@@ -83,7 +83,7 @@ export default function WardrobeWindow({ ctx }: { ctx: Ctx }) {
   // 슬롯 단추는 지금 쓰는 캐릭터를 바로 바꾼다 (AVT-15)
   const pickSlot = (i: number) => {
     if (i === local.active) return;
-    void ctx.ui.confirmLeave(WIN).then(async (ok) => {
+    void ctx.ui.confirmLeave(WIN, { text: '캐릭터를 저장하지 않았어요. 바꿀까요?', ok: '바꾸기' }).then(async (ok) => {
       if (!ok) return;
       await run(async () => {
         const done = w.setActive(i);
@@ -122,32 +122,37 @@ export default function WardrobeWindow({ ctx }: { ctx: Ctx }) {
 
   return (
     <div ref={root}>
-      <nav className={css.steps} aria-label="캐릭터 슬롯">
-        {Array.from({ length: SLOT_COUNT }, (_, i) => (
-          <button key={i} aria-pressed={local.active === i} disabled={busy} onClick={() => pickSlot(i)}>캐릭터 {i + 1}</button>
-        ))}
-      </nav>
+      {/* 그림판 위 줄을 줄이려고 슬롯과 종류, 단계와 만드는 방법을 각각 한 줄에 둔다 */}
+      <div className={css.bar}>
+        <nav className={css.steps} aria-label="캐릭터 슬롯">
+          {Array.from({ length: SLOT_COUNT }, (_, i) => (
+            <button key={i} aria-pressed={local.active === i} disabled={busy} onClick={() => pickSlot(i)}>캐릭터 {i + 1}</button>
+          ))}
+        </nav>
+        <nav className={css.steps} aria-label="캐릭터 종류">
+          <button aria-pressed={draft.body === 'human'} onClick={() => setBody('human')}>사람</button>
+          <button aria-pressed={draft.body === 'animal'} disabled={!unlocked} onClick={() => setBody('animal')}>동물</button>
+        </nav>
+        {!unlocked && <small className={css.hint}>동물은 {w.need()}레벨부터</small>}
+      </div>
       {/* 얼굴 그리기와 자세 그림 넣기에는 자세 미리보기가 따로 있어서 위 미리보기를 접는다 */}
       {step !== 1 && (
         <div className={css.preview}>
           <ctx.ui.CharacterPreview appearance={draft} width={128} height={160} />
         </div>
       )}
-      <nav className={css.steps} aria-label="캐릭터 종류">
-        <button aria-pressed={draft.body === 'human'} onClick={() => setBody('human')}>사람</button>
-        <button aria-pressed={draft.body === 'animal'} disabled={!unlocked} onClick={() => setBody('animal')}>동물</button>
-      </nav>
-      {!unlocked && <p className={css.hint}>{lockedText(w.need())}</p>}
-      <nav className={css.steps}>
-        <button aria-pressed={step === 1} onClick={() => setStep(1)}>캐릭터</button>
-        <button aria-pressed={step === 2} onClick={() => setStep(2)}>책상</button>
-      </nav>
-      {step === 1 && (
-        <nav className={css.steps} aria-label="만드는 방법">
-          <button aria-pressed={mode === 'face'} onClick={() => setMode('face')}>얼굴 그리기</button>
-          <button aria-pressed={mode === 'file'} onClick={() => setMode('file')}>자세 그림 넣기</button>
+      <div className={css.bar}>
+        <nav className={css.steps}>
+          <button aria-pressed={step === 1} onClick={() => setStep(1)}>캐릭터</button>
+          <button aria-pressed={step === 2} onClick={() => setStep(2)}>책상</button>
         </nav>
-      )}
+        {step === 1 && (
+          <nav className={css.steps} aria-label="만드는 방법">
+            <button aria-pressed={mode === 'face'} onClick={() => setMode('face')}>얼굴 그리기</button>
+            <button aria-pressed={mode === 'file'} onClick={() => setMode('file')}>자세 그림 넣기</button>
+          </nav>
+        )}
+      </div>
       {step === 1 && mode === 'face' && <FacePanel ctx={ctx} edit={edit} face={face} body={draft.body} onFace={setFace} onError={setMsg} />}
       {step === 1 && mode === 'file' && (
         <>
