@@ -215,7 +215,7 @@ await verify('measure', async (s) => {
   await s.stage.locator('button[title="메뉴"]').waitFor();
   await at('혼자 실행 화면');
 
-  const rooms = await menu(s, '방 만들기 / 참여하기', '방 만들기 / 참여하기');
+  const rooms = await menu(s, '워킹룸', '워킹룸');
   await rooms.getByPlaceholder('예: 7Q2K9M').fill('devdev');
   await rooms.getByRole('button', { name: '참여' }).click();
   await expect(s.stage.getByText('가짜 친구')).toBeVisible();

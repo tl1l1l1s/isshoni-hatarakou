@@ -28,6 +28,11 @@ const animate = (e: Element | null, frames: Keyframe[], opts: KeyframeAnimationO
   return () => a?.cancel();
 };
 
+/** OS의 동작 줄이기. 켜져 있으면 한 번만 작게 움직인다. 효과 길이는 좌석 복귀에 쓰여서 그대로 둔다 */
+const still = (s: EffectSurface): boolean => s.root.ownerDocument.defaultView?.matchMedia('(prefers-reduced-motion: reduce)').matches === true;
+/** 동작 줄이기에서 날아가기 대신 제자리에서 한 번 움찔한다 */
+const flinch: Keyframe[] = [{ transform: 'none' }, { transform: 'translateY(-12px) rotate(-10deg)', offset: 0.15 }, { transform: 'none', offset: 0.4 }, { transform: 'none' }];
+
 const sway: Keyframe[] = ['0', '-12deg', '0', '12deg', '0'].map((r, i) => ({ transform: `rotate(${r}) translateX(${[0, -6, 0, 6, 0][i]}px)` }));
 const spin: Keyframe[] = [
   { transform: 'translateY(0) scaleX(1)' },
@@ -39,7 +44,7 @@ const spin: Keyframe[] = [
 
 export const effects: EffectDecl[] = [
   // 레벨 80 춤: 몸을 좌우로 흔든다
-  { id: 'play.dance80', detach: true, durationMs: DANCE_MS, run: (s, a) => animate(sprite(s, a, '50% 100%'), sway, { duration: 1000, iterations: DANCE_MS / 1000 }) },
+  { id: 'play.dance80', detach: true, durationMs: DANCE_MS, run: (s, a) => animate(sprite(s, a, '50% 100%'), sway, { duration: 1000, iterations: still(s) ? 1 : DANCE_MS / 1000 }) },
   // 레벨 150 춤: 좌우로 돌며 뛴다. 깜짝쇼면 두 배로 빠르다 (COM-17)
   {
     id: 'play.dance150',
@@ -47,7 +52,7 @@ export const effects: EffectDecl[] = [
     durationMs: DANCE_MS,
     run: (s, a) => {
       const ms = (a.data as { fast?: boolean } | undefined)?.fast ? 500 : 1000;
-      return animate(sprite(s, a, '50% 100%'), spin, { duration: ms, iterations: DANCE_MS / ms });
+      return animate(sprite(s, a, '50% 100%'), spin, { duration: ms, iterations: still(s) ? 1 : DANCE_MS / ms });
     },
   },
   // 날아갔다 돌아온다 (COM-13, COM-14, COM-17)
@@ -57,6 +62,7 @@ export const effects: EffectDecl[] = [
     durationMs: FLY_MS,
     run: (s, a) => {
       const c = sprite(s, a, '50% 50%');
+      if (still(s)) return animate(c, flinch, { duration: FLY_MS });
       const half = { w: (a.sprite?.width ?? 0) / 2, h: (a.sprite?.height ?? 0) / 2 };
       const path = flightPath(a.rand, a.from, half, { w: s.width, h: s.height });
       return animate(c, path.map((p) => ({ transform: `translate(${p.x - a.from.x}px, ${p.y - a.from.y}px) rotate(${p.r}deg)` })), { duration: FLY_MS });
@@ -87,21 +93,23 @@ export const effects: EffectDecl[] = [
     run: (s, a) => {
       const to = a.to;
       if (!to) return () => {};
-      const ball = el(s, 'div', `left:${a.from.x - 9}px;top:${a.from.y - 9}px;width:18px;height:18px;border-radius:50%;background:#222;box-shadow:0 0 0 2px #fff`);
+      // 동작 줄이기에서는 공이 날아가지 않고 대상에서 터지기만 한다
+      const ball = still(s) ? null : el(s, 'div', `left:${a.from.x - 9}px;top:${a.from.y - 9}px;width:18px;height:18px;border-radius:50%;background:#222;box-shadow:0 0 0 2px #fff`);
       const steps = Array.from({ length: 13 }, (_, i) => i / 12);
-      const fly = ball.animate(
+      const fly = ball?.animate(
         steps.map((t) => ({ transform: `translate(${(to.x - a.from.x) * t}px, ${(to.y - a.from.y) * t - 640 * t * (1 - t)}px)` })),
         { duration: BOMB_MS * 0.75, fill: 'forwards' },
       );
       const boom = el(s, 'div', `left:${to.x - 40}px;top:${to.y - 40}px;width:80px;height:80px;border-radius:50%;border:6px solid #fff;box-shadow:0 0 0 3px #222;opacity:0`);
       const burst = boom.animate([{ transform: 'scale(0.2)', opacity: 1 }, { transform: 'scale(1.4)', opacity: 0 }], { duration: BOMB_MS * 0.25, delay: BOMB_MS * 0.75 });
       return () => {
-        fly.cancel();
+        fly?.cancel();
         burst.cancel();
       };
     },
   },
-  // 채팅 날리기: 화면 오른쪽 끝에서 나타나 왼쪽으로 지나간다. 높이는 시드로 정한다 (COM-05)
+  // 채팅 날리기: 화면 오른쪽 끝에서 나타나 왼쪽으로 지나간다. 높이는 시드로 정한다 (COM-05).
+  // 동작 줄이기에서는 가운데에 나타났다가 제자리에서 사라진다
   {
     id: 'play.text',
     durationMs: TEXT_MS,
@@ -109,8 +117,10 @@ export const effects: EffectDecl[] = [
       const d = a.data as TextData;
       const px = TEXT_SIZES[d.size];
       const top = Math.round(s.height * 0.05 + a.rand() * (s.height * 0.9 - px));
-      const t = el(s, 'div', `left:0;top:${top}px;white-space:nowrap;font:700 ${px}px/1.2 system-ui,sans-serif;color:${d.color ?? '#fff'};text-shadow:0 0 3px #000,0 0 1px #000,1px 1px 0 #000`);
+      const at = still(s) ? 'left:0;width:100%;text-align:center' : 'left:0';
+      const t = el(s, 'div', `${at};top:${top}px;white-space:nowrap;font:700 ${px}px/1.2 system-ui,sans-serif;color:${d.color ?? '#fff'};text-shadow:0 0 3px #000,0 0 1px #000,1px 1px 0 #000`);
       t.textContent = d.text;
+      if (still(s)) return animate(t, [{ opacity: 0 }, { opacity: 1, offset: 0.1 }, { opacity: 1, offset: 0.9 }, { opacity: 0 }], { duration: TEXT_MS });
       return animate(t, [{ transform: `translateX(${s.width}px)` }, { transform: 'translateX(-100%)' }], { duration: TEXT_MS });
     },
   },

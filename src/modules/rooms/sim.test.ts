@@ -66,6 +66,10 @@ describe('rooms 시뮬레이터', () => {
     expect(Object.keys(hub.read(`rooms/${code}/members`) as object)).toHaveLength(3);
     expect(d!.toasts()).toContain('정원 3명이 차서 방에서 나왔어요.');
     expect(d!.local().lastRoom).toBeNull();
+    // 스스로 나간 늦은 입장자는 roster에서도 빠져 그 방 기록을 더 읽지 못한다 (errors-security/F5, D3)
+    await vi.advanceTimersByTimeAsync(0);
+    expect(hub.read(`rooms/${code}/roster/dave`)).toBeNull();
+    expect(hub.read(`rooms/${code}/roster/carol`)).not.toBeNull();
     // 친구가 따라 들어갈 수 있게 지금 방 코드를 계정 접속 기록에 쓴다 (나오면 지운다)
     expect(hub.read('users/bob/presence/m/rooms')).toEqual({ code });
     expect(hub.read('users/dave/presence/m/rooms')).toBeNull();
@@ -105,6 +109,7 @@ describe('rooms 시뮬레이터', () => {
     expect((await app('alice')).ctx.room.current()).toBe(code);
 
     await a.core.registry.run('rooms.leave');
+    expect(hub.read(`rooms/${code}/roster/alice`)).toBeNull();
     await a.core.flush();
     expect((await app('alice')).ctx.room.current()).toBeNull();
   });

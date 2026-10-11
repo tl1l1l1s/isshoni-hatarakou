@@ -33,11 +33,11 @@ export default defineModule<RoomsApi>({
   },
   ui: {
     windows: [
-      { id: 'rooms.join', title: '방 만들기 / 참여하기', width: 340, height: 420, focusable: true, component: () => import('./ui/JoinWindow') },
+      { id: 'rooms.join', title: '워킹룸', width: 340, height: 420, focusable: true, component: () => import('./ui/JoinWindow') },
       { id: 'rooms.settings', title: '방 설정', width: 340, height: 560, focusable: true, component: () => import('./ui/SettingsWindow') },
     ],
     contributions: [
-      { slot: 'menu.main', id: 'rooms.menu', label: '방 만들기 / 참여하기', command: 'rooms.open', order: 20 },
+      { slot: 'menu.main', id: 'rooms.menu', label: '워킹룸', command: 'rooms.open', order: 20 },
       { slot: 'chip.buttons', id: 'rooms.chip', label: '방 코드', component: RoomChip },
       { slot: 'launcher.cards', id: 'rooms.card', label: '워킹룸', component: RoomCard, order: 10 },
     ],

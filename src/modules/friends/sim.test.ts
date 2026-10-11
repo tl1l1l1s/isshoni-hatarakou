@@ -43,13 +43,10 @@ async function app(name: string, friendCode: string) {
 describe('friends 시뮬레이터', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    // 받은 신청이 오면 친구창을 연다. 시험에는 창이 없다
-    vi.stubGlobal('window', { open: () => null });
     hub = new MemoryHub();
     notes.length = 0;
   });
   afterEach(() => {
-    vi.unstubAllGlobals();
     vi.useRealTimers();
   });
 
@@ -60,6 +57,10 @@ describe('friends 시뮬레이터', () => {
     expect(await requestByCode(a.ctx, 'mate-bbbb3333')).toBe('bob님에게 친구 신청을 보냈어요.');
     await vi.advanceTimersByTimeAsync(0);
     expect(snap(b.ctx).inbox?.alice?.req?.name).toBe('alice');
+    // 받은 신청은 창을 열지 않고 알림으로 알린다 (FRD-02)
+    expect(b.core.windows.open.get()).toEqual([]);
+    expect(b.toasts()).toContain('alice님이 친구 신청을 보냈어요.');
+    expect(notes).toEqual(['alice님이 친구 신청을 보냈어요.']);
     // 보낸 신청은 답이 올 때까지 친구창에 남고 좌석 메뉴의 친구 신청은 숨는다
     expect(snap(a.ctx).sent).toEqual({ bob: { name: 'bob' } });
     expect(a.core.registry.reason('friends.request', { uid: 'bob', name: 'bob' })).toBe('이미 신청을 보냈어요.');
@@ -78,7 +79,7 @@ describe('friends 시뮬레이터', () => {
     expect((await b.ctx.room.join(code)).ok).toBe(true);
     expect(await invite(b.ctx, 'alice', 'alice')).toBe(`alice님을 ${code} 방으로 초대했어요.`);
     await vi.advanceTimersByTimeAsync(0);
-    expect(notes).toEqual([`bob님이 ${code} 방으로 초대했어요.`]);
+    expect(notes.at(-1)).toBe(`bob님이 ${code} 방으로 초대했어요.`);
     expect(await answer(a.ctx, 'bob', true)).toBeNull();
     expect(a.ctx.room.current()).toBe(code);
     expect(hub.read('mod/friends/u/alice/in')).toBeNull();
@@ -103,6 +104,10 @@ describe('friends 시뮬레이터', () => {
     expect(a.core.registry.reason('friends.request', { uid: 'bob', name: 'bob' })).toBeNull();
 
     await requestByCode(a.ctx, 'BBBB3333');
+    await vi.advanceTimersByTimeAsync(0);
+    // 거절한 사람이 다시 보낸 신청은 목록에는 보이지만 이번 실행에서는 다시 알리지 않는다 (D3)
+    expect(snap(b.ctx).inbox?.alice?.req).toBeTruthy();
+    expect(notes).toEqual(['alice님이 친구 신청을 보냈어요.']);
     await cancel(a.ctx, 'bob');
     await vi.advanceTimersByTimeAsync(0);
     expect(snap(a.ctx).sent).toEqual({});

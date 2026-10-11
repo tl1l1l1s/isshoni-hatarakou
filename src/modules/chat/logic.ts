@@ -16,9 +16,17 @@ export const Msg = z.object({ uid: z.string(), name: z.string(), text: z.string(
 export type Msg = z.infer<typeof Msg>;
 export interface Item { key: string; value: Msg }
 
-/** 방마다 마지막으로 읽은 메시지 키 */
-export const Local = z.object({ read: z.record(z.string(), z.string()) });
+/** 서버가 받았다고 하기 전의 내 글. 그사이 앱을 끄면 다음에 그 방에 들어올 때 보내지 못한 글로 보인다 */
+export const OUT_MAX = 20;
+const Out = z.object({ room: z.string(), key: z.string(), text: z.string() });
+export type Out = z.infer<typeof Out>;
+
+/** 방마다 마지막으로 읽은 메시지 키와 보내는 중인 내 글 */
+export const Local = z.object({ read: z.record(z.string(), z.string()), out: z.array(Out).max(OUT_MAX).default([]) });
 export type Local = z.infer<typeof Local>;
+
+/** OS 알림 사이 간격 (D5). 그사이 온 글은 간격이 지나면 몇 개인지 한 번에 알린다 */
+export const NOTE_GAP_MS = 30_000;
 
 /** 서버 시각 15자리와 uid. 문자열 순서가 시각 순서이고 사람마다 다르다 */
 export const msgKey = (t: number, uid: string): string => `${String(t).padStart(15, '0')}_${uid}`;
