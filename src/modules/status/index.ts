@@ -75,7 +75,7 @@ export default defineModule({
         const code = left;
         left = null;
         // 정원이 찼으면 rooms 모듈이 늦게 들어온 쪽인 나를 다시 내보낸다
-        if (!ctx.room.current()) void ctx.room.join(code).then((r) => r.ok || ctx.ui.toast(r.reason));
+        if (!ctx.room.current()) void ctx.room.join(code, { retry: true }).then((r) => r.ok || ctx.ui.toast(r.reason));
       }
       // 그림 앱이 앞에 있으면 펜 입력이 유휴 시간에 잡히지 않을 수 있어서 내보내지 않는다 (CHR-12)
       // ponytail: 그림 앱을 앞에 둔 채 자리를 비우면 나가지 않는다. 펜 입력 시각을 따로 받게 되면 그 값으로 센다

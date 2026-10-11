@@ -11,6 +11,7 @@ import {
   signOut,
 } from 'firebase/auth';
 import {
+  child,
   connectDatabaseEmulator,
   forceWebSockets,
   get,
@@ -64,6 +65,10 @@ const friendly = <T>(p: Promise<T>): Promise<T> =>
 
 /** 읽기를 거부당해 SDK가 끊은 구독을 다시 거는 간격. ponytail: 5초, 15초, 1분, 그 뒤로 5분마다 */
 const RESUBSCRIBE_MS = [5_000, 15_000, 60_000, 300_000];
+/** query 구독의 짝으로 구독하는 자식 키. 데이터에 쓰지 않는 키라 값은 늘 null이다.
+ *  ponytail: 읽기 규칙이 위에서 아래로만 열리고 query 조건 규칙이 없어서 query 경로와 같은 때에 거부된다.
+ *  query 경로 바로 아래 자식에 읽기를 따로 여는 규칙이 생기면 그 규칙이 이 키에 열리지 않는지 확인한다 */
+const QUERY_PROBE = '~';
 
 /** 'm/focus/awake' 같은 다중 경로 키를 기록 사본에 넣는다 */
 function setIn(obj: Record<string, unknown>, path: string, value: unknown): void {
@@ -120,32 +125,45 @@ export function createFirebaseServer(cfg: FirebaseConfig, appName?: string): Fir
 
   // 읽기를 거부당해 끊긴 구독. 다시 연결되면 기다리지 않고 바로 다시 건다
   const cancelled = new Set<() => void>();
-  /** onValue와 같다. 서버가 읽기를 거부해 SDK가 구독을 끊으면(규칙 배포 실수 같은 잠깐의 거부) 기다렸다가 다시 건다 */
-  const listen = (q: Query, onData: (s: DataSnapshot) => void): Dispose => {
-    let stop: Dispose = () => {};
+  /** onValue와 같다. 서버가 읽기를 거부해 구독을 끊으면(규칙 배포 실수 같은 잠깐의 거부) onDenied를 부르고 기다렸다가 다시 건다.
+   *  firebase 12는 연결된 채로 끊긴 query 구독에는 cancel을 부르지 않는다. 서버가 돌려준 query 모양(sin, ein이 붙음)이
+   *  SDK가 보낸 것과 달라 그 구독을 찾지 못하고 구독은 다시 연결될 때까지 조용히 멈춘다. 그래서 query 구독에는 같은 읽기 규칙을
+   *  따르는 없는 자식 경로(QUERY_PROBE)의 값 구독을 짝으로 붙여 그 cancel로 함께 다시 건다 */
+  const listen = (q: Query, onData: (s: DataSnapshot) => void, onDenied?: () => void): Dispose => {
+    let stops: Dispose[] = [];
     let timer: ReturnType<typeof setTimeout> | undefined;
     let tries = 0;
+    const drop = () => {
+      const s = stops;
+      stops = [];
+      for (const stop of s) stop();
+    };
     const sub = () => {
       clearTimeout(timer);
       cancelled.delete(sub);
-      stop = onValue(
-        q,
-        (s) => {
-          tries = 0;
-          onData(s);
-        },
-        (e) => {
-          console.warn(`구독이 끊겨 다시 걸어요: ${q.toString()} ${e.message}`);
-          cancelled.add(sub);
-          timer = setTimeout(sub, RESUBSCRIBE_MS[Math.min(tries++, RESUBSCRIBE_MS.length - 1)]);
-        },
-      );
+      drop();
+      const mine: Dispose[] = [];
+      const denied = (e: Error) => {
+        // 짝 구독이 함께 끊기거나 이미 다시 건 뒤의 cancel은 한 번만 처리한다
+        if (stops !== mine) return;
+        drop();
+        console.warn(`구독이 끊겨 다시 걸어요: ${q.toString()} ${e.message}`);
+        cancelled.add(sub);
+        timer = setTimeout(sub, RESUBSCRIBE_MS[Math.min(tries++, RESUBSCRIBE_MS.length - 1)]);
+        onDenied?.();
+      };
+      stops = mine;
+      mine.push(onValue(q, (s) => {
+        tries = 0;
+        onData(s);
+      }, denied));
+      if (!q.isEqual(q.ref)) mine.push(onValue(child(q.ref, QUERY_PROBE), () => {}, denied));
     };
     sub();
     return () => {
       clearTimeout(timer);
       cancelled.delete(sub);
-      stop();
+      drop();
     };
   };
 
@@ -316,21 +334,27 @@ export function createFirebaseServer(cfg: FirebaseConfig, appName?: string): Fir
       },
       watch: (uid, fn) => {
         const base = `users/${uid}/presence`;
-        // 친구가 아니면 전체 읽기가 거부되므로 online과 lastSeen만 따로 구독한다
-        const fallback = (): Dispose[] => {
+        // 친구가 아니면 전체 읽기가 거부되므로 그동안 online과 lastSeen만 따로 구독한다. 전체 읽기는 listen이 다시 걸어 본다
+        let parts: Dispose[] = [];
+        const drop = () => parts.splice(0).forEach((stop) => stop());
+        const fallback = () => {
+          if (parts.length) return;
           const v: Record<string, unknown> = {};
-          return ['online', 'lastSeen'].map((k) =>
-            onValue(r(`${base}/${k}`), (s) => {
+          parts = ['online', 'lastSeen'].map((k) =>
+            listen(r(`${base}/${k}`), (s) => {
               v[k] = s.val();
               if ('online' in v && 'lastSeen' in v) fn(v.online === null && v.lastSeen === null ? null : toPresence(v));
             }),
           );
         };
-        let stops: Dispose[] = [];
-        stops = [onValue(r(base), (s) => fn(toPresence(s.val())), () => {
-          stops = fallback();
-        })];
-        return () => stops.forEach((stop) => stop());
+        const stop = listen(r(base), (s) => {
+          drop();
+          fn(toPresence(s.val()));
+        }, fallback);
+        return () => {
+          stop();
+          drop();
+        };
       },
     },
     userPrivate: {

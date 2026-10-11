@@ -14,7 +14,7 @@ export type Dispose = () => void;
 export const NOT_IN_ROOM = '방에 들어가면 쓸 수 있어요. 워킹룸에서 들어가요.';
 
 /** 연결이 끊긴 동안 사용자가 시작한 쓰기를 멈출 때 알리는 글 (0033 오프라인 쓰기 정책). 적은 글은 지우지 않고 둔다 */
-export const OFFLINE = '연결이 끊겨서 보내지 못했어요. 연결되면 다시 해 주세요.';
+export const OFFLINE = '연결이 끊겨서 보내지 못했어요. 연결되면 다시 눌러 주세요.';
 
 /** 모듈이 declare module로 넓히는 이벤트와 공개 API 타입 */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -293,7 +293,9 @@ export interface RoomCtx {
   current(): string | null;
   /** reason은 방에서 밀려났을 때의 안내 (예: 주인이 방을 지움) */
   onChange(fn: (code: string | null, reason?: string) => void): Dispose;
-  join(code: string): Promise<JoinResult>;
+  /** retry는 자동으로 다시 들어갈 때 켠다. 서버가 잠깐 거부해 network로 실패하면 코어가 기다렸다가 다시 들어간다.
+   *  다른 입장이나 나가기가 오면 멈추고 돌려주는 것은 첫 시도의 결과다 */
+  join(code: string, opts?: { retry?: boolean }): Promise<JoinResult>;
   /** 스스로 방에서 나간다. roster에서도 빠져 그 방 기록(채팅, 사진, 가챠 같은 것)을 더 읽지 못하고 코드로 다시 들어오면 다시 읽는다 */
   leave(): Promise<void>;
   /** 방을 만들고 주인이 된다. 코드는 코어가 뽑는다 */

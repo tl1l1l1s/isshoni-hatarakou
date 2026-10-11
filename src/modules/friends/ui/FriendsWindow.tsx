@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import type { AccountPresence, Ctx } from '@core/types';
-import { plan, profileView } from '../logic';
-import { accept, answer, cancel, decline, invite, requestByCode, unfriend, useFriends } from '../state';
+import { plan, profileView, type Local } from '../logic';
+import { accept, answer, cancel, decline, invite, rememberName, requestByCode, unfriend, useFriends } from '../state';
 import css from './friends.module.css';
 
 type Run = (job: () => Promise<string | null>) => void;
@@ -131,7 +131,8 @@ export default function FriendsWindow({ ctx }: { ctx: Ctx }) {
 function Friend({ ctx, uid, pending, busy, run }: { ctx: Ctx; uid: string; pending: boolean; busy: boolean; run: Run }) {
   // undefined는 접속 기록을 아직 받지 못한 것, null은 기록이 없는 것
   const [p, setP] = useState<AccountPresence | null | undefined>(undefined);
-  const [who, setWho] = useState(profileView(null));
+  // undefined는 프로필을 아직 읽지 못한 것. 끊긴 동안은 연결될 때까지 기다린다
+  const [who, setWho] = useState<ReturnType<typeof profileView>>();
   const [asking, setAsking] = useState(false);
   const mine = useMyRoom(ctx);
 
@@ -139,11 +140,17 @@ function Friend({ ctx, uid, pending, busy, run }: { ctx: Ctx; uid: string; pendi
   useEffect(() => ctx.users.watchPresence(uid, setP), [ctx, uid, pending]);
   useEffect(() => {
     let live = true;
-    ctx.users.profile(uid).then((v) => live && setWho(profileView(v)), () => {});
+    ctx.users.profile(uid).then((v) => {
+      if (!live) return;
+      const view = profileView(v);
+      setWho(view);
+      rememberName(ctx, uid, view.name);
+    }, () => {});
     return () => void (live = false);
   }, [ctx, uid]);
 
-  const name = who.name ?? '이름 없음';
+  // 프로필을 읽기 전에는 이 PC가 마지막으로 본 이름을 보이고 본 적이 없으면 친구라고 보여 이름이 바뀐 것처럼 보이지 않게 한다
+  const name = who ? (who.name ?? '이름 없음') : (ctx.local.get<Local>('account').names[uid] ?? '친구');
   // 오프라인으로 보이기를 켠 친구는 접속 중이어도 오프라인으로 그리고 있는 방도 보이지 않는다 (FRD-06)
   const online = p?.online === true && p.m.friends?.hidden !== true;
   const code = p?.m.rooms?.code;
@@ -155,7 +162,7 @@ function Friend({ ctx, uid, pending, busy, run }: { ctx: Ctx; uid: string; pendi
       <div className={css.row}>
         <span className={css.dot} data-online={p === undefined ? undefined : online} />
         <strong>{name}</strong>
-        {who.level !== null && <span className={css.lv}>Lv.{who.level}</span>}
+        {who && who.level !== null && <span className={css.lv}>Lv.{who.level}</span>}
         <span className={css.muted}>{where}</span>
       </div>
       {asking ? (

@@ -22,8 +22,8 @@ export function useRoom(ctx: Ctx): RoomInfo {
 }
 
 /** 들어가지 못하면 이유. 지운 방이나 없는 방이면 최근 목록에서 뺀다 */
-export async function joinRoom(ctx: Ctx, code: string): Promise<string | null> {
-  const r = await ctx.room.join(code);
+export async function joinRoom(ctx: Ctx, code: string, opts?: { retry?: boolean }): Promise<string | null> {
+  const r = await ctx.room.join(code, opts);
   if (r.ok) return null;
   if (r.kind === 'gone' || r.kind === 'missing') ctx.local.update<Local>('account', (s) => forget(s, code));
   return r.reason;

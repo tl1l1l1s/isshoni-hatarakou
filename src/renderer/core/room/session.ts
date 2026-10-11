@@ -29,6 +29,8 @@ export interface RoomSessionDeps {
 }
 
 const CANCELLED: JoinResult = { ok: false, reason: '방 입장을 취소했어요.', kind: 'cancelled' };
+/** 자동으로 다시 들어가기의 간격. ponytail: 구독 다시 걸기(server/firebase)와 같은 5초, 15초, 1분, 그 뒤로 5분마다 */
+const REJOIN_MS = [5_000, 15_000, 60_000, 300_000];
 const UPDATE_NEEDED = '앱을 업데이트해야 방에 들어갈 수 있어요.';
 const byteLength = (v: unknown) => new TextEncoder().encode(JSON.stringify(v)).length;
 
@@ -93,7 +95,15 @@ export class RoomSession {
     return this.listen(this.checks, fn);
   }
 
-  async join(code: string): Promise<JoinResult> {
+  /** retry는 자동으로 다시 들어갈 때 켠다. 연결된 채로 서버가 잠깐 거부해 network로 실패하면 5초, 15초, 1분 뒤에 다시 들어가고
+   *  그 뒤로는 5분마다 들어간다. 다른 입장, 나가기, 절전이 오면 멈춘다. 돌려주는 것은 첫 시도의 결과다 */
+  async join(code: string, { retry = false }: { retry?: boolean } = {}): Promise<JoinResult> {
+    const r = await this.tryJoin(code);
+    if (retry) this.retryJoin(code, r, 0);
+    return r;
+  }
+
+  private async tryJoin(code: string): Promise<JoinResult> {
     // 입장마다 번호를 받는다. 기다리는 동안 다른 입장, 나가기, 절전이 오면 번호가 바뀌어 이 입장은 취소된다
     const seq = ++this.joinSeq;
     this.joining = this.code === code ? null : code;
@@ -103,6 +113,14 @@ export class RoomSession {
     } finally {
       if (seq === this.joinSeq) this.joining = null;
     }
+  }
+
+  private retryJoin(code: string, r: JoinResult, tries: number): void {
+    if (r.ok || r.kind !== 'network') return;
+    const seq = this.joinSeq;
+    this.d.timers.at(REJOIN_MS[Math.min(tries, REJOIN_MS.length - 1)] as number, () => {
+      if (seq === this.joinSeq) void this.tryJoin(code).then((next) => this.retryJoin(code, next, tries + 1));
+    });
   }
 
   private async enter(code: string, stale: () => boolean): Promise<JoinResult> {
@@ -203,7 +221,7 @@ export class RoomSession {
   async resume(): Promise<JoinResult | null> {
     const code = this.paused;
     this.paused = null;
-    return code ? this.join(code) : null;
+    return code ? this.join(code, { retry: true }) : null;
   }
 
   /** 이 모듈의 presence 필드를 쓴다. 선언하지 않은 키, schema에 맞지 않는 값, 128바이트 초과는 예외 */

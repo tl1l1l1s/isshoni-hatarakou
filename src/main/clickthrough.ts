@@ -15,7 +15,10 @@ export function shouldIgnore(c: Point, b: Rect, rects: Rect[], nearPx: number): 
 }
 
 /** 다음 확인까지 기다릴 시간. 커서가 스테이지 가까이 있으면 자주 본다. 캐릭터 위에 머물던 펜을 들어 옆 캔버스에 바로 내려도
- *  스테이지가 그 클릭을 받지 않게 한다. 멀리 있으면 드물게 본다 */
+ *  스테이지가 그 클릭을 받지 않게 한다. 멀리 있으면 드물게 본다.
+ *  ponytail: 가까이서는 8ms. M5에서 커서가 스테이지 40px 안에 머물면 초당 111번 읽고 메인 CPU 1.75%다(멀리 있으면 19.6번, 0.5%).
+ *  16ms는 59번, 1.2%지만 캐릭터 위의 커서를 옮겨 20ms 뒤에 누르는 osclick 검사가 5번 중 4번만 통과해 두지 않았다.
+ *  Windows 비용은 재지 않았다. 노트북 전지가 문제가 되면 폴링 대신 OS 커서 이동 이벤트를 받는다 */
 export const pollDelay = (c: Point, b: Rect) => (near(c, b, CURSOR_NEAR_PX) ? CURSOR_POLL_NEAR_MS : CURSOR_POLL_MS);
 
 /** held가 true인 동안(스테이지를 끄는 중)은 클릭을 계속 받는다 */

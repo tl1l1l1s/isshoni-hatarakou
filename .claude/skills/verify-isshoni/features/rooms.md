@@ -13,7 +13,7 @@
 - `room-leave-roster`는 `방에서 나가기`나 정원 초과로 스스로 나가면 그 방의 roster에서도 빠져 그 방 채팅과 사진 같은 기록을 더 읽지 못하는 것이다. 코드로 다시 들어오면 다시 읽는다. 절전, 앱 끝내기, 다른 기기로 넘기기, 자동 퇴장 뒤 돌아오기는 다시 들어가므로 영향이 없다.
 - `room-settings`는 내 방의 방 설정 창을 여는 것이다 (OUR-01). 채팅 켜기가 정원 바로 아래에 있고 채팅을 끈 주인이 대화하기를 누르면 다시 켜는 곳을 알려 준다.
 - `room-remove`는 방 설정 창의 `방 지우기`로 확인을 거쳐 내 방을 지우는 것이다 (OUR-01).
-- `room-resume`은 절전하면 방에서 나왔다가 깨어나면 같은 방에 다시 들어가는 것이다. 자는 동안 주인이 방을 지웠으면 깨어날 때 `주인이 지운 방이에요.` 안내가 뜬다.
+- `room-resume`은 절전하면 방에서 나왔다가 깨어나면 같은 방에 다시 들어가는 것이다. 자는 동안 주인이 방을 지웠으면 깨어날 때 `주인이 지운 방이에요.` 안내가 뜬다. 서버가 잠깐 거부해 들어가지 못하면 안내를 한 번 띄우고 5초, 15초, 1분 뒤에, 그 뒤로는 5분마다 다시 들어간다. 앱을 켤 때의 자동 재입장, `여기서 계속 쓰기`, 자동 퇴장 뒤 돌아오기도 같다.
 - `room-elsewhere`는 다른 기기가 이 계정을 가져가면 이 PC는 방에서 나오고 계정 접속 상태(친구가 보는 접속 표시와 방 코드)를 더 쓰지 않는 것이다. `여기서 계속 쓰기`를 누르면 다시 쓰고 나왔던 방에 돌아간다 (ACC-12).
 - `room-auto-leave`는 자동 자리비움이 6시간 이어지면 안내 창을 띄우고 1분 뒤 방에서 나갔다가 입력이 오면 다시 들어가는 것이다 (CHR-13, ROM-14). 안내 창에서 취소하면 나가지 않고 작업 앱이 앞에 있거나 내 방이면 안내하지 않는다.
 
@@ -49,7 +49,8 @@ Preconditions:
 절전과 깨어남(`room-resume`)은 화면에서 만들 수 없어서 메인이 스테이지에 lifecycle 이벤트를 보낸다. `const lifecycle = (type: 'suspend' | 'resume') => s.app.evaluate(({ BrowserWindow }, t) => BrowserWindow.getAllWindows().find((w) => !w.webContents.getURL().startsWith('about:'))!.webContents.send('core:lifecycle', { type: t }), type)`를 만들어 쓴다. `devdev`에 참여한 상태에서 시작한다.
 
 - **절전과 깨어남.** `await lifecycle('suspend')`를 실행하면 `가짜 친구`가 사라지고 `await lifecycle('resume')`을 실행하면 다시 보인다.
-- **지운 방.** 다시 `await lifecycle('suspend')`를 실행하고 `await s.stage.evaluate(() => devHub.write('rooms/DEVDEV/meta/deletedAt', Date.now()))`로 방을 지운 뒤 `await lifecycle('resume')`을 실행한다. 실행 화면에 `주인이 지운 방입니다.`가 뜨고 `DEVDEV` 칩이 없다. 끝나면 같은 경로에 `null`을 써서 되돌린다.
+- **서버가 잠깐 거부할 때.** 다시 `await lifecycle('suspend')`를 실행하고 스테이지에서 `window.realMin = core.deps.server.config.minProtocol; core.deps.server.config.minProtocol = () => Promise.reject(new Error('permission_denied'))`로 서버 거부를 흉내 낸 뒤 `await lifecycle('resume')`을 실행한다. 실행 화면에 `방에 들어가지 못했어요. 인터넷 연결을 확인하고 다시 들어가 주세요.`가 뜨고 `가짜 친구`가 없다. `core.deps.server.config.minProtocol = window.realMin`으로 되돌리면 아무것도 누르지 않아도 첫 실패 5초 뒤에 `가짜 친구`와 `DEVDEV` 칩이 다시 보인다. 보고에 이 준비를 적는다.
+- **지운 방.** 다시 `await lifecycle('suspend')`를 실행하고 `await s.stage.evaluate(() => devHub.write('rooms/DEVDEV/meta/deletedAt', Date.now()))`로 방을 지운 뒤 `await lifecycle('resume')`을 실행한다. 실행 화면에 `주인이 지운 방이에요.`가 뜨고 `DEVDEV` 칩이 없다. 끝나면 같은 경로에 `null`을 써서 되돌린다.
 
 다른 기기(`room-elsewhere`)도 `devdev`에 참여한 상태에서 시작한다. 계정 접속 상태는 `const presence = () => s.stage.evaluate(() => devHub.read('users/' + core.deps.uid + '/presence'))`로 읽는다.
 

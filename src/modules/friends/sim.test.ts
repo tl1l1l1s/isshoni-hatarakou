@@ -7,7 +7,7 @@ import type { ModuleManifest } from '@core/types';
 import type { RenderBackend } from '@render/port';
 import type { Bridge } from '../../preload/api';
 import friends from './index';
-import { accept, answer, cancel, decline, invite, requestByCode, snap, unfriend } from './state';
+import { accept, answer, cancel, decline, invite, rememberName, requestByCode, snap, unfriend } from './state';
 
 let hub: MemoryHub;
 const notes: string[] = [];
@@ -112,5 +112,13 @@ describe('friends 시뮬레이터', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(snap(a.ctx).sent).toEqual({});
     expect(hub.read('mod/friends/u/bob/in')).toBeNull();
+  });
+
+  it('읽은 친구 이름은 이 PC에 남고 이름이 없어지면 지운다 (끊긴 채로 연 친구 창이 보인다)', async () => {
+    const a = await app('alice', 'AAAA2222');
+    rememberName(a.ctx, 'bob', 'bob');
+    rememberName(a.ctx, 'carol', 'carol');
+    rememberName(a.ctx, 'carol', null);
+    expect(a.ctx.local.get('account')).toEqual({ names: { bob: 'bob' } });
   });
 });

@@ -138,6 +138,6 @@ describe('놀이 보내기', () => {
     (f.ctx.connection as { online: () => boolean }).online = () => false;
     react(f.ctx, 'pet', { key: BOB });
     expect(headText(f.ctx, BOB)).toBeNull();
-    expect(f.ctx.ui.toast).toHaveBeenCalledWith('연결이 끊겨서 보내지 못했어요. 연결되면 다시 해 주세요.');
+    expect(f.ctx.ui.toast).toHaveBeenCalledWith('연결이 끊겨서 보내지 못했어요. 연결되면 다시 눌러 주세요.');
   });
 });
