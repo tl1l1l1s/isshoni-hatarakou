@@ -25,6 +25,8 @@ export interface CoreInvokeMap {
   /** 숨긴 keepAlive 패널을 다시 보이거나 숨긴다. 이미 열린 패널을 다시 열 때도 win.show로 맨 위로 올린다 */
   'win.show': { args: { name: string }; result: void };
   'win.hide': { args: { name: string }; result: void };
+  /** 열린 패널을 다른 일반 창 위에 고정하거나 해제한다 */
+  'win.setAlwaysOnTop': { args: { name: string; on: boolean }; result: void };
   /** 메인이 CSP frame-src에 쓰는 외부 출처 (device/csp.json) */
   'csp.frameOrigins.get': { args: Record<string, never>; result: string[] };
   /** 출처를 저장한다. 지금 정책과 다르면 스테이지를 다시 읽고 true (앱을 켠 뒤 한 번만) */

@@ -6,7 +6,7 @@ import {
   BIO_MAX, KINDS, KIND_LABEL, MAX_TRACKS, nextIndex, PLAYER, playerTitle, playOrder, presetLabel, PRESET_NAME_MAX, youTubeId,
   type Playlist, type Settings, type Track,
 } from '../logic';
-import { friends, openFriend, play, player, savePlaylist, setPlayer, surf, usePlayer, type Friend, type Guest } from '../state';
+import { friends, openFriend, play, player, savePlaylist, setPlayer, surf, usePlayer, WINDOW, type Friend, type Guest } from '../state';
 import css from './sound.module.css';
 
 // embed 주소에 origin을 붙이지 않으면 플레이어가 app:// 창에서 온 명령을 무시한다
@@ -16,7 +16,7 @@ const titleOf = (info: unknown) => (info as { videoData?: { title?: unknown } } 
 /** 제목은 처음 재생할 때 플레이어가 알려 준다. 그 전에는 영상 id로 줄을 나눠 보인다 */
 const trackName = (t: { v: string; title: string }) => t.title || `제목 없는 곡 (${t.v})`;
 
-/** 플레이리스트와 백색소음 창 (SND-01..SND-09). 닫아도 숨기기만 해서 재생이 이어진다.
+/** 플레이리스트와 백색소음 창 (SND-01..SND-09). 닫으면 숨기고 재생을 멈춘다.
  *  유튜브 스크립트 없이 embed iframe에 postMessage 명령을 보낸다 (CSP script-src 'self') */
 export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
   const [list, setList] = useState(() => ctx.local.get<Playlist>('device'));
@@ -27,6 +27,8 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
   const [guest, setGuest] = useState<Guest | null>(null);
   const [picking, setPicking] = useState<Friend[] | null>(null);
   const [mini, setMini] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const [pinning, setPinning] = useState(false);
   const [naming, setNaming] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [link, setLink] = useState('');
@@ -64,6 +66,17 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
     if (!track) return go(1);
     send(playing ? 'pauseVideo' : 'playVideo');
     setPlayer(ctx, { playing: !playing });
+  };
+  const pin = async () => {
+    setPinning(true);
+    try {
+      await ctx.ui.setAlwaysOnTop(WINDOW, !pinned);
+      setPinned(!pinned);
+    } catch {
+      ctx.ui.toast('창 고정을 바꾸지 못했어요. 다시 눌러 주세요.');
+    } finally {
+      setPinning(false);
+    }
   };
 
   /** 친구 목록으로 바꾸고 첫 곡부터 튼다 (SND-06, SND-07) */
@@ -213,6 +226,7 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
           <button title="이전 곡" onClick={() => go(-1)}>⏮</button>
           <button title={playing && track ? '일시정지' : '재생'} onClick={toggle}>{playing && track ? '⏸' : '▶'}</button>
           <button title="다음 곡" onClick={() => go(1)}>⏭</button>
+          <button aria-label="항상 위에 고정" title={pinned ? '고정 해제' : '항상 위에 고정'} aria-pressed={pinned} disabled={pinning} onClick={() => void pin()}>📌</button>
         </div>
         <div className={css.buttons}>
           <button title="목록 반복" aria-pressed={list.repeat} onClick={() => save({ repeat: !list.repeat })}>🔁</button>

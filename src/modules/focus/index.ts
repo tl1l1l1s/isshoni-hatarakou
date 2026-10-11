@@ -109,6 +109,7 @@ export default defineModule<FocusApi>({
         sources.add(src);
         return () => void sources.delete(src);
       },
+      externalActive: () => [...sources].some((src) => src.active()),
     };
     const totalChanged = () => subs.forEach((fn) => fn(api.totalSec()));
     // 로컬 저장은 바뀔 때마다 바로 한다. 렌더러는 같은 틱의 변경을 모아 메인에 바로 보내고 메인이 디스크 쓰기를 모으므로 (ADR 0024)

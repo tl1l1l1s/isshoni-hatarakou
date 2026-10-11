@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { InventoryItem } from './api';
-import { applyDraw, dayStart, draw, duration, EMPTY, kinds, odds, percent, periodText, pool, reconcile, revokedIds, secToNext, tickets, type Entry, type Rec } from './logic';
+import { applyDraw, dayStart, draw, duration, earnedOf, EMPTY, kinds, odds, percent, periodText, pool, readCfg, reconcile, revokedIds, secToNext, tickets, type Entry, type Rec } from './logic';
 
 const H = 'a'.repeat(64);
 const entry = (id: string, w: number): Entry => ({ id, name: id, file: H, w, by: 'alice', st: 'on', at: 1, v: 1 });
@@ -32,24 +32,36 @@ describe('뽑기 확률', () => {
 });
 
 describe('뽑기 횟수', () => {
-  it.each([
-    // sec, secPerTicket, bonus, spent, 남은 횟수, 다음 1회까지 초
-    [0, 3600, 0, 0, 0, 3600],
-    [5400, 3600, 0, 0, 1, 1800],
-    [5400, 1800, 0, 0, 3, 1800],
-    [5400, 3600, 0, 1, 0, 1800],
-    // 기준을 늘려 계산값이 음수가 되면 0이고 다음 1회는 쓴 횟수를 다 채운 뒤
-    [5400, 3600, 0, 3, 0, 9000],
-    [5400, 3600, 2, 3, 0, 1800],
-    [7200, 3600, 1, 0, 3, 3600],
-  ])('sec %d, 1회 %d초, bonus %d, spent %d', (sec, spt, bonus, spent, left, next) => {
-    expect(tickets(sec, spt, bonus, spent)).toBe(left);
-    expect(secToNext(sec, spt, bonus, spent)).toBe(next);
+  it('기준이 바뀌어도 획득 횟수와 절반 채운 진행률을 보존한다', () => {
+    const cfg = readCfg({ secPerTicket: 1800, legacySecPerTicket: 3600 });
+    const rec = { ...EMPTY, sec: 5400, spent: 1 };
+    const earned = earnedOf(rec, cfg);
+    expect(earned).toBe(1.5);
+    expect(tickets(earned, 0, 1)).toBe(0);
+    expect(secToNext(earned, cfg.secPerTicket)).toBe(900);
+    expect(tickets(earned + 900 / cfg.secPerTicket, 0, 1)).toBe(1);
   });
 
-  it('90분이 쌓인 사람은 60분 기준에서 1회, 30분 기준에서 3회', () => {
-    expect(tickets(5400, 3600, 0, 0)).toBe(1);
-    expect(tickets(5400, 1800, 0, 0)).toBe(3);
+  it('이미 12회 쓴 뒤 기준을 5분에서 60분으로 올려도 빚이 생기지 않는다', () => {
+    const cfg = readCfg({ secPerTicket: 3600, legacySecPerTicket: 300 });
+    const earned = earnedOf({ ...EMPTY, sec: 3600, spent: 12 }, cfg);
+    expect(tickets(earned, 0, 12)).toBe(0);
+    expect(secToNext(earned, cfg.secPerTicket)).toBe(3600);
+    expect(tickets(earned + 1, 0, 12)).toBe(1);
+  });
+
+  it('이전 계산에서 생긴 빚을 이월하지 않고 서버에 저장한 획득분을 다시 환산하지 않는다', () => {
+    expect(earnedOf({ ...EMPTY, sec: 3600, spent: 12 }, readCfg(null))).toBe(12);
+    expect(earnedOf({ ...EMPTY, sec: 3600, earned: 12.5 }, readCfg({ secPerTicket: 7200 }))).toBe(12.5);
+    expect(tickets(2, 1, 2)).toBe(1);
+  });
+
+  it('작은 시간들을 합한 부동소수점 오차 때문에 완성한 뽑기를 잃지 않는다', () => {
+    let earned = 0;
+    for (let i = 0; i < 7200; i++) earned += 0.5 / 3600;
+    expect(tickets(earned, 0, 0)).toBe(1);
+    expect(secToNext(earned, 3600)).toBeCloseTo(3600);
+    expect(tickets(0.999, 0, 0)).toBe(0);
   });
 
   it('남은 시간을 분과 시간으로 보여 준다', () => {
@@ -60,17 +72,17 @@ describe('뽑기 횟수', () => {
 describe('뽑기 transaction 본문', () => {
   const item = entry('x', 5);
   it('빈 값으로 처음 불리면 빈 기록을 돌려 서버 값으로 다시 불리게 한다', () => {
-    expect(applyDraw(null, item, 3600, 9)).toEqual(EMPTY);
+    expect(applyDraw(null, item, readCfg(null), 9)).toEqual(EMPTY);
   });
   it('남은 횟수가 없으면 취소하고 있으면 spent와 개수를 함께 올린다', () => {
-    expect(applyDraw({ ...EMPTY, sec: 3599 }, item, 3600, 9)).toBeUndefined();
-    const once = applyDraw({ ...EMPTY, sec: 7200 }, item, 3600, 9)!;
-    expect(once).toEqual({ sec: 7200, spent: 1, bonus: 0, v: 1, got: { x: { n: 1, name: 'x', file: H, at: 9 } } });
-    const twice = applyDraw(once, { ...item, name: '바뀐 이름' }, 3600, 20)!;
+    expect(applyDraw({ ...EMPTY, sec: 3599 }, item, readCfg(null), 9)).toBeUndefined();
+    const once = applyDraw({ ...EMPTY, sec: 7200 }, item, readCfg(null), 9)!;
+    expect(once).toEqual({ sec: 7200, earned: 2, spent: 1, bonus: 0, v: 1, got: { x: { n: 1, name: 'x', file: H, at: 9 } } });
+    const twice = applyDraw(once, { ...item, name: '바뀐 이름' }, readCfg(null), 20)!;
     expect(twice.spent).toBe(2);
     // 이름과 그림은 처음 뽑을 때의 사본을 그대로 둔다
     expect(twice.got!.x).toEqual({ n: 2, name: 'x', file: H, at: 9 });
-    expect(applyDraw(twice, item, 3600, 30)).toBeUndefined();
+    expect(applyDraw(twice, item, readCfg(null), 30)).toBeUndefined();
   });
 });
 

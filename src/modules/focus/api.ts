@@ -12,6 +12,8 @@ export interface FocusApi {
   onTotal(fn: (totalSec: number) => void): Dispose;
   /** PC 밖 출처를 더한다 (focus.sources, FOC-09). 켜져 있는 동안은 PC 입력을 보지 않고 시간을 센다 */
   addSource(src: FocusSource): Dispose;
+  /** 유효한 폰 같은 외부 작업 신호가 있는지. 자동 자리비움도 같은 판정을 쓴다 */
+  externalActive(): boolean;
 }
 
 export interface FocusSource { id: string; active(): boolean }

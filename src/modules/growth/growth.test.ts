@@ -8,19 +8,17 @@ import growth from './index';
 import { levelOf, levelText, roundOf, tierOf, xpOf } from './logic';
 
 describe('레벨', () => {
-  // 누적 초, 레벨당 초, 레벨, 경험치 비율
+  // 누적 초, 레벨, 경험치 비율
   it.each([
-    [0, 3600, 1, 0],
-    [3599, 3600, 1, 3599 / 3600],
-    [3600, 3600, 2, 0],
-    [5400, 3600, 2, 0.5],
-    [998 * 3600, 3600, 999, 0],
-    [1e9, 3600, 999, (1e9 % 3600) / 3600],
-    [90, 60, 2, 0.5],
-    [3600, 7200, 1, 0.5],
-  ])('%d초, %d초마다 1레벨이면 Lv.%d', (total, spl, level, xp) => {
-    expect(levelOf(total, spl)).toBe(level);
-    expect(xpOf(total, spl)).toBeCloseTo(xp);
+    [0, 1, 0],
+    [3599, 1, 3599 / 3600],
+    [3600, 2, 0],
+    [5400, 2, 0.5],
+    [998 * 3600, 999, 0],
+    [1e9, 999, (1e9 % 3600) / 3600],
+  ])('%d초면 Lv.%d', (total, level, xp) => {
+    expect(levelOf(total)).toBe(level);
+    expect(xpOf(total)).toBeCloseTo(xp);
   });
 
   // 누적 시간, 회차, 화면 레벨 (GRW-04). Lv.999는 998시간, 회차는 999시간에 넘어간다
@@ -32,7 +30,7 @@ describe('레벨', () => {
     [999 * 3600 * 2 + 5 * 3600, 3, 6],
     [1e12, 100, 999],
   ])('누적 %d초는 %d회차 %d레벨', (total, round, level) => {
-    expect(roundOf(total, 3600)).toEqual({ round, level });
+    expect(roundOf(total)).toEqual({ round, level });
   });
 
   it('2회차부터 별을 붙이고 티어는 넘은 단계 수다', () => {
@@ -41,7 +39,7 @@ describe('레벨', () => {
   });
 });
 
-// 가짜 ctx로 focus와 growth를 함께 켜고 등록 앱 10분을 재생한다 (10.9 FOC-02 시험)
+// 가짜 ctx로 focus와 growth를 함께 켜고 등록 앱 1시간을 재생한다 (10.9 FOC-02 시험)
 describe('focus와 growth', () => {
   const NOW = Date.parse('2026-10-09T12:00:00+09:00');
   const fake = (local: Record<string, unknown>, apis: Record<string, unknown> = {}, others: unknown[] = [{ key: 'laptop', value: { v: 1, total: 120, day: '', today: 0 } }]) => {
@@ -72,7 +70,7 @@ describe('focus와 growth', () => {
     return { ctx: ctx as unknown as Ctx, out };
   };
 
-  it('600초가 쌓이고 다른 기기 누적을 더해 레벨이 오른다', async () => {
+  it('서버의 예전 성장 속도 값과 무관하게 1시간마다 오르고 다른 기기 누적을 더한다', async () => {
     const PAINT = 'win:clipstudiopaint.exe';
     const local = { device: [{ key: PAINT, label: '클튜' }, ...Array(7).fill(null)], account: focus.local!.account!.initial() };
     const f = fake(local);
@@ -81,19 +79,19 @@ describe('focus와 growth', () => {
     const growthApi = await growth.setup(g.ctx);
     await Promise.resolve();
     expect(focusApi.totalSec()).toBe(120);
-    expect(growthApi.level()).toBe(3);
+    expect(growthApi.level()).toBe(1);
 
-    for (let at = 0; at <= 600_000; at += 500) f.out.onSample({ at, appKey: PAINT, idleSec: 0, pen: false, unknownReason: null });
+    for (let at = 0; at <= 3_600_000; at += 500) f.out.onSample({ at, appKey: PAINT, idleSec: 0, pen: false, unknownReason: null });
 
-    expect(focusApi.todaySec()).toBe(600);
-    expect(focusApi.todayByApp()).toEqual({ [PAINT]: 600 });
-    expect(focusApi.totalSec()).toBe(720);
-    expect(f.out.ticks).toBe(1200);
-    expect(f.out.mine).toEqual({ awake: true, todayMin: 10, typing: true });
-    expect(growthApi.level()).toBe(13);
-    expect(g.out.profile).toEqual({ level: 13 });
-    expect(g.out.mine).toEqual({ lv: 13, xp: 0, rd: 1 });
-    expect(g.out.toasts.at(-1)).toContain('Lv.13');
+    expect(focusApi.todaySec()).toBe(3600);
+    expect(focusApi.todayByApp()).toEqual({ [PAINT]: 3600 });
+    expect(focusApi.totalSec()).toBe(3720);
+    expect(f.out.ticks).toBe(7200);
+    expect(f.out.mine).toEqual({ awake: true, todayMin: 60, typing: true });
+    expect(growthApi.level()).toBe(2);
+    expect(g.out.profile).toEqual({ level: 2 });
+    expect(g.out.mine).toEqual({ lv: 2, xp: 3, rd: 1 });
+    expect(g.out.toasts.at(-1)).toContain('Lv.2');
   });
 
   const PAINT = 'win:clipstudiopaint.exe';

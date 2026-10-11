@@ -3,17 +3,14 @@ import type { Ctx } from '@core/types';
 import { isReward, levelOf, levelText, MAX_LEVEL, roundOf, xpOf } from '../logic';
 import css from './rewards.module.css';
 
-const per = (sec: number) => (sec % 3600 === 0 ? `${sec / 3600}시간` : `${Math.round(sec / 60)}분`);
-
 /** 레벨 보상 표 (GRW-02). 보상은 다른 모듈이 growth의 level에 선언한 gate이고 열렸는지와 남은 레벨을 보여 준다 */
 export default function RewardsWindow({ ctx }: { ctx: Ctx }) {
   const [, redraw] = useReducer((n: number) => n + 1, 0);
   useEffect(() => ctx.gates.onChange(redraw), [ctx]);
   useEffect(() => ctx.timers.every(5000, redraw), [ctx]);
-  const spl = ctx.tunables.get<number>('secondsPerLevel');
   const total = ctx.modules.get('focus')!.totalSec();
-  const life = levelOf(total, spl);
-  const { round, level } = roundOf(total, spl);
+  const life = levelOf(total);
+  const { round, level } = roundOf(total);
   const rows = ctx.gates
     .list()
     .filter(isReward)
@@ -24,8 +21,8 @@ export default function RewardsWindow({ ctx }: { ctx: Ctx }) {
         {levelText(round, level)}
         {round >= 2 && <span className={css.muted}> {round}회차</span>}
       </h3>
-      <p className={css.muted}>다음 레벨까지 {100 - Math.floor(xpOf(total, spl) * 100)}% 남았어요.</p>
-      <p className={css.muted}>집중 {per(spl)}마다 1레벨씩 올라요.</p>
+      <p className={css.muted}>다음 레벨까지 {100 - Math.floor(xpOf(total) * 100)}% 남았어요.</p>
+      <p className={css.muted}>집중 1시간마다 1레벨씩 올라요.</p>
       {rows.length ? (
         <table className={css.table}>
           <thead>

@@ -13,7 +13,7 @@
 - `room-remove`는 방 설정 창의 `방 지우기`로 확인을 거쳐 내 방을 지우는 것이다 (OUR-01).
 - `room-resume`은 절전하면 방에서 나왔다가 깨어나면 같은 방에 다시 들어가는 것이다. 자는 동안 주인이 방을 지웠으면 깨어날 때 `주인이 지운 방입니다.` 안내가 뜬다.
 - `room-elsewhere`는 다른 기기가 이 계정을 가져가면 이 PC는 방에서 나오고 계정 접속 상태(친구가 보는 접속 표시와 방 코드)를 더 쓰지 않는 것이다. `여기서 계속 쓰기`를 누르면 다시 쓰고 나왔던 방에 돌아간다 (ACC-12).
-- `room-auto-leave`는 자동 자리비움이 6시간 이어지면 안내 창을 띄우고 1분 뒤 방에서 나갔다가 입력이 오면 다시 들어가는 것이다 (CHR-13, ROM-14). 안내 창에서 취소하면 나가지 않고 그림 앱이 앞에 있거나 내 방이면 안내하지 않는다.
+- `room-auto-leave`는 자동 자리비움이 6시간 이어지면 안내 창을 띄우고 1분 뒤 방에서 나갔다가 입력이 오면 다시 들어가는 것이다 (CHR-13, ROM-14). 안내 창에서 취소하면 나가지 않고 작업 앱이 앞에 있거나 내 방이면 안내하지 않는다.
 
 ## How to get to it (user POV)
 
@@ -60,9 +60,9 @@ Preconditions:
 - **취소.** `await popup.getByRole('button', { name: '취소' }).click()`을 실행한다. 안내 창이 닫히고 `자리비움` 말풍선이 사라지며 `가짜 친구`가 그대로 보인다.
 - **나가기.** `await fake({ idle: 0 })` 뒤에 앱이 유휴 0초 샘플을 받을 때까지 기다리고(Gotchas) `await fake({ idle: LEAVE - 30 })`로 안내를 다시 띄운 뒤 누르지 않는다. 1분 안에 `await expect(s.stage.getByText('자리를 오래 비워서 방에서 나왔어요.')).toBeVisible({ timeout: 75_000 })`이 통과하고 `가짜 친구`와 `DEVDEV` 칩이 사라지며 안내 창도 닫힌다.
 - **돌아오기.** `await fake({ idle: 0 })`을 실행한다. `가짜 친구`와 `DEVDEV` 칩이 다시 보인다.
-- **그림 앱.** `await fake({ app: 'win:clipstudiopaint.exe', pen: 'win:clipstudiopaint.exe', idle: LEAVE })`를 실행한다. `자리비움` 말풍선은 뜨지만 안내 창은 열리지 않는다.
+- **작업 앱.** `await fake({ app: 'win:clipstudiopaint.exe', pen: 'win:clipstudiopaint.exe', idle: LEAVE })`를 실행한다. `자리비움` 말풍선은 뜨지만 안내 창은 열리지 않는다.
 - **내 방.** 방 창에서 `방에서 나가기`와 `만들기`로 내 방을 만든 뒤 `await fake({ app: null, idle: LEAVE })`를 실행한다. `자리비움` 말풍선은 뜨지만 안내 창은 열리지 않는다.
-- **증거.** 안내 창, 취소 뒤 실행 화면, 나간 뒤 실행 화면, 다시 들어간 실행 화면, 그림 앱과 내 방에서 안내가 없는 실행 화면을 `s.shot`으로 남긴다.
+- **증거.** 안내 창, 취소 뒤 실행 화면, 나간 뒤 실행 화면, 다시 들어간 실행 화면, 작업 앱과 내 방에서 안내가 없는 실행 화면을 `s.shot`으로 남긴다.
 
 ## Gotchas
 

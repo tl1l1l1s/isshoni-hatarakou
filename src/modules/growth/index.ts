@@ -19,7 +19,6 @@ export default defineModule<GrowthApi>({
   },
   profile: { level: z.number().int() },
   tunables: {
-    secondsPerLevel: { schema: z.number().int().min(60), default: 3600 },
     // 티어가 오르는 레벨 (GRW-07). 친구 작업량을 보고 서버에서 바꾼다. badge.module.css가 티어 6까지 모양을 둔다
     tierLevels: { schema: z.array(z.number().int().min(1).max(MAX_LEVEL)).max(6), default: [50, 100, 150, 200, 300, 500] },
   },
@@ -33,17 +32,16 @@ export default defineModule<GrowthApi>({
   commands: [{ id: 'growth.rewards', run: (ctx) => ctx.ui.open('growth.rewards') }],
   setup(ctx) {
     const focus = ctx.modules.get('focus')!;
-    const spl = () => ctx.tunables.get<number>('secondsPerLevel');
-    let level = levelOf(focus.totalSec(), spl());
-    let shown = { ...roundOf(focus.totalSec(), spl()), xp: -1 };
+    let level = levelOf(focus.totalSec());
+    let shown = { ...roundOf(focus.totalSec()), xp: -1 };
     const update = (total: number) => {
-      const r = roundOf(total, spl());
-      const xp = Math.floor(xpOf(total, spl()) * 100);
+      const r = roundOf(total);
+      const xp = Math.floor(xpOf(total) * 100);
       // 같은 값이면 좌석을 다시 그리지 않도록 setMine을 부르지 않는다
       if (r.level === shown.level && r.round === shown.round && xp === shown.xp) return;
       if (r.round > shown.round) ctx.ui.toast(`${r.round}회차가 시작됐어요. 레벨이 1부터 다시 올라요`);
       else if (r.level > shown.level) ctx.ui.toast(`레벨이 올랐어요. 이제 ${levelText(r.round, r.level)}`);
-      const lv = levelOf(total, spl());
+      const lv = levelOf(total);
       if (lv !== level) ctx.self.setProfile({ level: lv });
       level = lv;
       shown = { ...r, xp };
@@ -70,10 +68,10 @@ export default defineModule<GrowthApi>({
     return {
       level: () => level,
       levelText: () => {
-        const r = roundOf(focus.totalSec(), spl());
+        const r = roundOf(focus.totalSec());
         return levelText(r.round, r.level);
       },
-      xp: () => xpOf(focus.totalSec(), spl()),
+      xp: () => xpOf(focus.totalSec()),
     };
   },
 });

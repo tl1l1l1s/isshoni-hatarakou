@@ -59,6 +59,30 @@ describe('말풍선 글', () => {
 });
 
 describe('status 모듈', () => {
+  it('폰 작업 중에는 자동 자리비움과 퇴장을 막고 신호가 끝난 뒤부터 유휴 시간을 센다', async () => {
+    let drawing = false;
+    let onSample = (_s: ActivitySample) => {};
+    const states: Array<string | null> = [];
+    const ctx = {
+      local: { get: () => ({ choice: 'work', custom: '' }) },
+      self: { setStatus: (_id: string, state: string | null) => states.push(state) },
+      room: { setMine: () => {}, current: () => 'ROOM22' },
+      modules: { get: (id: string) => id === 'focus' ? { externalActive: () => drawing } : { isOwner: () => false } },
+      activity: { on: (fn: typeof onSample) => void (onSample = fn) },
+    } as unknown as Ctx;
+    await status.setup(ctx);
+    const at = (idleSec: number) => onSample({ at: 0, appKey: null, idleSec, pen: false, unknownReason: null });
+    at(1200);
+    expect(states.at(-1)).toBe('away');
+    drawing = true;
+    at(AUTO_LEAVE_SEC);
+    expect(states.at(-1)).toBeNull();
+    drawing = false;
+    at(AUTO_LEAVE_SEC + 1199);
+    expect(states.at(-1)).toBeNull();
+    at(AUTO_LEAVE_SEC + 1200);
+    expect(states.at(-1)).toBe('away');
+  });
   it('저장한 상태를 되살리고 입력이 20분 없으면 자리비움, 입력이 오면 바로 푼다', async () => {
     const calls: Array<[string, string | null, number]> = [];
     const mine: Record<string, unknown> = {};

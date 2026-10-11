@@ -104,6 +104,12 @@ export const getRects = () => rects;
 export const setRects = (r: Rect[]) => void (rects = r);
 export const prepare = (p: Prepared) => void prepared.set(p.name, p);
 
+export function setPanelAlwaysOnTop(name: string, on: boolean): void {
+  const w = panels.get(name);
+  if (!w || w.isDestroyed()) throw new Error('창이 닫혀 있어요.');
+  w.setAlwaysOnTop(on, 'floating');
+}
+
 /** 패널을 다시 보이거나(이미 열린 패널을 다시 열 때도) 숨긴다 */
 export function setPanelVisible(name: string, show: boolean): void {
   const w = panels.get(name);
@@ -127,7 +133,7 @@ function raise(w: BrowserWindow): void {
 
 /** 닫아서 숨기는 keepAlive 패널. about:blank 패널은 스테이지의 backgroundThrottling: false를 그대로 물려받아 창을 숨겨도 문서가
  *  visible로 남으므로(webContents.setBackgroundThrottling(true)로도 바뀌지 않는다) 렌더러에 알려 문서에 숨김을 반영하게 한다.
- *  화면 숨기기(setVisible)로 함께 숨는 패널은 알리지 않아 소리가 이어진다 */
+ *  화면 숨기기로 함께 숨는 패널도 같은 이벤트를 받아 재생을 멈춘다 */
 function hidePanel(name: string, w: BrowserWindow): void {
   saveBounds(name, w);
   w.hide();
@@ -234,9 +240,12 @@ export function setVisible(visible: boolean): void {
   }
   if (changed && !visible) {
     hiddenPanels = [...panels.values()].filter((w) => !w.isDestroyed() && w.isVisible());
-    for (const w of hiddenPanels) w.hide();
+    for (const [name, w] of panels) if (hiddenPanels.includes(w)) hidePanel(name, w);
   } else if (changed) {
-    for (const w of hiddenPanels) if (!w.isDestroyed()) raise(w);
+    for (const [name, w] of panels) if (hiddenPanels.includes(w) && !w.isDestroyed()) {
+      raise(w);
+      send('win.visibility', { name, visible: true });
+    }
     hiddenPanels = [];
   }
   send('stage.visibility', { visible });

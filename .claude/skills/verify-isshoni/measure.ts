@@ -13,8 +13,8 @@ const SOAK_SEC = arg('--soak', 300);
 const CPU_SEC = 15;
 const SOAK_STEP_SEC = 30;
 const DANCE_SEC = 20;
-/** 가짜 친구에 더해 10좌석을 채우는 가짜 멤버 수 */
-const EXTRA_SEATS = 8;
+/** 가짜 친구에 더해 5좌석을 채우는 가짜 멤버 수 */
+const EXTRA_SEATS = 3;
 const PANELS = ['설정', '캐릭터 만들기', '마이홈', '대화하기'];
 
 const MB = (b: number) => Math.round(b / 1048576);
@@ -162,7 +162,7 @@ const countTimers = (s: Session) =>
     w.__timers = live;
   });
 
-/** 가짜 친구 기록을 복제해 방을 10좌석으로 채운다. seenAt은 sample마다 __seats로 새로 써서 150초 거름을 피한다 */
+/** 가짜 친구 기록을 복제해 방을 5좌석으로 채운다. seenAt은 sample마다 __seats로 새로 써서 150초 거름을 피한다 */
 const fillSeats = (s: Session) =>
   s.stage.evaluate((n) => {
     const w = window as unknown as Win;
@@ -210,9 +210,13 @@ await verify('measure', async (s) => {
   await at('방 2좌석 깨어 있음');
   await fillSeats(s);
   await expect(s.stage.getByText(`친구 ${EXTRA_SEATS + 1}`)).toBeVisible();
-  await at('방 10좌석 깨어 있음');
-  await fake(s, { idle: 600 });
-  await at('방 10좌석 잠듦');
+  await at('방 5좌석 깨어 있음');
+  await fake(s, { idle: 1201 });
+  await expect.poll(() => s.stage.evaluate(() => {
+    const c = (window as unknown as { core: { self: { get(): { m: { focus?: { awake?: boolean } } } } } }).core;
+    return c.self.get().m.focus?.awake;
+  })).toBe(false);
+  await at('방 5좌석 잠듦');
   await fake(s, { idle: 0 });
 
   // 패널을 열고 닫은 뒤 메모리가 돌아오는지. 한 번 뒤와 세 번 뒤를 비교해 캐시인지 누수인지 본다

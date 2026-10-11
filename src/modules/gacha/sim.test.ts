@@ -10,7 +10,7 @@ import rooms from '@modules/rooms';
 import { createRoom, joinRoom } from '@modules/rooms/state';
 import type { GachaApi } from './api';
 import gacha from './index';
-import { drawOnce, removeItem, setCfg, sync, view } from './state';
+import { drawOnce, flush, removeItem, setCfg, sync, view } from './state';
 
 let hub: MemoryHub;
 let disk: Map<string, unknown>;
@@ -70,7 +70,7 @@ describe('gacha 시뮬레이터', () => {
     await addItem(a.ctx, code, 'hat');
     a.tick(30);
     await vi.advanceTimersByTimeAsync(60_000);
-    expect(hub.read(`mod/gacha/u/alice/r/${code}`)).toEqual({ sec: 30, spent: 0, bonus: 0, v: 1 });
+    expect(hub.read(`mod/gacha/u/alice/r/${code}`)).toEqual({ sec: 30, earned: 30 / 3600, spent: 0, bonus: 0, v: 1 });
 
     const b1 = await app('bob', 'pc1');
     const b2 = await app('bob', 'pc2');
@@ -79,7 +79,7 @@ describe('gacha 시뮬레이터', () => {
     b1.tick(1800);
     b2.tick(1800.5);
     await vi.advanceTimersByTimeAsync(60_000);
-    expect(hub.read(`mod/gacha/u/bob/r/${code}/sec`)).toBe(3600);
+    expect(hub.read(`mod/gacha/u/bob/r/${code}/sec`)).toBe(3600.5);
     expect(b1.core.registry.reason('gacha.draw')).toBeNull();
 
     const res = await Promise.allSettled([drawOnce(b1.ctx, 0), drawOnce(b2.ctx, 0)]);
@@ -90,10 +90,87 @@ describe('gacha 시뮬레이터', () => {
     expect(b1.api.inventory().map((i) => i.key)).toEqual([`${code}/hat`]);
     expect(b2.api.inventory().map((i) => i.key)).toEqual([`${code}/hat`]);
 
-    // 주인이 기준을 30분으로 줄이면 이미 쌓인 시간에도 적용한다
+    // 기준이 바뀌어도 쓴 횟수와 진행률은 보존하고 이후 작업만 새 기준으로 센다
     await setCfg(a.ctx, { secPerTicket: 1800 });
     expect(view(b1.ctx).cfg.secPerTicket).toBe(1800);
+    expect(b1.core.registry.reason('gacha.draw')).toBe('남은 뽑기가 없어요.');
+    b1.tick(1800);
+    await flush(b1.ctx);
     expect(b1.core.registry.reason('gacha.draw')).toBeNull();
+  });
+
+  it('기준 변경 전 미전송분과 오프라인 기존 기록을 여러 번 변경해도 보존한다', async () => {
+    const a = await app('alice');
+    await createRoom(a.rooms, 4);
+    const code = a.ctx.room.current()!;
+    await a.ctx.server.user(['r']).set(code, { sec: 5400, spent: 1, bonus: 0, v: 1 });
+    a.tick(1800); // 이전 기준의 0.5회분, 아직 전송하지 않음
+    await setCfg(a.ctx, { secPerTicket: 7200 });
+    a.tick(1800); // 새 기준의 0.25회분
+    await flush(a.ctx);
+    expect(hub.read(`mod/gacha/u/alice/r/${code}`)).toMatchObject({ sec: 9000, earned: 2.25, spent: 1 });
+    await setCfg(a.ctx, { secPerTicket: 1800 });
+    const b = await app('bob');
+    await b.ctx.server.user(['r']).set(code, { sec: 5400, spent: 0, bonus: 0, v: 1 });
+    await joinRoom(b.rooms, code);
+    b.tick(900);
+    await flush(b.ctx);
+    expect(hub.read(`mod/gacha/u/bob/r/${code}`)).toMatchObject({ sec: 6300, earned: 2 });
+    expect(view(b.ctx).cfg.legacySecPerTicket).toBe(3600);
+  });
+
+  it('저장 실패 중 추가 작업과 기준 변경이 있어도 재시도는 당시 획득분을 한 번만 쓴다', async () => {
+    const a = await app('alice');
+    await createRoom(a.rooms, 4);
+    const code = a.ctx.room.current()!;
+    const user = a.ctx.server.user.bind(a.ctx.server);
+    let reject!: (e: Error) => void;
+    let fail = true;
+    vi.spyOn(a.ctx.server, 'user').mockImplementation((path) => {
+      const doc = user(path);
+      return { ...doc, transaction: (...args) => fail
+        ? new Promise((_resolve, no) => { reject = no; })
+        : doc.transaction(...args) } as typeof doc;
+    });
+    a.tick(1800);
+    const saving = flush(a.ctx);
+    await vi.advanceTimersByTimeAsync(0);
+    await setCfg(a.ctx, { secPerTicket: 1800 });
+    a.tick(900);
+    reject(new Error('offline'));
+    await saving;
+    expect(view(a.ctx)).toMatchObject({ pendingSec: 2700, pendingEarned: 1 });
+    fail = false;
+    await flush(a.ctx);
+    await flush(a.ctx);
+    expect(hub.read(`mod/gacha/u/alice/r/${code}`)).toMatchObject({ sec: 2700, earned: 1 });
+    expect(view(a.ctx)).toMatchObject({ pendingSec: 0, pendingEarned: 0 });
+  });
+
+  it('이전 방 저장 응답이 늦어도 새 방의 횟수와 기록을 덮지 않는다', async () => {
+    const a = await app('alice');
+    await createRoom(a.rooms, 4);
+    const first = a.ctx.room.current()!;
+    const user = a.ctx.server.user.bind(a.ctx.server);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    vi.spyOn(a.ctx.server, 'user').mockImplementation((path) => {
+      const doc = user(path);
+      return { ...doc, transaction: async (...args) => { await gate; return doc.transaction(...args); } } as typeof doc;
+    });
+    a.tick(3600);
+    const saving = flush(a.ctx);
+    await a.ctx.room.leave();
+    await createRoom(a.rooms, 4);
+    const second = a.ctx.room.current()!;
+    expect(second).not.toBe(first);
+    a.tick(900);
+    release();
+    await saving;
+    expect(view(a.ctx)).toMatchObject({ code: second, rec: { sec: 0, spent: 0 }, pendingSec: 900, pendingEarned: 0.25 });
+    await flush(a.ctx);
+    expect(hub.read(`mod/gacha/u/alice/r/${first}`)).toMatchObject({ sec: 3600, earned: 1 });
+    expect(hub.read(`mod/gacha/u/alice/r/${second}`)).toMatchObject({ sec: 900, earned: 0.25 });
   });
 
   it('주인이 함께 지우기로 지운 아이템은 보관함 창을 열 때 빠지고 남기기는 남는다', async () => {

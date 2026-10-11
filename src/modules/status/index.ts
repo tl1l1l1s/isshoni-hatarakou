@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { defineModule, type Ctx, type Dispose } from '@core/types';
 import type { ActivitySample } from '@shared/schemas';
 import type {} from '@modules/rooms/api';
+import type {} from '@modules/focus/api';
 import { BUBBLE_PRIORITY } from './api';
 import { CUSTOM_MAX, isIdleAway, LEAVE_WARN_MS, leaveDue, Local, resolve, statusText, todayText } from './logic';
 import Chip from './ui/Chip';
@@ -21,7 +22,7 @@ export default defineModule({
   title: '상태',
   version: '0.1.0',
   specIds: ['CHR-06', 'CHR-09', 'CHR-10', 'FOC-06', 'CHR-13', 'ROM-14'],
-  optionalRequires: ['rooms'],
+  optionalRequires: ['rooms', 'focus'],
   uses: ['platform.activity'],
   local: { account: { version: 1, schema: Local, initial: () => ({ choice: 'work', custom: '' }) } },
   presence: { text: { schema: z.string().max(CUSTOM_MAX), sync: 'onChange', minIntervalMs: 3_000 } },
@@ -63,6 +64,7 @@ export default defineModule({
 
     const check = (s: ActivitySample) => {
       if (s.idleSec < base) base = 0;
+      if (ctx.modules.get('focus')?.externalActive()) base = s.idleSec;
       const idle = s.idleSec - base;
       if (isIdleAway(idle) !== auto) {
         auto = !auto;

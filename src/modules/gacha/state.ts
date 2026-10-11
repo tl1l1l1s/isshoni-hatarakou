@@ -3,7 +3,7 @@ import { useCallback, useSyncExternalStore } from 'react';
 import { NOT_IN_ROOM, type Ctx } from '@core/types';
 import type { InventoryItem } from './api';
 import {
-  applyDraw, EMPTY, inventoryOf, Item, pool, readCfg, readRec, reconcile, ROOM_TOMB, sortInventory, tickets, draw,
+  applyDraw, earnedOf, EMPTY, inventoryOf, Item, pool, readCfg, readRec, reconcile, ROOM_TOMB, sortInventory, tickets, draw,
   type Cfg, type Entry, type Rec, type Tombs,
 } from './logic';
 
@@ -17,6 +17,7 @@ export interface View {
   rec: Rec;
   /** 아직 서버에 쓰지 않은 지금 방의 초 */
   pendingSec: number;
+  pendingEarned: number;
   inventory: InventoryItem[];
 }
 
@@ -27,7 +28,7 @@ interface Box {
   subs: Set<() => void>;
   inv: Set<(items: InventoryItem[]) => void>;
   /** 방 코드별로 아직 쓰지 않은 초 */
-  pending: Map<string, number>;
+  pending: Map<string, { sec: number; earned: number }>;
   ready: boolean;
 }
 
@@ -36,7 +37,7 @@ const boxes = new WeakMap<Ctx, Box>();
 function box(ctx: Ctx): Box {
   let b = boxes.get(ctx);
   if (!b) {
-    const view: View = { code: null, owner: false, cfg: readCfg(null), items: [], rec: EMPTY, pendingSec: 0, inventory: [] };
+    const view: View = { code: null, owner: false, cfg: readCfg(null), items: [], rec: EMPTY, pendingSec: 0, pendingEarned: 0, inventory: [] };
     boxes.set(ctx, (b = { view, subs: new Set(), inv: new Set(), pending: new Map(), ready: false }));
   }
   return b;
@@ -93,28 +94,38 @@ export function setRoomRec(ctx: Ctx, code: string, rec: Rec): void {
 
 export function addSec(ctx: Ctx, code: string, sec: number): void {
   const b = box(ctx);
-  b.pending.set(code, (b.pending.get(code) ?? 0) + sec);
-  if (code === b.view.code) patch(ctx, { pendingSec: b.pending.get(code)! });
+  const prev = b.pending.get(code) ?? { sec: 0, earned: 0 };
+  const next = { sec: prev.sec + sec, earned: prev.earned + sec / b.view.cfg.secPerTicket };
+  b.pending.set(code, next);
+  if (code === b.view.code) patch(ctx, { pendingSec: next.sec, pendingEarned: next.earned });
 }
 
-/** 쌓인 초를 서버 더하기 연산으로 쓴다. 기록이 없으면 spent, bonus, v도 함께 만든다 */
+/** 작업 당시 기준으로 얻은 횟수와 초를 함께 더하고 기존 기록은 한 번만 환산한다 */
 export async function flush(ctx: Ctx, only?: string): Promise<void> {
   const b = box(ctx);
   const writes: Array<Promise<void>> = [];
-  for (const [code, sec] of b.pending) {
-    const n = Math.floor(sec);
-    if ((only && code !== only) || n < 1) continue;
-    b.pending.set(code, sec - n);
+  for (const [code, pending] of b.pending) {
+    if ((only && code !== only) || pending.sec < 1) continue;
+    b.pending.delete(code);
     writes.push(
-      ctx.server.user(['r']).update(code, { sec: { $inc: n }, spent: { $inc: 0 }, bonus: { $inc: 0 }, v: 1 }).catch((e: Error) => {
-        b.pending.set(code, (b.pending.get(code) ?? 0) + n);
+      (async () => {
+        const cfg = readCfg(await ctx.server.room(code).get('cfg'));
+        const res = await ctx.server.user(['r']).transaction<Rec>(code, (cur) => {
+          const rec = readRec(cur);
+          return { ...rec, sec: rec.sec + pending.sec, earned: earnedOf(rec, cfg) + pending.earned };
+        });
+        if (!res.committed) throw new Error('작업 시간 저장이 취소됐어요.');
+      })().catch((e: Error) => {
+        const rest = b.pending.get(code) ?? { sec: 0, earned: 0 };
+        b.pending.set(code, { sec: rest.sec + pending.sec, earned: rest.earned + pending.earned });
         ctx.log.warn(`작업 시간을 쓰지 못했습니다: ${e.message}`);
       }),
     );
   }
   const code = b.view.code;
-  if (code) patch(ctx, { pendingSec: b.pending.get(code) ?? 0 });
+  if (code) patch(ctx, { pendingSec: b.pending.get(code)?.sec ?? 0, pendingEarned: b.pending.get(code)?.earned ?? 0 });
   await Promise.all(writes);
+  if (b.view.code) patch(ctx, { pendingSec: b.pending.get(b.view.code)?.sec ?? 0, pendingEarned: b.pending.get(b.view.code)?.earned ?? 0 });
 }
 
 // ---- 뽑기 ------------------------------------------------------------------
@@ -123,7 +134,7 @@ export function drawReason(ctx: Ctx): string | null {
   const v = view(ctx);
   if (!v.code) return NOT_IN_ROOM;
   if (!pool(v.items, ctx.clock.serverNow()).length) return '뽑을 아이템이 없어요.';
-  if (tickets(v.rec.sec + Math.floor(v.pendingSec), v.cfg.secPerTicket, v.rec.bonus, v.rec.spent) < 1) return '남은 뽑기가 없어요.';
+  if (tickets(earnedOf(v.rec, v.cfg) + v.pendingEarned, v.rec.bonus, v.rec.spent) < 1) return '남은 뽑기가 없어요.';
   return null;
 }
 
@@ -136,7 +147,7 @@ export async function drawOnce(ctx: Ctx, rnd = Math.random()): Promise<Drawn> {
   let drew = false;
   const res = await ctx.server.user(['r']).transaction<Rec>(code, (cur) => {
     // 빈 칸이 있는 서버 기록도 0으로 읽어 계산한다 (예: 작업 시간만 쌓인 기록)
-    const next = applyDraw(cur && readRec(cur), pick, cfg.secPerTicket, ctx.clock.serverNow());
+    const next = applyDraw(cur && readRec(cur), pick, cfg, ctx.clock.serverNow());
     drew = !!next && next.spent > (cur?.spent ?? 0);
     return next;
   });
@@ -176,7 +187,13 @@ export const setItemOn = (ctx: Ctx, id: string, on: boolean): Promise<void> =>
 export const removeItem = (ctx: Ctx, id: string, mode: 'keep' | 'revoke'): Promise<void> =>
   ctx.server.room(roomOf(ctx)).update('', { [`items/${id}`]: null, [`tomb/${id}`]: { mode, at: ctx.clock.serverNow() } });
 
-export const setCfg = (ctx: Ctx, p: Partial<Cfg>): Promise<void> => ctx.server.room(roomOf(ctx)).set('cfg', { ...view(ctx).cfg, ...p });
+export async function setCfg(ctx: Ctx, p: Partial<Cfg>): Promise<void> {
+  const res = await ctx.server.room(roomOf(ctx)).transaction<Cfg>('cfg', (cur) => {
+    const cfg = readCfg(cur);
+    return { ...cfg, ...p, legacySecPerTicket: cfg.legacySecPerTicket ?? cfg.secPerTicket };
+  });
+  if (!res.committed) throw new Error('가챠 설정을 바꾸지 못했어요.');
+}
 
 /** 방을 지우기 직전(ctx.room.beforeRemove). 코어가 items를 지우기 전에 방 전체 삭제 표시를 쓴다 */
 export async function markRoomRemoved(ctx: Ctx, code: string): Promise<void> {

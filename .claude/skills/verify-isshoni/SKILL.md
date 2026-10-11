@@ -9,6 +9,8 @@ description: isshoni-hatarakou 데스크톱 앱을 실제로 켜고 사용자처
 
 실행 단위는 짧은 세션이다. `drive.ts`의 `verify()`가 실행마다 새 `--user-data-dir`, 가짜 플랫폼(`ISSHONI_FAKE_PLATFORM=1`), 메모리 서버로 앱을 따로 켜고 끝나면 그 실행이 켠 것만 정리한다. 세션끼리 상태를 나누지 않으므로 검증 여러 개를 동시에 돌려도 된다.
 
+저장 실패·재시작·기능 간 연결은 [복구 흐름](features/recovery.md)의 실행 가능한 E2E 테스트를 사용한다. 일회성 스크립트는 아래처럼 저장소 밖에 두고, 유지하는 회귀 시나리오는 `tests/e2e/`에 둔다.
+
 기능별 진입 경로와 조작 순서는 [`features/README.md`](features/README.md)에 있다. 조작하기 전에 읽는다.
 
 ## Launch
@@ -50,6 +52,7 @@ Playwright `_electron` API로 조작한다. `verify()` 본문이 받는 `Session
 - `app`은 `ElectronApplication`이다. `app.evaluate`로 메인 프로세스를 조작한다.
 - `stage`는 첫 창이다. 런처에서 `시작하기`를 누르면 캐릭터와 상태칩이 있는 실행 화면이 된다.
 - `launcher`는 런처 창이다.
+- `restart()`는 같은 임시 데이터 폴더로 앱을 정상 종료하고 다시 켠다. 이후 `s.app`, `s.stage`, `s.launcher`를 다시 사용하고 이전 창 참조는 버린다. 서버 메모리는 초기화된다.
 - `shot(page, name)`은 증거를 남긴다. Evidence 절을 본다.
 - `dir`과 `errors`는 증거 폴더 경로와 스테이지 오류 목록이다.
 
@@ -64,7 +67,7 @@ Playwright `_electron` API로 조작한다. `verify()` 본문이 받는 `Session
 
 - 위치는 `$TMPDIR/isshoni-verify/<이름>-<무작위 6자>/`이다. `verify()`가 끝날 때 `evidence:` 줄로 경로를 출력한다.
 - `s.shot(page, name)`은 `<name>.png` 화면과 `<name>.aria.txt` ARIA 스냅샷을 함께 남긴다. 사용자 동작 직후와 결과가 보이는 시점에 각각 찍는다.
-- `errors.json`에는 스테이지의 pageerror와 console.error가 들어 있다. 빈 배열일 때만 통과로 본다.
+- `errors.json`에는 모든 창의 pageerror와 console.error가 들어 있다. 기본값은 빈 배열일 때만 통과하며 `verify()`가 자동으로 실패시킨다. 의도한 오류 시험은 세 번째 인자의 `expectedErrors: [{ pattern: /^정확한 오류$/, count: 1 }]`로 메시지와 횟수를 미리 정한다. 예상 오류가 발생하지 않아도 실패한다.
 
 증명 기준은 이렇다.
 
@@ -77,7 +80,7 @@ Playwright `_electron` API로 조작한다. `verify()` 본문이 받는 `Session
 `node .claude/skills/verify-isshoni/measure.ts`는 앱을 켜고 상태마다 메모리와 CPU를 잰다 (NFR-10). 빌드와 doctor 조건은 Launch와 같고 한 번 도는 데 9분쯤 걸린다. `--soak 60`처럼 소크 시간을 초로 주면 짧게 돈다.
 
 - 재는 값은 프로세스마다 `/usr/bin/footprint`의 phys_footprint(활성 상태 보기의 메모리 열), `app.getAppMetrics()`의 workingSetSize, 스테이지의 `performance.memory`와 CDP로 GC를 한 번 돌린 뒤의 힙, `ps`의 CPU 시간 차이로 구한 15초 평균 CPU(코어 하나 기준 퍼센트, 프로세스별로도 남긴다), 열린 창, 메모리 서버 구독 수, 측정을 시작한 뒤 스테이지에 새로 생겨 아직 살아 있는 타이머 수다.
-- 상태는 런처, 혼자 실행 화면, 방 2좌석과 10좌석에서 깨어 있을 때(앞 앱 clipstudiopaint.exe, 유휴 0초)와 잠들었을 때(유휴 600초), 설정과 캐릭터 만들기와 마이홈과 대화하기를 열었을 때와 닫은 뒤(1회와 3회), 플레이리스트에 유튜브 영상을 띄웠을 때와 창을 닫아 숨겼을 때, 방에서 20초마다 춤 효과를 돌리는 소크(기본 5분, 30초마다 표본)다. 10좌석은 가짜 친구 기록을 복제한 멤버 8명으로 채운다.
+- 상태는 런처, 혼자 실행 화면, 방 2좌석과 5좌석에서 깨어 있을 때(앞 앱 clipstudiopaint.exe, 유휴 0초)와 잠들었을 때(유휴 1201초, 실제 awake=false 확인 뒤), 설정과 캐릭터 만들기와 마이홈과 대화하기를 열었을 때와 닫은 뒤(1회와 3회), 플레이리스트에 유튜브 영상을 띄웠을 때와 창을 닫아 숨겼을 때, 방에서 20초마다 춤 효과를 돌리는 소크(기본 5분, 30초마다 표본)다. 5좌석은 가짜 친구 기록을 복제한 멤버 3명으로 채운다.
 - 결과는 표로 찍고 증거 폴더에 `measure.json`으로 남긴다. 소크 줄은 처음 표본과 마지막 표본의 차이로 증가를 보여 준다.
 - 이 하네스로 재지 못하는 것은 Windows의 private bytes와 실제 Firebase 리스너 수다. 메모리 서버 구독 수가 Firebase 빌드의 onValue 수와 같다.
 - 유튜브 영상은 실제로 불러오므로 네트워크가 필요하다. 없으면 플레이어가 검게 보이고 그 두 상태의 값만 달라진다.
@@ -90,7 +93,7 @@ Playwright `_electron` API로 조작한다. `verify()` 본문이 받는 `Session
 
 `drive.ts`가 내보내는 것
 
-- `verify(name, body)`는 앱을 켜고 `body`를 실행한 뒤 정리한다.
+- `verify(name, body, options?)`는 앱을 켜고 `body`를 실행한 뒤 정리한다.
 - `menu(s, item, title)`은 ▼ 메뉴 항목을 눌러 열린 창을 돌려준다.
 - `windowTitled(app, title)`은 제목으로 창을 찾는다. 5초 안에 없으면 예외를 던진다.
 - `doctor()`는 문제 목록을 돌려준다. 빈 배열이면 정상이다.

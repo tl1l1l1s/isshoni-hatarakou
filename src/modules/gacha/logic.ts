@@ -12,6 +12,8 @@ export const ITEM_NAME_MAX = 20;
 export const Cfg = z.object({
   adders: z.enum(['owner', 'members']).default('owner'),
   secPerTicket: z.number().int().min(60).max(86_400).default(DEFAULT_SEC_PER_TICKET),
+  /** 최초 기준 변경 전 기록을 환산할 기준. 한 번 정하면 바꾸지 않는다 */
+  legacySecPerTicket: z.number().int().min(60).max(86_400).optional(),
   /** 방을 지울 때 뽑은 아이템을 남길지 함께 지울지 */
   onRemove: z.enum(['keep', 'revoke']).default('keep'),
   v: z.literal(1).default(1),
@@ -44,7 +46,7 @@ export const Got = z.object({ n: z.number().int().min(1), name: z.string(), file
 export type Got = z.infer<typeof Got>;
 
 /** mod/gacha/u/{uid}/r/{code} */
-export interface Rec { sec: number; spent: number; bonus: number; v: 1; got?: Record<string, Got> }
+export interface Rec { sec: number; earned?: number; spent: number; bonus: number; v: 1; got?: Record<string, Got> }
 export const EMPTY: Rec = { sec: 0, spent: 0, bonus: 0, v: 1 };
 
 export const readCfg = (v: unknown): Cfg => Cfg.safeParse(v ?? {}).data ?? Cfg.parse({});
@@ -54,7 +56,7 @@ export function readRec(v: unknown): Rec {
   const o = (v ?? {}) as Record<string, unknown>;
   const num = (x: unknown) => (typeof x === 'number' ? x : 0);
   const got = Object.entries((o.got ?? {}) as Record<string, unknown>).filter(([, g]) => Got.safeParse(g).success);
-  return { sec: num(o.sec), spent: num(o.spent), bonus: num(o.bonus), v: 1, got: Object.fromEntries(got) as Record<string, Got> };
+  return { sec: num(o.sec), ...(typeof o.earned === 'number' && Number.isFinite(o.earned) && o.earned >= 0 && { earned: o.earned }), spent: num(o.spent), bonus: num(o.bonus), v: 1, got: Object.fromEntries(got) as Record<string, Got> };
 }
 
 /** 형식이 맞는 아이템을 넣은 순서로 */
@@ -84,13 +86,17 @@ export function periodText(e: Pick<Item, 'from' | 'until'>): string | null {
 /** 같은 아이템을 이만큼 모으면 색을 바꿀 수 있다 (GCH-05). 서버 조정값 hueUnlockCount의 기본값 */
 export const HUE_UNLOCK_DEFAULT = 4;
 
-/** 남은 뽑기. 저장하지 않고 계산한다. 기준 시간을 늘려 음수가 되면 0 */
-export const tickets = (sec: number, spt: number, bonus: number, spent: number): number =>
-  Math.max(0, Math.floor(sec / spt) + bonus - spent);
+/** 기존 기록은 최초 변경 전 기준으로 환산하고 이미 쓴 횟수도 보존한다 */
+export const earnedOf = (rec: Rec, cfg: Cfg): number =>
+  rec.earned ?? Math.max(rec.sec / (cfg.legacySecPerTicket ?? cfg.secPerTicket), rec.spent - rec.bonus);
+
+/** 소수 부분은 다음 뽑기 진행률. 부동소수점 합산 오차만 허용한다 */
+export const tickets = (earned: number, bonus: number, spent: number): number =>
+  Math.max(0, Math.floor(earned + 1e-7) + bonus - spent);
 
 /** 남은 뽑기가 하나 더 늘 때까지 더 쌓아야 하는 초 */
-export const secToNext = (sec: number, spt: number, bonus: number, spent: number): number =>
-  Math.max(Math.floor(sec / spt) + 1, spent - bonus + 1) * spt - sec;
+export const secToNext = (earned: number, spt: number): number =>
+  (Math.floor(earned + 1e-7) + 1 - earned) * spt;
 
 export const odds = (p: Array<{ w: number }>): number[] => {
   const total = p.reduce((s, e) => s + e.w, 0);
@@ -116,13 +122,14 @@ export function draw<T extends { w: number }>(p: T[], rnd: number): T | null {
 }
 
 /** 뽑기 transaction 본문. 남은 뽑기가 없으면 undefined(취소) */
-export function applyDraw(cur: Rec | null, item: Entry, spt: number, at: number): Rec | undefined {
+export function applyDraw(cur: Rec | null, item: Entry, cfg: Cfg, at: number): Rec | undefined {
   // Firebase가 처음에 빈 값으로 부를 수 있다. 빈 기록을 돌려주면 서버 값이 다르면 서버 값으로 다시 부른다
   if (!cur) return EMPTY;
-  if (tickets(cur.sec, spt, cur.bonus, cur.spent) < 1) return undefined;
+  const earned = earnedOf(cur, cfg);
+  if (tickets(earned, cur.bonus, cur.spent) < 1) return undefined;
   const g = cur.got?.[item.id];
   const next: Got = g ? { ...g, n: g.n + 1 } : { n: 1, name: item.name, file: item.file, at };
-  return { ...cur, spent: cur.spent + 1, got: { ...cur.got, [item.id]: next } };
+  return { ...cur, earned, spent: cur.spent + 1, got: { ...cur.got, [item.id]: next } };
 }
 
 export function inventoryOf(code: string, got: Rec['got']): InventoryItem[] {

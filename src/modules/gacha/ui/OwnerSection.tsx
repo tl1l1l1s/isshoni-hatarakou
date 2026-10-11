@@ -44,7 +44,7 @@ export function OwnerSection({ ctx }: SlotProps) {
           ))}
         </select>
       </label>
-      <p className={css.muted}>바꾸면 이미 쌓인 시간에도 새 기준을 적용해요.</p>
+      <p className={css.muted}>모은 횟수와 진행률은 그대로 두고, 이후 작업부터 새 기준을 적용해요.</p>
       <label>
         방을 지울 때 뽑은 아이템
         <select value={v.cfg.onRemove} onChange={(e) => run(setCfg(ctx, { onRemove: e.target.value as 'keep' | 'revoke' }))}>

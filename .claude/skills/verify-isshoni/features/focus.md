@@ -25,7 +25,7 @@ Preconditions:
 
 - 새 `verify()` 세션에서 시작하기를 눌러 실행 화면에 있다.
 
-- **앞에 있는 앱 정하기.** 사용자가 그림 앱을 쓰다 돌아온 상황을 만든다. `await s.app.evaluate(() => void ((globalThis as unknown as { fakePlatform: { app: string } }).fakePlatform.app = 'win:paint.exe'))`를 실행한다. 화면 변화는 없다.
+- **앞에 있는 앱 정하기.** 사용자가 작업 앱을 쓰다 돌아온 상황을 만든다. `await s.app.evaluate(() => void ((globalThis as unknown as { fakePlatform: { app: string } }).fakePlatform.app = 'win:paint.exe'))`를 실행한다. 화면 변화는 없다.
 - **집중 앱 탭 열기.** `const st = await menu(s, '설정', '설정')`과 `await st.getByRole('button', { name: '집중 앱' }).click()`을 실행한다. 목록 1번에 `클립 스튜디오`가 있고 2번 칸은 `직전에 쓴 앱 넣기` 버튼, 3번부터 8번은 `비어 있음`이다. 앞에 있는 앱을 정하기 전에 단추를 누르면 설정 창 위쪽에 `등록할 앱을 먼저 잠깐 쓰고 이 창으로 돌아와 다시 눌러 주세요.`가 뜨고 `s.stage.getByText`로는 찾을 수 없다.
 - **앱 등록.** 버튼을 눌러 2번 칸에 앱이 들어갈 때까지 되풀이한다.
   ```ts
@@ -53,7 +53,7 @@ Preconditions:
 ## Gotchas
 
 - 직전에 쓴 앱은 메인 프로세스가 500ms마다 보내는 활동 샘플로 알게 된다. `fakePlatform.app`을 바꾼 직후에는 샘플이 아직 오지 않아서 버튼을 눌러도 `등록할 앱을 먼저 잠깐 쓰고` 안내만 뜨고 칸이 비어 있다. 그래서 앱 등록은 `toPass`로 되풀이한다. 고정 대기는 부하가 걸리면 모자랄 수 있다.
-- 설정 창에는 `직전에 쓴 앱을 그림 앱으로 넣기`라는 다른 버튼도 있다. 집중 앱 등록 버튼은 `직전에 쓴 앱 넣기`이다.
+- 설정 창에는 `직전에 쓴 앱을 펜 입력 보호 목록에 넣기`라는 다른 버튼도 있다. 집중 앱 등록 버튼은 `직전에 쓴 앱 넣기`이다.
 - 앱 키 `win:paint.exe`는 목록과 포커스 기록에 `paint`로 표시된다.
 - 다른 기기 안내가 떠 있는 동안 실행 화면에는 좌석과 ▼ 메뉴가 없다. 이 동안 열 창은 안내를 띄우기 전에 열어 둔다.
 - 시간이 멈춰 있는지는 기다려 봐야 알 수 있어서 이 확인만 `waitForTimeout(3000)`을 쓴다.

@@ -99,7 +99,7 @@ function SettingsWindow({ core }: { core: CoreRuntime }) {
   );
 }
 
-/** 일반 탭: 모듈 설정, 시스템(자동 실행, 그림 앱, 버전, 진단 기록). 화면 항목은 화면 탭에 있다 */
+/** 일반 탭: 모듈 설정, 시스템(자동 실행, 펜 입력 보호 앱, 버전, 진단 기록). 화면 항목은 화면 탭에 있다 */
 function General({ core }: { core: CoreRuntime }) {
   const entries = [...core.ctxs.values()].filter((e) => e.manifest.settings && e.manifest.id !== 'core');
   const coreCtx = core.ctxs.get('core')?.ctx;
@@ -137,7 +137,7 @@ const PRIVACY = [
   '마이홈 버그제보 탭에서 보낸 글과 앱 버전은 서버에 저장되고 앱을 선물한 사람만 읽어요.',
   '앱에 오류가 나면 앱 버전, 운영체제, 최근 로그 몇 줄이 앱을 선물한 사람에게 자동으로 전해져요. 설정 일반 탭에서 끌 수 있어요.',
   '이 PC에서 쓰는 프로그램 이름, 창 제목, 키보드로 입력한 내용은 서버로 보내지 않아요.',
-  '이 PC의 앱 데이터 폴더에는 설정, 프로그램별 집중 시간, 로그인 상태, 진단 기록이 남아요. 진단 기록은 직접 보내기 전에는 PC 밖으로 나가지 않아요.',
+  '이 PC의 앱 데이터 폴더에는 설정, 프로그램별 집중 시간, 로그인 상태, 진단 기록이 남아요. 오류 자동 보고가 켜져 있으면 오류와 최근 로그 일부를 선물한 사람에게 보내요. 전체 진단 기록은 요청받았을 때 직접 보내요.',
   '기록을 지우고 싶으면 앱을 선물한 사람에게 말해 주세요.',
 ];
 
@@ -153,7 +153,7 @@ function Disconnect({ core }: { core: CoreRuntime }) {
   );
 }
 
-/** 사용자가 더하는 그림 앱 (NFR-25, CHR-12). 기본 목록은 메인 프로세스에 있다 */
+/** 사용자가 더하는 펜 입력 보호 앱 (NFR-25, CHR-12). 기본 목록은 메인 프로세스에 있다 */
 function PenApps({ core, ctx }: { core: CoreRuntime; ctx: Ctx }) {
   const bridge = core.deps.bridge;
   const [apps, setApps] = useState<string[]>([]);
@@ -161,13 +161,13 @@ function PenApps({ core, ctx }: { core: CoreRuntime; ctx: Ctx }) {
   const save = (next: string[]) => void bridge.invoke('penApps.set', { apps: next }).then(() => setApps(next), (e: Error) => ctx.ui.toast(e.message));
   const add = () => {
     const key = ctx.activity.lastForeignApp();
-    if (!key) return ctx.ui.toast('그림 앱을 먼저 잠깐 쓰고 이 창으로 돌아와 다시 눌러 주세요');
+    if (!key) return ctx.ui.toast('펜 입력 보호 앱을 먼저 잠깐 쓰고 이 창으로 돌아와 다시 눌러 주세요');
     if (!apps.includes(key)) save([...apps, key]);
   };
   return (
     <div>
-      <p>그림 앱이 앞에 있으면 쉬어도 작업 중으로 봐요.</p>
-      <p>자주 쓰는 그림 앱은 이미 들어 있어요.</p>
+      <p>펜 입력 보호 목록의 앱이 앞에 있으면 자동으로 방에서 내보내지 않아요.</p>
+      <p>기본 목록 외에도 사용하는 앱을 추가할 수 있어요. 집중 기록 대상은 집중 앱 탭에서 따로 골라요.</p>
       <ul>
         {apps.map((k) => (
           <li key={k}>
@@ -175,7 +175,7 @@ function PenApps({ core, ctx }: { core: CoreRuntime; ctx: Ctx }) {
           </li>
         ))}
       </ul>
-      <button onClick={add}>직전에 쓴 앱을 그림 앱으로 넣기</button>
+      <button onClick={add}>직전에 쓴 앱을 펜 입력 보호 목록에 넣기</button>
     </div>
   );
 }

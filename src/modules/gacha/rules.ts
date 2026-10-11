@@ -10,10 +10,19 @@ export default (t: Templates): RuleNode => {
   const ROOM_GONE = `${g('tomb/_room')}.exists()`;
   // 3600은 logic.ts의 DEFAULT_SEC_PER_TICKET
   const SPT = `(${g('cfg/secPerTicket')}.exists() ? ${g('cfg/secPerTicket')}.val() : 3600)`;
+  const LEGACY_SPT = `(${g('cfg/legacySecPerTicket')}.exists() ? ${g('cfg/legacySecPerTicket')}.val() : ${SPT})`;
   const int = (min: number, max: number) => `newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= ${min} && newData.val() <= ${max}`;
   const oneOf = (...xs: string[]) => xs.map((x) => `newData.val() === '${x}'`).join(' || ');
   const grows = '(!data.exists() || newData.val() >= data.val())';
   const before = (snap: string) => `(${snap}.exists() ? ${snap}.val() : 0)`;
+  const oldSec = before("data.parent().child('sec')");
+  const used = `(${before("data.parent().child('spent')")} - ${before("data.parent().child('bonus')")})`;
+  const legacyEarned = `(${oldSec} / ${LEGACY_SPT} > ${used} ? ${oldSec} / ${LEGACY_SPT} : ${used})`;
+  const baseEarned = `(data.exists() ? data.val() : ${legacyEarned})`;
+  const deltaSec = `(newData.parent().child('sec').val() - ${oldSec})`;
+  // 부모에서도 검사해야 earned를 그대로 둔 sec 단독 갱신을 막을 수 있다.
+  const earnedRule = `newData.isNumber() && newData.val() >= 0 && newData.val() >= ${baseEarned} + ${deltaSec} / 86400 - 0.0000001 && newData.val() <= ${baseEarned} + ${deltaSec} / 60 + 0.0000001`;
+  const earnedAtRecord = earnedRule.replace(/\bnewData\b/g, "newData.child('earned')").replace(/\bdata\b/g, "data.child('earned')");
   const str = (max: number) => ({ '.validate': `newData.isString() && newData.val().length >= 1 && newData.val().length <= ${max}` });
   const hash = { '.validate': 'newData.isString() && newData.val().length === 64' };
   const num = { '.validate': 'newData.isNumber()' };
@@ -29,9 +38,10 @@ export default (t: Templates): RuleNode => {
         '.read': MEMBER,
         cfg: {
           '.write': OWNER,
-          '.validate': "newData.hasChildren(['adders', 'secPerTicket', 'onRemove', 'v'])",
+          '.validate': "newData.hasChildren(['adders', 'secPerTicket', 'onRemove', 'v']) && (!data.child('legacySecPerTicket').exists() || newData.child('legacySecPerTicket').exists()) && (newData.child('secPerTicket').val() === data.child('secPerTicket').val() || newData.child('legacySecPerTicket').exists())",
           adders: { '.validate': oneOf('owner', 'members') },
           secPerTicket: { '.validate': int(60, 86400) },
+          legacySecPerTicket: { '.validate': `${int(60, 86400)} && (data.exists() ? newData.val() === data.val() : newData.val() === (data.parent().child('secPerTicket').exists() ? data.parent().child('secPerTicket').val() : 3600))` },
           onRemove: { '.validate': oneOf('keep', 'revoke') },
           v: { '.validate': 'newData.val() === 1' },
           $other: no,
@@ -77,12 +87,14 @@ export default (t: Templates): RuleNode => {
           $room: {
             // 쓰기는 기록을 만들거나 sec나 spent를 늘릴 때만 받는다. 보관함 항목만 지우는 쓰기는 got/$itemId 규칙이 받는다
             '.write': `${OWN} && newData.exists() && (!data.exists() || newData.child('sec').val() > data.child('sec').val() || newData.child('spent').val() > data.child('spent').val())`,
-            '.validate': "newData.hasChildren(['sec', 'spent', 'bonus', 'v'])",
+            '.validate': `newData.hasChildren(['sec', 'spent', 'bonus', 'v']) && ((!data.child('earned').exists() && !${g('cfg/legacySecPerTicket')}.exists()) || newData.child('earned').exists()) && (!newData.child('earned').exists() || (${earnedAtRecord}))`,
             sec: { '.validate': `newData.isNumber() && ${grows}` },
+            // 과거 진행률을 보존하고 추가한 초의 범위에서만 늘린다. 기준 변경 전 미전송분도 받는다.
+            earned: { '.validate': 'newData.isNumber() && newData.val() >= 0' },
             bonus: { '.validate': `newData.isNumber() && ${grows}` },
-            // 늘 때는 남은 횟수 floor(sec / secPerTicket) + bonus - spent가 0 아래로 내려가지 않고 방이 지워지지 않아야 한다
+            // 획득분을 넘겨 쓸 수 없고 방이 지워지지 않아야 한다
             spent: {
-              '.validate': `newData.isNumber() && newData.val() % 1 === 0 && ${grows} && (newData.val() === ${before('data')} || ((newData.val() - newData.parent().child('bonus').val()) * ${SPT} <= newData.parent().child('sec').val() && !${ROOM_GONE}))`,
+              '.validate': `newData.isNumber() && newData.val() % 1 === 0 && ${grows} && (newData.val() === ${before('data')} || (newData.val() <= (newData.parent().child('earned').exists() ? newData.parent().child('earned').val() : newData.parent().child('sec').val() / ${SPT}) + newData.parent().child('bonus').val() + 0.0000001 && !${ROOM_GONE}))`,
             },
             v: { '.validate': 'newData.val() === 1' },
             got: {

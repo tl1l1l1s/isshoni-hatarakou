@@ -20,8 +20,10 @@ export interface Session {
   launcher: Page;
   /** 이 실행의 증거 폴더. 정리 뒤에도 남는다 */
   dir: string;
-  /** 스테이지의 pageerror와 console.error. 끝나면 errors.json으로 남긴다 */
+  /** 모든 창의 pageerror와 console.error. 끝나면 errors.json으로 남긴다 */
   errors: string[];
+  /** 같은 데이터 폴더로 정상 종료 후 다시 켠다. app/stage/launcher 참조가 바뀐다 */
+  restart(): Promise<void>;
   /** 화면과 ARIA 스냅샷을 <dir>/<name>.png, <name>.aria.txt로 남긴다 */
   shot(page: Page, name: string): Promise<void>;
 }
@@ -42,35 +44,75 @@ export async function menu(s: Session, item: string, title: string): Promise<Pag
   return windowTitled(s.app, title);
 }
 
-/** 앱을 켜고 body를 실행한 뒤 이번에 켠 앱과 데이터 폴더만 정리한다 */
-export async function verify(name: string, body: (s: Session) => Promise<void>): Promise<void> {
+export interface ExpectedError { pattern: RegExp; count: number }
+
+/** 의도한 오류도 정해진 횟수만 허용하고, 발생하지 않은 기대 오류도 실패시킨다 */
+export function assertExpectedErrors(errors: string[], expected: ExpectedError[] = []): void {
+  const counts = expected.map(() => 0);
+  const unexpected = errors.filter((message) => {
+    const i = expected.findIndex((e) => new RegExp(e.pattern.source, e.pattern.flags.replace(/[gy]/g, '')).test(message));
+    if (i < 0) return true;
+    counts[i] = counts[i]! + 1;
+    return false;
+  });
+  if (unexpected.length || expected.some((e, i) => counts[i] !== e.count)) {
+    throw new Error(`검증 중 오류: ${JSON.stringify({ unexpected, expected: expected.map((e, i) => ({ pattern: String(e.pattern), count: e.count, actual: counts[i] })) })}`);
+  }
+}
+
+/** 이번 실행의 앱과 임시 데이터만 정리한다. 재시작도 동일한 격리 폴더 안에서 수행한다 */
+export async function verify(name: string, body: (s: Session) => Promise<void>, options: { expectedErrors?: ExpectedError[] } = {}): Promise<void> {
   const problems = doctor();
   if (problems.length) throw new Error(`doctor 실패: ${problems.join(' / ')}`);
   mkdirSync(evidenceRoot, { recursive: true });
   const dir = mkdtempSync(join(evidenceRoot, `${name}-`));
   const userData = mkdtempSync(join(tmpdir(), 'isshoni-verify-data-'));
-  const app = await electron.launch({ args: [repo, `--user-data-dir=${userData}`], cwd: repo, env: { ...process.env, ISSHONI_FAKE_PLATFORM: '1' } });
   const errors: string[] = [];
-  try {
-    const stage = await app.firstWindow();
-    stage.on('pageerror', (e) => errors.push(e.message));
-    stage.on('console', (m) => void (m.type() === 'error' && errors.push(m.text())));
-    const launcher = await windowTitled(app, 'Isshoni Hatarakou');
-    const shot = async (page: Page, n: string) => {
-      await page.screenshot({ path: join(dir, `${n}.png`) });
-      writeFileSync(join(dir, `${n}.aria.txt`), await page.locator('body').ariaSnapshot());
+  let app: ElectronApplication | undefined;
+  const launch = async () => {
+    app = await electron.launch({ args: [repo, `--user-data-dir=${userData}`], cwd: repo, env: { ...process.env, ISSHONI_FAKE_PLATFORM: '1' } });
+    const seen = new Set<Page>();
+    const watch = (page: Page) => {
+      if (seen.has(page)) return;
+      seen.add(page);
+      page.on('pageerror', (e) => errors.push(e.message));
+      page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
     };
-    await body({ app, stage, launcher, dir, errors, shot });
+    app.on('window', watch);
+    app.windows().forEach(watch);
+    const stage = await app.firstWindow();
+    watch(stage);
+    const launcher = await windowTitled(app, 'Isshoni Hatarakou');
+    return { app, stage, launcher };
+  };
+  let failed = false;
+  try {
+    const started = await launch();
+    const session: Session = {
+      ...started, dir, errors,
+      shot: async (page, n) => {
+        await page.screenshot({ path: join(dir, `${n}.png`) });
+        writeFileSync(join(dir, `${n}.aria.txt`), await page.locator('body').ariaSnapshot());
+      },
+      restart: async () => {
+        await app!.close();
+        Object.assign(session, await launch());
+      },
+    };
+    await body(session);
+  } catch (e) {
+    failed = true;
+    throw e;
   } finally {
+    if (app) await app.close().catch(() => app!.process().kill());
     writeFileSync(join(dir, 'errors.json'), JSON.stringify(errors, null, 2));
-    await app.close().catch(() => app.process().kill());
-    // Electron 보조 프로세스가 종료 직전까지 파일을 쓰면 한 번에 지워지지 않는다. 본문 오류를 가리지 않게 삼킨다
     try {
       rmSync(userData, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
     } catch (e) {
       console.log(`데이터 폴더를 지우지 못했습니다: ${userData} (${String(e)})`);
     }
     console.log(`evidence: ${dir}`);
+    if (!failed) assertExpectedErrors(errors, options.expectedErrors);
   }
 }
 

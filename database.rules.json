@@ -414,12 +414,15 @@
             ".read": "auth != null && root.child('rooms/' + $room + '/roster/' + auth.uid).exists()",
             "cfg": {
               ".write": "auth != null && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists())",
-              ".validate": "newData.hasChildren(['adders', 'secPerTicket', 'onRemove', 'v'])",
+              ".validate": "newData.hasChildren(['adders', 'secPerTicket', 'onRemove', 'v']) && (!data.child('legacySecPerTicket').exists() || newData.child('legacySecPerTicket').exists()) && (newData.child('secPerTicket').val() === data.child('secPerTicket').val() || newData.child('legacySecPerTicket').exists())",
               "adders": {
                 ".validate": "newData.val() === 'owner' || newData.val() === 'members'"
               },
               "secPerTicket": {
                 ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 60 && newData.val() <= 86400"
+              },
+              "legacySecPerTicket": {
+                ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 60 && newData.val() <= 86400 && (data.exists() ? newData.val() === data.val() : newData.val() === (data.parent().child('secPerTicket').exists() ? data.parent().child('secPerTicket').val() : 3600))"
               },
               "onRemove": {
                 ".validate": "newData.val() === 'keep' || newData.val() === 'revoke'"
@@ -491,15 +494,18 @@
             "r": {
               "$room": {
                 ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid && newData.exists() && (!data.exists() || newData.child('sec').val() > data.child('sec').val() || newData.child('spent').val() > data.child('spent').val())",
-                ".validate": "newData.hasChildren(['sec', 'spent', 'bonus', 'v'])",
+                ".validate": "newData.hasChildren(['sec', 'spent', 'bonus', 'v']) && ((!data.child('earned').exists() && !root.child('mod/gacha/r/' + $room + '/cfg/legacySecPerTicket').exists()) || newData.child('earned').exists()) && (!newData.child('earned').exists() || (newData.child('earned').isNumber() && newData.child('earned').val() >= 0 && newData.child('earned').val() >= (data.child('earned').exists() ? data.child('earned').val() : ((data.child('earned').parent().child('sec').exists() ? data.child('earned').parent().child('sec').val() : 0) / (root.child('mod/gacha/r/' + $room + '/cfg/legacySecPerTicket').exists() ? root.child('mod/gacha/r/' + $room + '/cfg/legacySecPerTicket').val() : (root.child('mod/gacha/r/' + $room + '/cfg/secPerTicket').exists() ? root.child('mod/gacha/r/' + $room + '/cfg/secPerTicket').val() : 3600)) > ((data.child('earned').parent().child('spent').exists() ? data.child('earned').parent().child('spent').val() : 0) - (data.child('earned').parent().child('bonus').exists() ? data.child('earned').parent().child('bonus').val() : 0)) ? (data.child('earned').parent().child('sec').exists() ? data.child('earned').parent().child('sec').val() : 0) / (root.child('mod/gacha/r/' + $room + '/cfg/legacySecPerTicket').exists() ? root.child('mod/gacha/r/' + $room + '/cfg/legacySecPerTicket').val() : (root.child('mod/gacha/r/' + $room + '/cfg/secPerTicket').exists() ? root.child('mod/gacha/r/' + $room + '/cfg/secPerTicket').val() : 3600)) : ((data.child('earned').parent().child('spent').exists() ? data.child('earned').parent().child('spent').val() : 0) - (data.child('earned').parent().child('bonus').exists() ? data.child('earned').parent().child('bonus').val() : 0)))) + (newData.child('earned').parent().child('sec').val() - (data.child('earned').parent().child('sec').exists() ? data.child('earned').parent().child('sec').val() : 0)) / 86400 - 0.0000001 && newData.child('earned').val() <= (data.child('earned').exists() ? data.child('earned').val() : ((data.child('earned').parent().child('sec').exists() ? data.child('earned').parent().child('sec').val() : 0) / (root.child('mod/gacha/r/' + $room + '/cfg/legacySecPerTicket').exists() ? root.child('mod/gacha/r/' + $room + '/cfg/legacySecPerTicket').val() : (root.child('mod/gacha/r/' + $room + '/cfg/secPerTicket').exists() ? root.child('mod/gacha/r/' + $room + '/cfg/secPerTicket').val() : 3600)) > ((data.child('earned').parent().child('spent').exists() ? data.child('earned').parent().child('spent').val() : 0) - (data.child('earned').parent().child('bonus').exists() ? data.child('earned').parent().child('bonus').val() : 0)) ? (data.child('earned').parent().child('sec').exists() ? data.child('earned').parent().child('sec').val() : 0) / (root.child('mod/gacha/r/' + $room + '/cfg/legacySecPerTicket').exists() ? root.child('mod/gacha/r/' + $room + '/cfg/legacySecPerTicket').val() : (root.child('mod/gacha/r/' + $room + '/cfg/secPerTicket').exists() ? root.child('mod/gacha/r/' + $room + '/cfg/secPerTicket').val() : 3600)) : ((data.child('earned').parent().child('spent').exists() ? data.child('earned').parent().child('spent').val() : 0) - (data.child('earned').parent().child('bonus').exists() ? data.child('earned').parent().child('bonus').val() : 0)))) + (newData.child('earned').parent().child('sec').val() - (data.child('earned').parent().child('sec').exists() ? data.child('earned').parent().child('sec').val() : 0)) / 60 + 0.0000001))",
                 "sec": {
                   ".validate": "newData.isNumber() && (!data.exists() || newData.val() >= data.val())"
+                },
+                "earned": {
+                  ".validate": "newData.isNumber() && newData.val() >= 0"
                 },
                 "bonus": {
                   ".validate": "newData.isNumber() && (!data.exists() || newData.val() >= data.val())"
                 },
                 "spent": {
-                  ".validate": "newData.isNumber() && newData.val() % 1 === 0 && (!data.exists() || newData.val() >= data.val()) && (newData.val() === (data.exists() ? data.val() : 0) || ((newData.val() - newData.parent().child('bonus').val()) * (root.child('mod/gacha/r/' + $room + '/cfg/secPerTicket').exists() ? root.child('mod/gacha/r/' + $room + '/cfg/secPerTicket').val() : 3600) <= newData.parent().child('sec').val() && !root.child('mod/gacha/r/' + $room + '/tomb/_room').exists()))"
+                  ".validate": "newData.isNumber() && newData.val() % 1 === 0 && (!data.exists() || newData.val() >= data.val()) && (newData.val() === (data.exists() ? data.val() : 0) || (newData.val() <= (newData.parent().child('earned').exists() ? newData.parent().child('earned').val() : newData.parent().child('sec').val() / (root.child('mod/gacha/r/' + $room + '/cfg/secPerTicket').exists() ? root.child('mod/gacha/r/' + $room + '/cfg/secPerTicket').val() : 3600)) + newData.parent().child('bonus').val() + 0.0000001 && !root.child('mod/gacha/r/' + $room + '/tomb/_room').exists()))"
                 },
                 "v": {
                   ".validate": "newData.val() === 1"

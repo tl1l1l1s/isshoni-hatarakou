@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NOT_IN_ROOM, type Ctx } from '@core/types';
-import { duration, inPeriod, odds, percent, periodText, pool, secToNext, tickets } from '../logic';
+import { duration, earnedOf, inPeriod, odds, percent, periodText, pool, secToNext, tickets } from '../logic';
 import { canAdd, useGacha, type Drawn } from '../state';
 import { AddItem, message, Pic } from './parts';
 import css from './gacha.module.css';
@@ -14,9 +14,9 @@ export default function RoomWindow({ ctx }: { ctx: Ctx }) {
   const [msg, setMsg] = useState('');
   if (!v.code) return <p>{NOT_IN_ROOM}</p>;
 
-  const sec = v.rec.sec + Math.floor(v.pendingSec);
+  const earned = earnedOf(v.rec, v.cfg) + v.pendingEarned;
   const { secPerTicket: spt } = v.cfg;
-  const left = tickets(sec, spt, v.rec.bonus, v.rec.spent);
+  const left = tickets(earned, v.rec.bonus, v.rec.spent);
   const now = ctx.clock.serverNow();
   const items = pool(v.items, now);
   const p = odds(items);
@@ -47,7 +47,7 @@ export default function RoomWindow({ ctx }: { ctx: Ctx }) {
       <p>
         <b>남은 뽑기 {left}회</b>
       </p>
-      <p className={css.muted}>다음 1회까지 작업 {duration(secToNext(sec, spt, v.rec.bonus, v.rec.spent))} 남았어요.</p>
+      <p className={css.muted}>다음 1회까지 작업 {duration(secToNext(earned, spt))} 남았어요.</p>
       <p className={css.muted}>뽑기 1회에 작업 {duration(spt)}이 필요해요.</p>
       <div className={css.stage}>
         {!spinning && result ? (

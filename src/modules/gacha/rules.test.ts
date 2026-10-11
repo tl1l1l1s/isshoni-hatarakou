@@ -55,10 +55,39 @@ describe.skipIf(!HOST)('gacha 규칙 (에뮬레이터)', () => {
   });
 
   it('cfg는 주인만 쓰고 값 범위를 지킨다', async () => {
-    await assertSucceeds(room('alice', 'cfg').set({ adders: 'members', secPerTicket: 1800, onRemove: 'revoke', v: 1 }));
+    await assertSucceeds(room('alice', 'cfg').set({ adders: 'members', secPerTicket: 1800, legacySecPerTicket: 3600, onRemove: 'revoke', v: 1 }));
     await assertFails(room('bob', 'cfg').set({ adders: 'members', secPerTicket: 1800, onRemove: 'keep', v: 1 }));
     await assertFails(room('alice', 'cfg').set({ adders: 'all', secPerTicket: 1800, onRemove: 'keep', v: 1 }));
     await assertFails(room('alice', 'cfg').set({ adders: 'owner', secPerTicket: 30, onRemove: 'keep', v: 1 }));
+  });
+
+  it('기준을 바꿔도 이전 기록을 환산하는 기준은 바꾸거나 지울 수 없다', async () => {
+    await assertFails(room('alice', 'cfg/secPerTicket').set(1800));
+    await assertFails(room('alice', 'cfg').update({ secPerTicket: 1800, legacySecPerTicket: 300 }));
+    await assertSucceeds(room('alice', 'cfg').update({ secPerTicket: 1800, legacySecPerTicket: 3600 }));
+    await assertSucceeds(room('alice', 'cfg/secPerTicket').set(7200));
+    await assertFails(room('alice', 'cfg/legacySecPerTicket').set(1800));
+    await assertFails(room('alice', 'cfg/legacySecPerTicket').remove());
+  });
+
+  it('기존 획득분을 보존하고 새 기록은 획득한 범위에서만 뽑는다', async () => {
+    await room('alice', 'cfg').update({ secPerTicket: 7200, legacySecPerTicket: 3600 });
+    await assertSucceeds(rec('bob').set({ sec: 7200, earned: 2, spent: 1, bonus: 0, v: 1, got: { hat: got(1) } }));
+    await assertSucceeds(rec('bob').set({ sec: 7200, earned: 2, spent: 2, bonus: 0, v: 1, got: { hat: got(2) } }));
+    await assertFails(rec('bob').set({ sec: 7200, earned: 3, spent: 3, bonus: 0, v: 1, got: { hat: got(3) } }));
+    await assertFails(rec('bob').child('earned').remove());
+    // 예전 앱이 시간만 더해 획득분을 잃게 하는 쓰기를 막는다
+    await assertFails(rec('bob').child('sec').set(14400));
+    await assertSucceeds(rec('bob').update({ sec: 14400, earned: 3 }));
+    await assertSucceeds(rec('bob').update({ spent: 3, 'got/hat/n': 3 }));
+    await assertFails(rec('bob').update({ spent: 4, 'got/hat/n': 4 }));
+  });
+
+  it('새 기록을 만들 때와 기준 변경 전의 미전송 작업 시간을 저장할 때 획득분을 함께 받는다', async () => {
+    await assertSucceeds(rec('carol').set({ sec: 60, earned: 60 / 3600, spent: 0, bonus: 0, v: 1 }));
+    await room('alice', 'cfg').update({ secPerTicket: 7200, legacySecPerTicket: 3600 });
+    await assertSucceeds(rec('carol').update({ sec: 120, earned: 120 / 3600 }));
+    await assertFails(rec('carol').update({ sec: 121, earned: 10 }));
   });
 
   it('멤버는 adders가 members일 때 자기 이름으로 만들기만 한다', async () => {

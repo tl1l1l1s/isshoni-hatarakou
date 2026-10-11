@@ -34,7 +34,7 @@ export default defineModule<GachaApi>({
       tomb: { scope: 'room', schema: Tomb, template: 'roomOwner', roomRetention: 'keep' },
       r: {
         scope: 'user',
-        schema: z.object({ sec: z.number(), spent: z.number(), bonus: z.number(), v: z.literal(1), got: z.record(z.string(), Got).optional() }),
+        schema: z.object({ sec: z.number(), earned: z.number().min(0).optional(), spent: z.number(), bonus: z.number(), v: z.literal(1), got: z.record(z.string(), Got).optional() }),
         template: 'owner',
         merge: 'transaction',
       },
@@ -66,7 +66,7 @@ export default defineModule<GachaApi>({
     const onRoom = (code: string | null) => {
       stops.forEach((d) => d());
       stops = [];
-      patch(ctx, { code, owner: false, cfg: readCfg(null), items: [], rec: readRec(null), pendingSec: 0 });
+      patch(ctx, { code, owner: false, cfg: readCfg(null), items: [], rec: readRec(null), pendingSec: 0, pendingEarned: 0 });
       if (!code) return;
       ctx.room.owner(code).then(
         (o) => ctx.room.current() === code && patch(ctx, { owner: o === ctx.self.uid() }),

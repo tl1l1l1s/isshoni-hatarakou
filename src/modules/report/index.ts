@@ -46,13 +46,26 @@ export default defineModule({
     // 메인이 들고 있는 보고를 제보 기록으로 남기고 남긴 것만 뺀다
     const record = async () => {
       const list = await ctx.crash.pending();
-      for (const [i, p] of list.entries()) {
-        await ctx.server.user(['r']).set(String(ctx.clock.serverNow() + i), { text: p.text.slice(0, TEXT_MAX), ver: ctx.app.version, at: SERVER_TIME, v: 1 });
+      for (const p of list) {
+        const doc = ctx.server.user(['r']);
+        const key = `auto_${p.id}`;
+        const text = p.text.slice(0, TEXT_MAX);
+        // 저장 후 ack가 실패해도 appendOnly 기록을 다시 만들지 않는다.
+        const existing = await doc.get<{ text: string }>(key);
+        if (existing && existing.text !== text) throw new Error('자동 오류 보고 ID가 겹쳤어요.');
+        if (!existing) await doc.set(key, { text, ver: ctx.app.version, at: SERVER_TIME, v: 1 });
         await ctx.crash.ack([p.id]);
       }
     };
-    const sync = () => void record().catch((e: Error) => ctx.log.warn(`자동 오류 보고 기록 실패: ${e.message}`));
+    let running = false;
+    const sync = () => {
+      if (running) return;
+      running = true;
+      void record().catch((e: Error) => ctx.log.warn(`자동 오류 보고 기록 실패: ${e.message}`)).finally(() => { running = false; });
+    };
     sync();
     ctx.crash.onAdded(sync);
+    ctx.lifecycle.on((e) => { if (e.type === 'online') sync(); });
+    ctx.timers.every(60_000, sync);
   },
 });

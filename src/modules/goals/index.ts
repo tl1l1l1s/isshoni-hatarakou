@@ -35,12 +35,12 @@ export default defineModule({
 
     // 오늘 합계를 1분마다, 목표를 채우는 순간, 끄거나 절전에 들어갈 때 올린다. 이 PC가 쓰는 기기일 때만 쓰고 서버 값보다 줄지 않게 쓴다
     let sent = '';
-    const write = () => {
+    let observed = { day: ctx.clock.dayKey(), sec: focus.todaySec() };
+    const persist = (day: string, sec: number) => {
       const { goal } = live.cfg;
       if (!goal || !ctx.self.activeDevice()) return;
-      const day = ctx.clock.dayKey();
-      const rec: Day = { sec: Math.max(Math.floor(focus.todaySec()), live.days[day]?.sec ?? 0), goal, v: 1 };
-      const key = `${day} ${Math.floor(rec.sec / 60)} ${goal}`;
+      const rec: Day = { sec: Math.max(Math.floor(sec), live.days[day]?.sec ?? 0), goal, v: 1 };
+      const key = `${day} ${rec.sec} ${goal}`;
       if (key === sent) return;
       sent = key;
       days.set(day, rec).catch((e: Error) => {
@@ -48,6 +48,18 @@ export default defineModule({
         ctx.log.warn(`달성표 기록을 쓰지 못했습니다: ${e.message}`);
       });
     };
+    const write = () => {
+      if (observed.day !== ctx.clock.dayKey()) persist(observed.day, observed.sec);
+      persist(ctx.clock.dayKey(), focus.todaySec());
+    };
+    // focus는 6시 경계 tick을 나눠 보낸다. 오늘 합계가 초기화되기 전 마지막 조각도 남긴다.
+    ctx.bus.on('focus.tick', ({ dayKey, sec }) => {
+      if (dayKey !== observed.day) {
+        persist(observed.day, observed.sec);
+        observed = { day: dayKey, sec: 0 };
+      }
+      observed.sec += sec;
+    });
     ctx.timers.every(60_000, write);
     ctx.lifecycle.on((e) => (e.type === 'suspend' || e.type === 'shutdown') && write());
 
@@ -63,7 +75,10 @@ export default defineModule({
       if (met && prev === `${day} false`) ctx.ui.toast('오늘 집중 목표를 채웠어요.');
       if (prev !== null && last !== null && last !== prev) write();
     };
-    focus.onTotal(check);
+    focus.onTotal(() => {
+      check();
+      observed = { day: ctx.clock.dayKey(), sec: focus.todaySec() };
+    });
     live.subscribe(check);
   },
 });

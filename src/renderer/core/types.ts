@@ -421,6 +421,8 @@ export interface Ctx {
   ui: {
     open(windowId: string): void;
     close(windowId: string): void;
+    /** 열린 패널을 다른 일반 창 위에 고정한다. 숨기기와 닫기는 그대로 동작한다 */
+    setAlwaysOnTop(windowId: string, on: boolean): Promise<void>;
     /** 알림. 사용자가 방금 누르거나 키를 친 창(기능 창이나 런처) 위쪽에 뜨고 그런 창이 없으면 실행 화면에 뜬다. 한 번에 두 개까지 보인다 */
     toast(message: string): void;
     /** 저장하지 않은 일이 있으면 떠나기 전에 묻는다. check는 물을 글(예: 저장하지 않은 그림이 있어요. 닫을까요?)이나 null을 돌려준다.

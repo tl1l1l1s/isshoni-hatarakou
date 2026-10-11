@@ -16,6 +16,7 @@ export function memoryBridge(): Bridge {
     'win.prepare': () => undefined,
     'win.show': () => undefined,
     'win.hide': () => undefined,
+    'win.setAlwaysOnTop': () => undefined,
     'csp.frameOrigins.get': () => [...frameOrigins],
     // 브라우저에서는 다시 읽지 않는다
     'csp.frameOrigins.set': ({ origins }) => {

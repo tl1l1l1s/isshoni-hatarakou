@@ -100,6 +100,10 @@ export class WindowClient {
     for (const w of this.open.get()) if (w.ctx === ctx) this.close(w.id, true);
   }
 
+  setAlwaysOnTop(id: string, on: boolean): Promise<void> {
+    return this.bridge.invoke('win.setAlwaysOnTop', { name: nameOf(id), on });
+  }
+
   /** ESC와 창의 닫기 단추. 저장하지 않은 일이 있으면 묻고 닫기를 누를 때만 닫는다 */
   requestClose(id: string): void {
     void this.confirm(id).then((leave) => leave && this.close(id));

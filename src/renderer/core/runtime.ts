@@ -907,6 +907,7 @@ export class CoreRuntime {
           void this.windows.show(w.decl, w.ctx);
         },
         close: (wid) => this.windows.close(wid),
+        setAlwaysOnTop: (wid, on) => this.windows.setAlwaysOnTop(wid, on),
         toast: (text) => this.toast(text),
         guard: (wid, check) => scope.add(this.windows.guard(wid, check)),
         confirmLeave: (wid) => this.windows.confirm(wid),

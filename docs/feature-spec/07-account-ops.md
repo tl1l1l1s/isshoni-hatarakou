@@ -287,7 +287,7 @@
 - 선물하는 사람은 앱을 다시 배포하지 않고 서버 조정값으로 레벨 보상 조건 같은 값을 바꿉니다. `node scripts/ops.ts tunable <모듈>`은 그 모듈의 지금 값을 보여 주고 `<키> <JSON 값>`을 붙이면 값을 바꿉니다. `<키> --clear`는 키를 지워 앱 기본값으로 돌립니다.
 - `--from <시각> --until <시각>`을 붙이면 그 기간에만 쓰는 값을 더합니다. 시각은 `2026-10-10T00:00+09:00` 형식이고 끝 시각이 시작 시각보다 늦어야 합니다. 스크립트는 값을 더할 때 이미 끝난 기간 항목을 지웁니다.
 - 앱은 값을 읽을 때마다 지금 시각이 든 기간의 값을 고르고 기간이 겹치면 나중에 더한 값을 씁니다. 레벨 보상 같은 잠금 조건은 5초마다 다시 확인하므로 기간이 끝나면 5초 안에 원래 값으로 돌아옵니다.
-- 모듈이 정한 형식에 맞지 않는 값은 무시하고 기본값을 씁니다. 지금 바꿀 수 있는 값은 growth의 `secondsPerLevel`(기본 3600초)과 `tierLevels`, wardrobe의 `animalUnlockLevel`(기본 30이고 1부터 999까지), gacha의 `hueUnlockCount`, photo의 `photoDailyCap`, phone의 `pageUrl`입니다.
+- 모듈이 정한 형식에 맞지 않는 값은 무시하고 기본값을 씁니다. 지금 바꿀 수 있는 값은 growth의 `tierLevels`, wardrobe의 `animalUnlockLevel`(기본 30이고 1부터 999까지), gacha의 `hueUnlockCount`, photo의 `photoDailyCap`, phone의 `pageUrl`입니다.
 - 예를 들어 주말 동안 `animalUnlockLevel`을 낮출 수 있습니다. 기간 안에 앱이 동물 캐릭터 해금 조건을 확인하면 해금 기록이 계정에 남으므로 기간이 끝나도 다시 잠기지 않습니다(3장 GRW-03).
 
 ### OPS-13 업데이트 정책

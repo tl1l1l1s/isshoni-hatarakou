@@ -15,7 +15,7 @@ import type { Store } from './store';
 import { installUpdate, updateState } from './updater';
 import {
   chooseDisplay, displayLines, dragStage, effectsBounds, getStage, listDisplays, pickEscape, prepare, prepareEffects, reloadStage, resetPositions, send, setOpacity252, setPanelVisible,
-  setRects, setSize, setVisible, workArea,
+  setPanelAlwaysOnTop, setRects, setSize, setVisible, workArea,
 } from './windows/manager';
 
 type Routes = {
@@ -63,6 +63,7 @@ export function registerIpc(store: Store): void {
     ],
     'win.show': [panel, ({ name }) => setPanelVisible(name, true)],
     'win.hide': [panel, ({ name }) => setPanelVisible(name, false)],
+    'win.setAlwaysOnTop': [panel.extend({ on: z.boolean() }), ({ name, on }) => setPanelAlwaysOnTop(name, on)],
     'csp.frameOrigins.get': [none, getFrameOrigins],
     // 검사에 맞지 않는 출처는 setFrameOrigins가 버린다
     'csp.frameOrigins.set': [
