@@ -2,7 +2,7 @@
 // npx firebase emulators:exec --project demo-isshoni --only database,auth "npx vitest run rules/tests tests/adapter-contract"
 import { assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing';
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
-import { FILE_MAX_BASE64_BYTES, NAME_MAX_LENGTH, PRESENCE_STALE_MS } from '../../src/shared/constants';
+import { FILE_MAX_BASE64_BYTES, JOINED_SKEW_MS, NAME_MAX_LENGTH, PRESENCE_MODULE_MAX_BYTES, PRESENCE_STALE_MS } from '../../src/shared/constants';
 import { dayIndex } from '../../src/shared/time';
 import { buildRules, type Fragment } from '../build';
 import { issued } from './issued';
@@ -32,8 +32,9 @@ describe.skipIf(!HOST)('database rules', () => {
   let env: RulesTestEnvironment;
   const db = (uid?: string) => (uid ? env.authenticatedContext(uid) : env.unauthenticatedContext()).database();
   const at = (uid: string | undefined, path: string) => db(uid).ref(path);
+  // 앱처럼 seenAt은 서버 시각으로 쓴다 (firebase/index.ts register)
   const member = (uid: string, extra: object = {}) => ({
-    uid, name: uid, look: null, state: 'online', proto: 1, mods: {}, joinedAt: Date.now(), seenAt: Date.now(), ...extra,
+    uid, name: uid, look: null, state: 'online', proto: 1, mods: {}, joinedAt: Date.now(), seenAt: NOW, ...extra,
   });
 
   beforeAll(async () => {
@@ -164,6 +165,39 @@ describe.skipIf(!HOST)('database rules', () => {
       await assertFails(at('alice', path).update({ 'mods/focus': 'x' }));
       await assertFails(at('alice', path).update({ junk: 'x' }));
       await assertFails(at('alice', path).set(member('alice', { m: { big: { s: 'x'.repeat(200_000) } } })));
+      // 긴 글 하나로 필드 크기 한도를 피하지 못한다
+      await assertFails(at('alice', path).update({ m: 'x'.repeat(10_000) }));
+      await assertFails(at('alice', path).update({ mods: 'x'.repeat(10_000) }));
+    });
+    it('seenAt은 서버 시각으로만 쓰고 joinedAt은 서버 시각보다 1분 넘게 앞서지 못한다', async () => {
+      const path = `rooms/${ROOM}/members/alice_pc`;
+      const later = Date.now() + 3_600_000;
+      await assertFails(at('alice', path).set(member('alice', { seenAt: later })));
+      await assertFails(at('alice', path).set(member('alice', { joinedAt: Date.now() + JOINED_SKEW_MS + 30_000 })));
+      // PC 시계가 조금 빠른 앱과 오래전에 들어와 다시 연결된 앱
+      await assertSucceeds(at('alice', path).set(member('alice', { joinedAt: Date.now() + JOINED_SKEW_MS - 30_000 })));
+      await assertSucceeds(at('alice', path).set(member('alice', { joinedAt: 1 })));
+      await assertFails(at('alice', path).update({ seenAt: later }));
+      await assertFails(at('alice', path).update({ seenAt: Date.now() - 1_000 }));
+      await assertFails(at('alice', path).update({ joinedAt: later }));
+    });
+    it('입장, 하트비트, 코어 필드, 다시 연결, 다른 기기로 넘기기 쓰기는 그대로 받는다', async () => {
+      const path = `rooms/${ROOM}/members/alice_pc`;
+      // 입장 (firebase/index.ts register): 끊기면 지우도록 예약하고 서버 시각 seenAt으로 쓴다
+      await assertSucceeds(at('alice', path).onDisconnect().remove());
+      await assertSucceeds(at('alice', path).set(member('alice', { m: { growth: { lv: 1 } } })));
+      // 하트비트 (RoomSession.tick): seenAt과 batch 필드
+      await assertSucceeds(at('alice', path).update({ seenAt: NOW, 'm/growth/xp': 40 }));
+      // 코어 필드와 onChange 필드는 seenAt 없이 쓴다 (RoomSession.setCore, sendNow)
+      await assertSucceeds(at('alice', path).update({ state: 'away' }));
+      await assertSucceeds(at('alice', path).update({ name: '앨리스' }));
+      await assertSucceeds(at('alice', path).update({ 'm/growth/lv': 2 }));
+      // 다시 연결: 사본 전체를 처음 joinedAt과 새 서버 시각 seenAt으로 다시 쓴다
+      const first = (await at('alice', `${path}/joinedAt`).get()).val() as number;
+      await assertSucceeds(at('alice', path).set(member('alice', { joinedAt: first, state: 'away' })));
+      // 다른 기기로 넘기기 (takeOver): 같은 uid의 다른 기기 키로 새로 들어온다
+      await assertSucceeds(at('alice', `rooms/${ROOM}/members/alice_pc2`).set(member('alice')));
+      await assertSucceeds(at('alice', path).remove());
     });
     it('roster에 있는 사람만 읽는다', async () => {
       await assertSucceeds(at('bob', `rooms/${ROOM}/members`).get());
@@ -219,6 +253,19 @@ describe.skipIf(!HOST)('database rules', () => {
       await assertFails(at('alice', 'users/alice/presence').set({ ...presence, extra: 1 }));
       await assertFails(at('alice', 'users/alice/presence/online').set('yes'));
       await assertSucceeds(at('alice', 'users/alice/presence').onDisconnect().update({ online: false, lastSeen: NOW }));
+    });
+    it('m은 모듈마다 짧은 키와 작은 값만 받는다', async () => {
+      const p = 'users/alice/presence';
+      // 앱의 accountPresence 필드 (rooms.code, friends.hidden)
+      await assertSucceeds(at('alice', p).set({ ...presence, m: { rooms: { code: 'ABCDEF' }, friends: { hidden: true } } }));
+      await assertSucceeds(at('alice', `${p}/m/friends`).set({ hidden: false }));
+      await assertSucceeds(at('alice', `${p}/m/rooms`).set({ code: null }));
+      await assertFails(at('alice', `${p}/m`).set('x'.repeat(10_000)));
+      await assertFails(at('alice', `${p}/m/rooms`).set('ABCDEF'));
+      await assertFails(at('alice', `${p}/m/rooms/code`).set('x'.repeat(PRESENCE_MODULE_MAX_BYTES + 1)));
+      await assertFails(at('alice', `${p}/m/a/b/c`).set({ d: 1 }));
+      await assertFails(at('alice', `${p}/m/${'a'.repeat(33)}/b`).set(1));
+      await assertFails(at('alice', p).set({ ...presence, m: { big: { s: 'x'.repeat(200_000) } } }));
     });
     it('online과 lastSeen은 로그인한 사용자가, 전체와 m은 본인과 친구만 읽는다', async () => {
       await env.withSecurityRulesDisabled(async (ctx) => {
@@ -285,6 +332,26 @@ describe.skipIf(!HOST)('database rules', () => {
       await assertFails(at(undefined, 'users/alice/public').get());
       await assertFails(at('bob', 'users/alice/private').get());
       await assertFails(at('bob', 'codes/ABCDEFGH').set('bob'));
+    });
+    it('공개 프로필은 발급 스크립트와 앱이 쓰는 필드만 받는다', async () => {
+      const pub = 'users/alice/public';
+      // scripts/create-account.ts가 쓰는 모양
+      await env.withSecurityRulesDisabled((ctx) => ctx.database().ref(pub).set({ v: 1, name: '앨리스', friendCode: 'ABCDEFGH' }));
+      await assertSucceeds(at('alice', pub).set({ v: 1, name: '앨리스', friendCode: 'ABCDEFGH' }));
+      // 코어 이름 (runtime writeName)과 모듈 프로필 필드 (ctx.self.setProfile의 growth.level, chat.emo 파일 해시 8개)
+      await assertSucceeds(at('alice', pub).update({ name: '가'.repeat(NAME_MAX_LENGTH) }));
+      await assertSucceeds(at('alice', pub).update({ 'm/growth': { level: 999 } }));
+      await assertSucceeds(at('alice', pub).update({ 'm/chat': { emo: Array.from({ length: 8 }, () => HASH) } }));
+      await assertFails(at('alice', pub).update({ junk: 'x' }));
+      await assertFails(at('alice', pub).update({ big: 'x'.repeat(200_000) }));
+      await assertFails(at('alice', pub).update({ v: 2 }));
+      await assertFails(at('alice', pub).update({ name: '' }));
+      await assertFails(at('alice', pub).update({ m: 'x'.repeat(10_000) }));
+      await assertFails(at('alice', pub).update({ 'm/growth': 5 }));
+      await assertFails(at('alice', pub).update({ 'm/chat/emo/0': 'x'.repeat(PRESENCE_MODULE_MAX_BYTES + 1) }));
+      await assertFails(at('alice', pub).update({ 'm/a/b/c/d': 1 }));
+      await assertFails(at('alice', pub).update({ [`m/${'a'.repeat(33)}/b`]: 1 }));
+      await assertFails(at('alice', pub).update({ 'm/big': { s: 'x'.repeat(200_000) } }));
     });
   });
 

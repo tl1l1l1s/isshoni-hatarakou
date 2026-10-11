@@ -4,6 +4,9 @@
 export const PRESENCE_SEEN_MS = 60_000;
 /** seenAt이 이보다 오래 바뀌지 않은 멤버는 화면에서 빼고 규칙이 지우기를 허용한다 */
 export const PRESENCE_STALE_MS = 150_000;
+/** 멤버 기록의 joinedAt은 앱이 어림한 서버 시각(time.serverNow)이라 연결한 뒤 PC 시계가 앞으로 맞춰지면 서버 시각보다 앞선다.
+ *  규칙은 서버 시각보다 이만큼까지 앞선 값을 받는다 (chat 키의 1분과 같다) */
+export const JOINED_SKEW_MS = 60_000;
 
 /** electron-builder.yml의 appId. Windows 알림과 외부 플레이어의 Referer에 쓴다 */
 export const APP_ID = 'app.isshoni-hatarakou.gift';

@@ -155,6 +155,17 @@ function contract(make: (name: string) => Promise<Client>, seed: Seed) {
     stop();
   });
 
+  it('room: 미래 joinedAt과 서버 시각 표시가 아닌 seenAt은 거부한다', async () => {
+    const code = await newRoom();
+    const key = `${a.uid}_d1`;
+    const later = a.server.time.serverNow() + 3_600_000;
+    await expect(a.server.room.join(code, key, { ...record(a), joinedAt: later })).rejects.toThrow();
+    await a.server.room.join(code, key, record(a));
+    await expect(a.server.room.writeMine(code, key, { seenAt: later })).rejects.toThrow();
+    await a.server.room.writeMine(code, key, { seenAt: SERVER_TIME, state: 'away' });
+    await a.server.room.leave(code, key);
+  });
+
   it('room: 연결이 끊기면 멤버 기록이 지워지고 다시 연결되면 다시 쓴다', async () => {
     const code = await newRoom();
     const seen: Array<Record<string, MemberRecord>> = [];

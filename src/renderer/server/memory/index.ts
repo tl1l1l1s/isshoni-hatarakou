@@ -1,6 +1,6 @@
 // 메모리 ServerPort. 시험, 오프라인 개발, 가짜 친구가 있는 개발 방에 쓴다 (10.7.4).
 // Firebase 구현과 같은 경로 배치(firebase/layout.ts)에 JSON 트리 하나를 두고 여러 클라이언트가 함께 쓴다.
-import { PRESENCE_STALE_MS } from '@shared/constants';
+import { JOINED_SKEW_MS, PRESENCE_STALE_MS } from '@shared/constants';
 import type { MemberRecord, RoomMeta } from '@shared/schemas';
 import { decodeFile, encodeFile, isInc, nsPath, pushKeyTime, toPresence, WRITE_DENIED } from '../firebase/layout';
 import {
@@ -187,6 +187,8 @@ export function createMemoryServer(hub: MemoryHub): MemoryServer {
     if (!key.startsWith(`${u}_`) || rec.uid !== u || !inRoster(code, u) || !meta || meta.deletedAt !== undefined || (typeof min === 'number' && proto < min)) {
       deny(member(code, key));
     }
+    // 규칙처럼 joinedAt은 서버 시각보다 JOINED_SKEW_MS 넘게 앞서지 못한다
+    if (typeof rec.joinedAt !== 'number' || rec.joinedAt > hub.now() + JOINED_SKEW_MS) deny(member(code, key));
   };
 
   const docs = (ns: Namespace): DocHandle => {
@@ -287,6 +289,9 @@ export function createMemoryServer(hub: MemoryHub): MemoryServer {
         const cur = hub.read(path);
         if (!isObj(cur)) return deny(path);
         checkMember(code, key, { ...cur, ...patch });
+        // 규칙처럼 seenAt은 서버 시각 표시(SERVER_TIME)로만 쓴다
+        const seen = patch.seenAt;
+        if ('seenAt' in patch && !(isObj(seen) && seen['.sv'] === 'timestamp')) deny(path);
         hub.update(path, patch);
         const j = joined.get(path);
         if (j) j.rec = hub.read(path) as Obj;
