@@ -122,10 +122,10 @@ describe('놀이 받은 신호', () => {
     f.fire('pet', { to: ME });
     f.fire('pet', { to: BOB });
     expect(f.ctx.ui.toast).toHaveBeenCalledTimes(1);
-    expect(f.ctx.ui.toast).toHaveBeenCalledWith('밥님이 때렸어요');
+    expect(f.ctx.ui.toast).toHaveBeenCalledWith('밥님이 때렸어요.');
     vi.advanceTimersByTime(TELL_GAP_MS);
     f.fire('shake', { to: ME });
-    expect(f.ctx.ui.toast).toHaveBeenLastCalledWith('밥님이 흔들었어요');
+    expect(f.ctx.ui.toast).toHaveBeenLastCalledWith('밥님이 흔들었어요.');
     // 내가 내 캐릭터를 누른 것은 알리지 않는다
     f.fire('pet', { to: ME }, 'me');
     expect(f.ctx.ui.toast).toHaveBeenCalledTimes(2);

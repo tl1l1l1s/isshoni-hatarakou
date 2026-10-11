@@ -128,7 +128,7 @@ function tell(ctx: Ctx, uid: string, to: string, what: string): void {
   const now = ctx.clock.now();
   if (now < (told.get(uid) ?? 0)) return;
   told.set(uid, now + TELL_GAP_MS);
-  ctx.ui.toast(`${nameOf(ctx, uid)}님이 ${what}`);
+  ctx.ui.toast(`${nameOf(ctx, uid)}님이 ${what}.`);
 }
 
 function fly(ctx: Ctx, key: string, s: number, ev: string): void {
@@ -142,7 +142,7 @@ const on = {
     fx(ctx, d.key, d.kind === 80 ? 'play.dance80' : 'play.dance150', { seed: d.seed, data: { fast: d.show } }, DANCE_MS);
     if (!d.show) return;
     // 누가 일으켰는지 알린다 (COM-17)
-    ctx.ui.toast(`${nameOf(ctx, uid)}님의 깜짝쇼예요`);
+    ctx.ui.toast(`${nameOf(ctx, uid)}님의 깜짝쇼예요.`);
     // 친구 연출을 껐으면 아무도 날리지 않는다 (D2)
     if (d.kind === 80 && shows(ctx, uid)) ctx.room.members().filter((s) => s.uid !== uid && !s.local).forEach((s, i) => fly(ctx, s.key, d.seed + i + 1, ev));
   },
@@ -249,7 +249,7 @@ export function hit(ctx: Ctx, args: unknown): void {
   if (!target) return;
   const use = quota(ctx, 'hit', HIT_LIMIT);
   if (!use) return ctx.ui.toast(`오늘은 ${HIT_LIMIT}번 모두 때렸어요.`);
-  if (send(ctx, 'hit', { from: myKey(ctx), to: target.key, seed: seed() })) ctx.ui.toast(`때렸어요. 오늘 ${use()}/${HIT_LIMIT}`);
+  if (send(ctx, 'hit', { from: myKey(ctx), to: target.key, seed: seed() })) ctx.ui.toast(`때렸어요. 오늘 ${use()}/${HIT_LIMIT}.`);
 }
 
 /** 폭탄 (COM-13). 다른 사용자 메뉴에서는 그 사람에게, 대화하기 창에서는 캐릭터를 골라 던진다 */

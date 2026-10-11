@@ -299,7 +299,7 @@ export default function PlayerWindow({ ctx }: { ctx: Ctx }) {
         )}
       </div>
       {guest ? (
-        <p className={css.bio}>{guest.shared.bio || '소개글이 없어요'}</p>
+        <p className={css.bio}>{guest.shared.bio || '소개글이 없어요.'}</p>
       ) : (
         <input
           className={css.bioInput}

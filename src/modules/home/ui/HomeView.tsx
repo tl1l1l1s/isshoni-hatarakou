@@ -254,7 +254,7 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
         <div className={css.bar}>
           {/* 편집하는 동안에는 꾸미기 도구만 남기고 박수는 고른 이모지를 미리 보려고 둔다 */}
           {!tools && <button onClick={() => toggle('book')}>방명록{badge > 0 && <span data-unread>{badge}</span>}</button>}
-          <button title={mine ? '눌러서 미리보기' : `하루 ${CLAP_DAILY}번까지 보낼 수 있어요`} onClick={clap}>
+          <button title={mine ? '눌러서 미리보기' : `하루 ${CLAP_DAILY}번까지 보낼 수 있어요.`} onClick={clap}>
             {emoji} 박수 {claps}
           </button>
           {mine && !tools && <button onClick={() => toggle('gifts')}>선물함{gifts.length > 0 && <span data-unread>{gifts.length}</span>}</button>}

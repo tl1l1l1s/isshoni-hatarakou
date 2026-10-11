@@ -670,7 +670,7 @@ function SeatMenu({ core, seat, left, maxHeight, onClose }: { core: CoreRuntime;
           {c.decl.label}
         </button>
       ))}
-      {!items.length && <div className={css.menuNote}>할 수 있는 게 없어요</div>}
+      {!items.length && <div className={css.menuNote}>할 수 있는 게 없어요.</div>}
     </div>
   );
 }
