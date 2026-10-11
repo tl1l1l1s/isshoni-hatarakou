@@ -3,7 +3,7 @@ import type { PointerEvent } from 'react';
 import type { Ctx } from '@core/types';
 import { ACCENTS, BOOK_MAX, MALLANGI_MAX, MALLANGI_SIDE, Mark, MARK_SIDE, MARK_TITLE_MAX, MARK_URL_MAX, SHELF_MAX } from '../logic';
 import type { Book, Gift, Home, Item, Pt } from '../logic';
-import { pickImage, putImage, removeBook, removeGift, run, saveMallangi, saveShelf, useFiles, writeBook } from '../state';
+import { askRun, pickImage, putImage, removeBook, removeGift, run, saveMallangi, saveShelf, useBusy, useFiles, writeBook } from '../state';
 import css from './home.module.css';
 
 const when = (at: number) => new Date(at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -18,13 +18,17 @@ function Head({ title, onClose }: { title: string; onClose: () => void }) {
   );
 }
 
-/** 방명록. 방문자는 140자까지 남기고 주인은 하나씩 지운다. 최근 글부터 한 쪽씩 받는다 (HOM-09) */
+/** 방명록. 방문자는 140자까지 남기고 주인은 하나씩 지운다. 최근 글부터 한 쪽씩 받는다 (HOM-09).
+ *  이름은 보낸 사람 프로필의 이름이고 이름이 같은 사람은 사진으로, 내 글은 (나)로 가린다 */
 export function BookPanel({ ctx, owner, mine, book, more, onMore, onClose }: {
   ctx: Ctx; owner: string; mine: boolean; book: Array<Item<Book>>; more: boolean; onMore: () => void; onClose: () => void;
 }) {
   const [text, setText] = useState('');
+  const [busy, go] = useBusy(ctx);
+  const me = ctx.self.uid();
+  const Photo = ctx.modules.get('account')?.Photo;
   const send = () =>
-    run(ctx, async () => {
+    go(async () => {
       await writeBook(ctx, owner, text.trim());
       setText('');
     });
@@ -35,23 +39,24 @@ export function BookPanel({ ctx, owner, mine, book, more, onMore, onClose }: {
         <div className={css.write}>
           <textarea maxLength={BOOK_MAX} value={text} aria-label="방명록 글" placeholder="인사를 남겨 보세요." onChange={(e) => setText(e.target.value)} />
           <small className={css.count}>{text.length} / {BOOK_MAX}</small>
-          <button disabled={!text.trim()} onClick={send}>남기기</button>
+          <button disabled={!text.trim() || busy} onClick={send}>남기기</button>
         </div>
       )}
       {book.length ? (
         <ul className={css.list}>
           {book.map((b) => (
             <li key={`${b.sender}/${b.id}`}>
+              {Photo && <Photo uid={b.sender} size={18} />}
               <div>
-                <b>{b.name || '이름 없음'}</b> <small className={css.count}>{when(b.at)}</small>
+                <b>{b.name || '이름 없음'}</b>{b.sender === me && <small className={css.count}> (나)</small>} <small className={css.count}>{when(b.at)}</small>
                 <p className={css.pre}>{b.text}</p>
               </div>
-              {mine && <button onClick={() => run(ctx, () => removeBook(ctx, b))}>지우기</button>}
+              {mine && <button onClick={() => askRun(ctx, { text: '이 글을 지울까요? 지우면 되돌릴 수 없어요.', ok: '지우기' }, () => removeBook(ctx, b))}>지우기</button>}
             </li>
           ))}
         </ul>
       ) : (
-        <p className={css.hint}>아직 방명록이 없어요.</p>
+        <p className={css.hint}>{mine ? '친구가 내 마이홈에 놀러 와서 남긴 글이 여기에 보여요.' : '아직 방명록이 없어요.'}</p>
       )}
       {more && <button onClick={onMore}>이전 글 더 보기</button>}
     </>
@@ -101,7 +106,7 @@ export function GiftPanel({ ctx, home, gifts, onClose }: { ctx: Ctx; home: Home;
           })}
         </ul>
       ) : (
-        <p className={css.hint}>받은 선물이 없어요.</p>
+        <p className={css.hint}>친구가 보낸 말랑이 선물이 여기에 와요.</p>
       )}
     </>
   );
@@ -129,7 +134,13 @@ export function MallangiPanel({ ctx, home, onClose }: { ctx: Ctx; home: Home; on
         {home.mallangi.map((h, i) => (
           <span key={i} className={css.thumb}>
             {files[h] && <img src={files[h]} alt="" />}
-            <button className={css.x} title="지우기" onClick={() => run(ctx, () => saveMallangi(ctx, home.mallangi.filter((_, j) => j !== i)))}>×</button>
+            <button
+              className={css.x}
+              title="지우기"
+              onClick={() => askRun(ctx, { text: '이 말랑이를 지울까요? 지우면 되돌릴 수 없어요.', ok: '지우기' }, () => saveMallangi(ctx, home.mallangi.filter((_, j) => j !== i)))}
+            >
+              ×
+            </button>
           </span>
         ))}
       </div>
@@ -292,13 +303,22 @@ export function ShelfPanel({ ctx, mine, list, onClose }: { ctx: Ctx; mine: boole
           <b>{cur.title}</b>
           <small className={css.count}>{cur.url}</small>
           <p>
-            <button onClick={() => run(ctx, () => ctx.shell.openExternal(cur.url))}>열기</button>{' '}
+            <button onClick={() => void ctx.shell.openExternal(cur.url).catch((e: Error) => ctx.ui.toast(e.message))}>열기</button>{' '}
             {mine && (
               <>
                 <button onClick={() => write(list.map((m, j) => (j === sel ? { ...m, pub: !m.pub } : m)))}>{cur.pub ? '공개 끄기' : '친구에게 공개'}</button>{' '}
                 <button aria-label="앞으로" onClick={() => swap(-1)}>◀</button> <button aria-label="뒤로" onClick={() => swap(1)}>▶</button>{' '}
                 <button onClick={() => setForm({ i: sel, m: cur })}>수정</button>{' '}
-                <button onClick={() => write(list.filter((_, j) => j !== sel), () => setSel(null))}>빼기</button>
+                <button
+                  onClick={() =>
+                    askRun(ctx, { text: '이 책을 뺄까요? 빼면 되돌릴 수 없어요.', ok: '빼기' }, async () => {
+                      await saveShelf(ctx, list.filter((_, j) => j !== sel));
+                      setSel(null);
+                    })
+                  }
+                >
+                  빼기
+                </button>
               </>
             )}
           </p>

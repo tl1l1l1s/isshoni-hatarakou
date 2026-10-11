@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useToday } from '@shared/today';
-import type { Ctx } from '@core/types';
+import { OFFLINE, type Ctx } from '@core/types';
 import type { HomeTabProps } from '@modules/home/api';
 import { calendarDay } from '@modules/scheduler/api';
 import { Card, CARD_MAX, cardWrites, COLORS, ddayLabel, inkOn, NAME_MAX, parseHex, type Row } from '../logic';
@@ -28,12 +28,20 @@ export default function DdayTab({ ctx, owner, mine }: HomeTabProps & { ctx: Ctx 
     setColor(color);
     setCode(null);
   };
-  const put = (id: string, card: Card | null) =>
+  // 끊긴 동안에는 쓰지 않고 양식을 그대로 둔다 (0033 오프라인 쓰기 정책)
+  const put = (id: string, card: Card | null) => {
+    if (!ctx.connection.online()) return ctx.ui.toast(OFFLINE);
     void ctx.server
       .user()
       .update('', cardWrites(id, card))
       .then(() => setForm(null))
       .catch((e: Error) => ctx.ui.toast(e.message));
+  };
+  // 지운 카드는 되돌릴 수 없어서 한 번 더 묻는다
+  const remove = (id: string) =>
+    ctx.connection.online()
+      ? void ctx.ui.ask('home.main', { text: '이 D-day를 지울까요? 지우면 되돌릴 수 없어요.', ok: '지우기' }).then((ok) => ok && put(id, null))
+      : ctx.ui.toast(OFFLINE);
   const submit = () => {
     if (code !== null && !parseHex(code)) return ctx.ui.toast(CODE_HINT);
     const r = Card.safeParse({ ...form!.card, name: form!.card.name.trim() });
@@ -120,7 +128,7 @@ export default function DdayTab({ ctx, owner, mine }: HomeTabProps & { ctx: Ctx 
             <input type="checkbox" checked={form.card.pub} onChange={(e) => setFormState({ ...form, card: { ...form.card, pub: e.target.checked } })} />
           </label>
           <p className={css.row}>
-            {form.id && <button onClick={() => put(form.id!, null)}>지우기</button>}
+            {form.id && <button onClick={() => remove(form.id!)}>지우기</button>}
             <span className={css.grow} />
             <button onClick={() => setForm(null)}>취소</button>
             <button type="submit" onClick={submit}>{form.id ? '저장' : '추가'}</button>

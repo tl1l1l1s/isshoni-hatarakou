@@ -157,12 +157,14 @@ export function splitInbox(raw: unknown): { book: Array<Item<Book>>; gifts: Arra
 export interface Inbox { book: Array<Item<Book>>; gifts: Array<Item<Gift>>; claps: number; more: boolean }
 
 /** 보낸 사람마다 받은 마지막 limit + 2개를 합친다. 방명록은 새것부터 limit개를 남긴다.
- *  보낸 사람 한 명이 limit + 2개를 꽉 채웠거나 합친 글이 limit개를 넘으면 more */
-export function mergeInbox(rows: Map<string, Array<{ key: string; value: unknown }>>, limit: number): Inbox {
+ *  보낸 사람 한 명이 limit + 2개를 꽉 채웠거나 합친 글이 limit개를 넘으면 more.
+ *  names를 주면 글과 선물에 적힌 이름 대신 보낸 사람 uid의 이름을 쓴다. 적힌 이름은 보낸 사람이 마음대로 쓸 수 있다 */
+export function mergeInbox(rows: Map<string, Array<{ key: string; value: unknown }>>, limit: number, names?: ReadonlyMap<string, string>): Inbox {
   const raw = Object.fromEntries([...rows].map(([sender, items]) => [sender, Object.fromEntries(items.map((i) => [i.key, i.value]))]));
   const { book, gifts, claps } = splitInbox(raw);
   const more = book.length > limit || [...rows.values()].some((items) => items.length >= limit + 2);
-  return { book: book.slice(0, limit), gifts, claps, more };
+  const named = <T extends { sender: string; name: string }>(l: T[]) => (names ? l.map((x) => ({ ...x, name: names.get(x.sender) ?? '' })) : l);
+  return { book: named(book.slice(0, limit)), gifts: named(gifts), claps, more };
 }
 
 /** 마지막으로 본 시각 뒤에 온 것의 수 (방명록 배지) */

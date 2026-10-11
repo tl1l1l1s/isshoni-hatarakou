@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import type { Ctx } from '@core/types';
 import { GIFT_MSG_MAX } from '../logic';
-import { openHome, patch, run, sendGift, useFiles, useFriends, useHomeDoc, useHomeState, type Visit } from '../state';
+import { openHome, patch, sendGift, useBusy, useFiles, useFriends, useHomeDoc, useHomeState, type Visit } from '../state';
 import HomeView from './HomeView';
 import css from './home.module.css';
 
@@ -56,6 +56,7 @@ function FriendsTab({ ctx }: { ctx: Ctx }) {
   const [to, setTo] = useState<string | null>(null);
   const [pick, setPick] = useState<number | null>(null);
   const [msg, setMsg] = useState('');
+  const [busy, go] = useBusy(ctx);
 
   if (!ctx.modules.get('friends')) return <p className={css.hint}>친구 기능이 꺼져 있어요.</p>;
   if (!friends.length) return <p className={css.hint}>아직 친구가 없어요. 친구를 등록하면 여기에서 친구 마이홈에 놀러 갈 수 있어요.</p>;
@@ -67,7 +68,7 @@ function FriendsTab({ ctx }: { ctx: Ctx }) {
     setMsg('');
   };
   const send = (f: Visit, file: string) =>
-    run(ctx, async () => {
+    go(async () => {
       await sendGift(ctx, f.uid, file, msg.trim());
       ctx.ui.toast(`${f.name}님에게 말랑이를 보냈어요.`);
       setTo(null);
@@ -96,7 +97,7 @@ function FriendsTab({ ctx }: { ctx: Ctx }) {
                 </div>
                 <div className={css.row}>
                   <input maxLength={GIFT_MSG_MAX} value={msg} aria-label="함께 보낼 말" placeholder={`함께 보낼 말 (${GIFT_MSG_MAX}자)`} onChange={(e) => setMsg(e.target.value)} />
-                  <button disabled={pick === null} onClick={() => send(f, mallangi[pick!]!)}>보내기</button>
+                  <button disabled={pick === null || busy} onClick={() => send(f, mallangi[pick!]!)}>보내기</button>
                 </div>
               </div>
             ) : (

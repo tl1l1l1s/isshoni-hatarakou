@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useToday } from '@shared/today';
-import type { Ctx } from '@core/types';
+import { OFFLINE, type Ctx } from '@core/types';
 import type { HomeTabProps } from '@modules/home/api';
 import { calendarDay } from '../api';
 import { dayTitle, MEMO_MAX, monthGrid, Plan, planId, planWrites, shiftMonth, TITLE_MAX, weekdays, type Row, type Settings } from '../logic';
@@ -28,22 +28,26 @@ export default function SchedulerTab({ ctx, owner, mine }: HomeTabProps & { ctx:
     setMonth(d.slice(0, 7));
     setForm(null);
   };
-  // 날짜를 바꾸지 않으면 키를 그대로 두고 바꾸면 새 날짜로 시작하는 키를 쓴다
-  const write = (oldId: string | null, plan: Plan | null) => {
+  // 날짜를 바꾸지 않으면 키를 그대로 두고 바꾸면 새 날짜로 시작하는 키를 쓴다.
+  // 끊긴 동안에는 쓰지 않고 적은 것을 그대로 둔다 (0033 오프라인 쓰기 정책)
+  const write = (oldId: string | null, plan: Plan | null, after?: () => void) => {
+    if (!ctx.connection.online()) return ctx.ui.toast(OFFLINE);
     const id = oldId && (!plan || plan.date === oldId.slice(0, 10)) ? oldId : planId(plan!.date, ctx.clock.now().toString(36));
-    return ctx.server.user().update('', planWrites(oldId, id, plan));
+    void ctx.server.user().update('', planWrites(oldId, id, plan)).then(after, (e: Error) => ctx.ui.toast(e.message));
   };
   const submit = () => {
     const r = Plan.safeParse({ ...form!.plan, title: form!.plan.title.trim(), memo: form!.plan.memo.trim() });
     if (!r.success) return ctx.ui.toast('날짜와 제목을 넣어 주세요.');
-    void write(form!.id, r.data)
-      .then(() => {
-        setForm(null);
-        pick(r.data.date);
-      })
-      .catch((e: Error) => ctx.ui.toast(e.message));
+    write(form!.id, r.data, () => {
+      setForm(null);
+      pick(r.data.date);
+    });
   };
-  const remove = (p: Row) => void write(p.id, null).catch((e: Error) => ctx.ui.toast(e.message));
+  // 지운 일정은 되돌릴 수 없어서 한 번 더 묻는다
+  const remove = (p: Row) =>
+    ctx.connection.online()
+      ? void ctx.ui.ask('home.main', { text: '이 일정을 지울까요? 지우면 되돌릴 수 없어요.', ok: '지우기' }).then((ok) => ok && write(p.id, null))
+      : ctx.ui.toast(OFFLINE);
 
   return (
     <div className={css.wrap}>

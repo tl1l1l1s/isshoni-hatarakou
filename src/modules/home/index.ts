@@ -14,8 +14,6 @@ export default defineModule<HomeApi>({
   specIds: ['HOM-01', 'HOM-02', 'HOM-03', 'HOM-04', 'HOM-05', 'HOM-06', 'HOM-07', 'HOM-08', 'HOM-09', 'HOM-10', 'HOM-11', 'HOM-12', 'HOM-13', 'HOM-14', 'HOM-15'],
   optionalRequires: ['friends', 'sound', 'account'],
   local: { account: { version: 1, schema: Local, initial: () => ({ bookSeen: 0, giftSeen: 0, claps: { day: '', n: {} } }) } },
-  // 배경음악 플레이어 (HOM-04)
-  externalOrigins: ['https://www.youtube-nocookie.com'],
   server: {
     version: 1,
     collections: {

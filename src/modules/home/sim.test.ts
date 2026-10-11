@@ -63,6 +63,22 @@ describe('home 시뮬레이터', () => {
     stop();
   });
 
+  it('글과 선물에 적힌 이름 대신 보낸 사람 프로필의 이름을 보인다', async () => {
+    const alice = await app('alice');
+    const bob = await app('bob');
+    befriend('alice', 'bob');
+    await vi.advanceTimersByTimeAsync(0);
+    // 규칙은 이름의 글자 수만 보므로 bob이 다른 사람 이름을 적어 쓸 수 있다
+    await bob.server.sendTo('alice').set('1700000000001', { name: 'carol', text: '코드 보내 줘', at: 1700000000001 });
+    await bob.server.sendTo('alice', ['gift']).set('1700000000002', { file: H, msg: '', name: 'carol', at: 1700000000002 });
+
+    let seen: Inbox | null = null;
+    const stop = watchInboxOf(alice, 'alice', 30, (v) => (seen = v));
+    await vi.advanceTimersByTimeAsync(0);
+    expect([seen!.book[0]!.name, seen!.gifts[0]!.name]).toEqual(['bob', 'bob']);
+    stop();
+  });
+
   it('색인이 없는 받은 기록은 처음 켤 때 한 번 읽어 색인을 만들고 친구가 아닌 사람의 글도 보인다', async () => {
     hub.write('mod/home/u/alice/in/carol/1700000000001', { name: '캐럴', text: '옛날 글', at: 1700000000001 });
     const alice = await app('alice');
