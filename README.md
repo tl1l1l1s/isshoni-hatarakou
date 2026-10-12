@@ -1,36 +1,62 @@
 # isshoni-hatarakou
 
-친구들과 같이 작업하는 데스크톱 작업 메이트입니다. 방 하나에 5명까지 들어오고 관리자가 계정을 만들어 설정 코드를 나눠 줍니다. 기능 명세와 구조는 `docs/feature-spec/`에 있고 결정 기록은 `docs/adr/`에 있습니다.
+친구들과 같은 작업실에 있는 기분으로 각자 할 일을 하는 데스크톱 작업 메이트입니다. 바탕화면의 캐릭터와 함께 작업하고, 친구를 만나고, 나만의 공간을 꾸밀 수 있습니다.
 
-## 실행
+[Windows 설치 파일 다운로드](https://github.com/tl1l1l1s/isshoni-hatarakou/releases/latest) · [설치 안내](docs/install-guide.md)
 
-- `npm run dev`로 개발판을 켭니다. Firebase 설정값이 없으면 메모리 서버로 켜지고 방 만들기 / 참여하기에서 방 코드 `DEVDEV`를 넣으면 가짜 친구가 있는 개발 방에 들어갑니다.
-- Firebase 프로젝트를 쓰려면 저장소 맨 위에 `.env.production.local`을 만들고 `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_DATABASE_URL`, `VITE_FIREBASE_APP_ID`를 적습니다. 배포용 빌드(`npm run build`, `npm run dist:win`)에만 들어가고 개발판과 `npm run e2e`는 메모리 서버로 켜집니다. CI는 저장소 변수의 같은 값을 씁니다.
-- 계정은 `GOOGLE_APPLICATION_CREDENTIALS`에 서비스 계정 파일 경로를, `FIREBASE_DATABASE_URL`에 데이터베이스 주소를 넣고 `npm run account:create -- <이름>`으로 만듭니다. 출력된 설정 코드를 설치 안내(`docs/install-guide.md`)와 함께 건넵니다.
+## 주요 기능
 
-## 검사
+- **함께하는 작업방** — 방 하나에 최대 5명이 들어와 함께 작업합니다.
+- **캐릭터와 마이홈** — 캐릭터를 꾸미고 나만의 공간을 만듭니다.
+- **집중과 일정 관리** — 집중 시간을 기록하고 뽀모도로, 일정, 디데이로 할 일을 챙깁니다.
+- **친구와 소통** — 친구 코드로 친구를 추가하고 채팅으로 이야기합니다.
 
-- `npm run check`는 타입 검사, lint, 모듈 경계 검사, 단위 시험, 규칙 파일 최신 여부를 확인합니다.
-- `npm run test:emulator`는 Firebase 에뮬레이터로 보안 규칙과 서버 adapter 시험을 돌립니다. Java 21이 필요합니다.
-- `npm run e2e`는 앱을 빌드해서 Playwright로 띄우고 `tests/e2e`의 시험(부팅, 코어 계약, 복구, 업그레이드, Windows 동작)을 돌립니다.
-- Windows 실제 기기 점검은 `docs/checklists/windows-m0.md` 순서로 합니다.
+## 설치와 시작하기
 
-## 새 기능 더하기
+현재 배포 대상은 Windows입니다. 계정은 관리자가 미리 만들어 **설정 코드**로 전달하며, 앱 안에서 직접 가입하는 화면은 없습니다.
 
-`src/modules/<id>/` 폴더 하나를 만들고 `src/modules/index.ts`에 import 한 줄을 더합니다. 모듈은 `ctx`로만 바깥에 접근합니다. 계약은 `src/renderer/core/types.ts`와 10.5에 있고 `src/modules/focus/`와 `src/modules/rooms/`가 예시입니다.
+1. 관리자에게 설정 코드를 받습니다.
+2. [Releases](https://github.com/tl1l1l1s/isshoni-hatarakou/releases/latest)에서 `isshoni-hatarakou-Setup-버전.exe`를 받아 설치합니다.
+3. 앱의 설정 코드 입력 창에 받은 코드를 붙여 넣고 **시작하기**를 누릅니다.
 
-## 출시와 업데이트
+설치 화면과 기본 사용법은 [설치 안내](docs/install-guide.md)를 참고하세요.
 
-1. `package.json`의 `version`을 올리고 `src/modules/notice/notes.ts` 맨 위에 그 버전의 바뀐 점을 적습니다. 업데이트한 뒤 처음 켤 때 이 내용이 창으로 한 번 뜹니다.
-2. main을 올리고 CI가 통과하는지 봅니다.
-3. 보안 규칙을 바꿨다면 태그보다 먼저 `GOOGLE_APPLICATION_CREDENTIALS`와 `FIREBASE_DATABASE_URL`을 넣고 `npm run rules:deploy`로 배포합니다. 이 명령은 origin/main의 규칙만 배포하고 덮어쓰기 전의 운영 규칙을 `~/isshoni-hatarakou-backups/rules`에 남깁니다. 되돌릴 때는 그 파일 내용을 Firebase 콘솔의 규칙 편집기에 붙여 넣습니다.
-4. 같은 버전의 태그(`v0.1.0` 형식)를 올립니다. GitHub Actions의 release가 태그 커밋의 CI 통과를 확인한 뒤 Windows 설치 파일을 만들어 이 저장소의 GitHub Releases에 올립니다. 릴리스 본문은 `.github/release-notes.md`의 설치 방법입니다.
-5. 켜져 있는 앱은 6시간 안에 새 버전을 받아 두고 실행 화면의 다시 시작 버튼으로 설치합니다. 처음 설치하는 사람은 `docs/install-guide.md`를 따라 Releases 페이지에서 `isshoni-hatarakou-Setup-버전.exe`를 받습니다.
+### 로그인과 설정 코드
 
-## 운영
+- 같은 PC에서는 로그인 상태를 저장하므로 앱을 껐다 켜도 코드를 다시 입력하지 않습니다.
+- **이 PC 연결 해제**를 누르거나 앱 저장 데이터를 지웠을 때, 다른 PC에서 사용할 때는 설정 코드가 다시 필요합니다. 재설치 후 로그인 유지 여부도 저장 데이터가 남아 있는지에 따라 달라집니다.
+- 설정 코드는 일회용이 아니라 다시 로그인할 때 사용하는 코드입니다. 비밀번호가 들어 있으므로 안전하게 보관하고 다른 사람에게 공유하지 마세요.
+- 코드를 잃었다면 관리자에게 재발급을 요청하세요. 같은 계정과 서버 기록을 유지하며, 새 코드가 발급되면 옛 코드는 사용할 수 없습니다.
+- **8자리 친구 코드**는 친구 추가용입니다. 로그인에 쓰는 설정 코드와는 다릅니다.
 
-우편함 글과 편지, 확성기, 버그 제보 읽기, 서버 조정값의 기간 이벤트, 기기별 앱 버전 보기는 `node scripts/ops.ts <명령>`으로 다룹니다. 명령과 옵션은 파일 맨 위 주석에 있고 환경 변수는 계정 발급과 같습니다. 예를 들어 `node scripts/ops.ts mail 제목 본문 --to 친구코드`는 편지를 보내고 `node scripts/ops.ts reports`는 받은 버그 제보를 보여 줍니다.
+## 개발하기
 
-- 데이터베이스 백업은 `node scripts/backup.ts`입니다. 날짜별 JSON을 `~/isshoni-hatarakou-backups`에 남기고 최근 7개만 둡니다. 하루 한 번 예약 작업으로 실행합니다.
-- 설정 코드를 잃은 사람은 `npm run account:create -- --reset <uid>`로 새 설정 코드를 받습니다. 옛 코드는 더 쓸 수 없습니다.
-- 계정을 막을 때는 Firebase 콘솔에서 `users/{uid}/public/friendCode`, `codes/{친구 코드}`, `users/{uid}/presence`를 지웁니다. 규칙이 friendCode 없는 계정을 모든 경로에서 막습니다(ADR 0040).
+CI와 같은 Node.js 24와 npm을 사용합니다. 저장소를 내려받은 뒤 다음 명령으로 개발판을 실행합니다.
+
+```sh
+npm ci
+npm run dev
+```
+
+Firebase 설정값이 없으면 메모리 서버로 실행되므로 계정 발급 없이 살펴볼 수 있습니다. 방 만들기 / 참여하기에서 방 코드 `DEVDEV`를 넣으면 가짜 친구가 있는 개발 방에 들어갑니다.
+
+Firebase 연결, 실제 계정 발급, Windows 설치 파일 배포는 [배포·운영 가이드](docs/operations.md)를 참고하세요.
+
+### 검사
+
+- `npm run check` — 타입 검사, lint, 모듈 경계 검사, 단위 시험, 규칙 파일 최신 여부를 확인합니다.
+- `npm run test:emulator` — Firebase 에뮬레이터로 보안 규칙과 서버 adapter 시험을 돌립니다. Java 21이 필요합니다.
+- `npm run e2e` — 앱을 빌드하고 Playwright로 부팅, 코어 계약, 복구, 업그레이드, Windows 동작을 검사합니다.
+- Windows 실제 기기 점검은 [점검표](docs/checklists/windows-m0.md)를 따릅니다.
+
+### 새 기능 더하기
+
+`src/modules/<id>/`에 모듈을 만들고 [모듈 목록](src/modules/index.ts)에 import와 `modules` 배열 항목을 추가합니다. 모듈은 `ctx`로만 바깥에 접근합니다. 계약은 [코어 타입](src/renderer/core/types.ts)과 [구조 문서의 10.5절](docs/feature-spec/10-architecture.md)에 있고, [focus](src/modules/focus/)와 [rooms](src/modules/rooms/)가 예시입니다.
+
+## 더 자세한 문서
+
+- [설치와 기본 사용법](docs/install-guide.md)
+- [기능 명세](docs/feature-spec/README.md)
+- [앱 구조](docs/feature-spec/10-architecture.md)와 [결정 기록](docs/adr/)
+- [배포·운영 가이드](docs/operations.md) — Firebase 설정, 계정 발급·재발급, 출시, 백업, 계정 차단
+- [함께 작업하는 경험 확장 제안](docs/proposals/README.md) — 공동 작업 세션, 함께 키우는 작업실, 작업 앨범, 작업 카드와 전시대, 캐릭터의 작은 생활을 다루는 **아직 구현되지 않은 초안**
