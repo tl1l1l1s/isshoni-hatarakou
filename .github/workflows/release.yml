@@ -55,6 +55,7 @@ jobs:
       - run: npx electron-builder --win --x64 --publish never
       - name: GitHub Releases에 올리기
         shell: bash
-        run: gh release create "$GITHUB_REF_NAME" dist/*.exe dist/*.blockmap dist/latest.yml --verify-tag --title "$GITHUB_REF_NAME" --notes ""
+        # 본문은 처음 받는 사람을 위한 설치 방법이다. 버전마다 바뀐 점은 앱 안 업데이트 소식(notes.ts)에 쓴다
+        run: gh release create "$GITHUB_REF_NAME" dist/*.exe dist/*.blockmap dist/latest.yml --verify-tag --title "$GITHUB_REF_NAME" --notes-file .github/release-notes.md
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
