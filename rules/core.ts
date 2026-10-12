@@ -11,7 +11,7 @@ export const ISSUED = "root.child('users/' + auth.uid + '/public/friendCode').ex
 const AUTH = `${SIGNED_IN} && ${ISSUED}`;
 const OWN = `${AUTH} && auth.uid === $uid`;
 const ROOM = (sub: string) => `root.child('rooms/' + $room + '/${sub}')`;
-// IN_ROSTER, ROOM_OWNER, IS_FRIEND도 발급을 확인한다. friendCode를 지우면 이미 들어간 방과 친구 목록에서도 바로 막힌다 (ADR 0039)
+// IN_ROSTER, ROOM_OWNER, IS_FRIEND도 발급을 확인한다. friendCode를 지우면 이미 들어간 방과 친구 목록에서도 바로 막힌다 (ADR 0040)
 export const IN_ROSTER = `${AUTH} && root.child('rooms/' + $room + '/roster/' + auth.uid).exists()`;
 export const NOT_DELETED = `!${ROOM('meta/deletedAt')}.exists()`;
 /** 방 주인. 지운 방에서는 지우기만 한다 (남은 기록 정리) */

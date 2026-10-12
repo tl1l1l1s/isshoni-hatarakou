@@ -332,7 +332,7 @@ PC에서 하는 일은 PC 밖으로 나가지 않고 서버 데이터는 권한�
 
 앱은 Electron 44.7.0 데스크톱 앱이고 strict TypeScript 5.9.3으로 씁니다.
 
-- 빌드는 electron-vite로 하고 패키징은 electron-builder로 합니다. 의존성은 2주 넘게 지난 안정판의 정확한 버전으로 고정합니다(ADR 0001).
+- 빌드는 electron-vite로 하고 패키징은 electron-builder로 합니다. 의존성은 2주 넘게 지난 안정판의 정확한 버전으로 고정합니다(ADR 0001). 보안 수정이 들어간 Electron 패치는 2주를 기다리지 않습니다(ADR 0040).
 - 화면은 React 19로 만들고 설정과 저장 데이터와 IPC 인자의 형식 검사는 zod로 합니다. 그리기는 라이브러리 없는 Canvas 2D입니다(NFR-11).
 - 서버 연결은 Firebase JS SDK로 하고 운영 스크립트는 firebase-admin을 씁니다. 메인 프로세스가 불러오는 패키지는 electron-updater, electron-log, get-windows, zod입니다.
 - 시험은 Vitest, Playwright, Firebase 에뮬레이터로 합니다. 모듈 경계는 ESLint `no-restricted-imports`와 `scripts/check-imports.ts`로 확인합니다(10.11).
