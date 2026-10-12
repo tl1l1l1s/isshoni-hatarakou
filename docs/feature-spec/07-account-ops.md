@@ -76,6 +76,7 @@
 - 친구 코드는 숫자 0과 1, 영문 I와 O를 뺀 32자에서 고른 8자입니다. 스크립트는 겹치지 않는 코드를 얻을 때까지 5번까지 시도합니다. 친구 코드는 uid를 가리키는 별칭이고 서버 기록은 모두 uid로 저장합니다. 친구 추가는 이 코드로 합니다(5장 FRD-01).
 - 친구 코드는 런처의 내 정보 화면 위쪽, 설정 창 [계정] 탭, 친구 창에 [복사] 버튼과 함께 보입니다. 닉네임은 [계정] 탭에서 1자부터 20자까지 바꿉니다.
 - 친구가 설정 코드를 잃으면 선물하는 사람이 `npm run account:create -- --reset <uid>`로 비밀번호를 새로 만듭니다. 기존 로그인이 모두 끊기고 옛 코드는 더 쓸 수 없으며 친구는 새 코드로 같은 계정과 기록을 그대로 씁니다.
+- 발급을 거둘 때는 Firebase 콘솔에서 `users/{uid}/public/friendCode`, `codes/{친구 코드}`, `users/{uid}/presence`를 지웁니다. 규칙은 friendCode가 없는 계정을 모든 경로에서 막으므로 이미 들어가 있던 방과 친구 기록도 바로 끊깁니다. 접속 상태를 지우지 않으면 친구 목록에 그 사람이 계속 접속 중으로 보입니다(ADR 0040).
 
 ### ACC-05 기기 연동과 연동 해제
 
@@ -375,5 +376,5 @@
 - `scripts/create-account.ts`(`npm run account:create`)는 친구 계정을 만들고 설정 코드를 다시 만듭니다(ACC-04).
 - `scripts/ops.ts`는 `mail`, `mails`, `unmail`(OPS-01), `shout`(OPS-18), `reports`(OPS-03), `tunable`(OPS-12) 명령을 받습니다. 사용법은 파일 맨 위 주석에 있습니다.
 - `scripts/backup.ts`는 데이터베이스를 날짜별 JSON으로 받아 최근 7개를 남깁니다(ACC-08).
-- `npm run rules:deploy`는 `database.rules.json`이 모듈 규칙 조각에서 만든 최신 파일인지 확인한 뒤 `scripts/deploy-rules.ts`로 보안 규칙을 배포합니다. `firebase login` 없이 서비스 계정으로 배포합니다. `scripts/set-min-protocol.ts`는 방 입장 최소 버전을 올립니다(OPS-13).
+- `npm run rules:deploy`는 `database.rules.json`이 모듈 규칙 조각에서 만든 최신 파일인지 확인한 뒤 `scripts/deploy-rules.ts`로 origin/main의 보안 규칙을 배포합니다. 내 PC의 파일이 origin/main과 다르면 배포하지 않고 덮어쓰기 전의 운영 규칙은 `~/isshoni-hatarakou-backups/rules`에 남깁니다. `firebase login` 없이 서비스 계정으로 배포합니다. `scripts/set-min-protocol.ts`는 방 입장 최소 버전을 올립니다(OPS-13).
 - 보안 규칙은 우편, 확성기, 서버 조정값을 앱이 쓰지 못하게 막으므로 이 값은 관리 SDK를 쓰는 스크립트로만 바꿉니다. 버그 제보도 본인 말고는 스크립트만 읽습니다.
