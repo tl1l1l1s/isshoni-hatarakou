@@ -330,7 +330,7 @@ PC에서 하는 일은 PC 밖으로 나가지 않고 서버 데이터는 권한�
 |---|
 | P0 |
 
-앱은 Electron 44.4.5 데스크톱 앱이고 strict TypeScript 5.9.3으로 씁니다.
+앱은 Electron 44.7.0 데스크톱 앱이고 strict TypeScript 5.9.3으로 씁니다.
 
 - 빌드는 electron-vite로 하고 패키징은 electron-builder로 합니다. 의존성은 2주 넘게 지난 안정판의 정확한 버전으로 고정합니다(ADR 0001).
 - 화면은 React 19로 만들고 설정과 저장 데이터와 IPC 인자의 형식 검사는 zod로 합니다. 그리기는 라이브러리 없는 Canvas 2D입니다(NFR-11).
