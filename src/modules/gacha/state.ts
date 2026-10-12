@@ -260,7 +260,7 @@ export async function sync(ctx: Ctx): Promise<void> {
       ctx.server
         .user(['r', code])
         .update('got', Object.fromEntries(ids.map((id) => [id, null])))
-        .catch((e: Error) => ctx.log.warn(`${code} 방 보관함 항목을 지우지 못했습니다: ${e.message}`)),
+        .catch((e: Error) => ctx.log.warn(`방 보관함 항목을 지우지 못했습니다: ${e.message}`)),
     ),
   );
   commit(ctx, inventory);
