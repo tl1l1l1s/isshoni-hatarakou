@@ -71,7 +71,8 @@ export async function boot(root: HTMLElement): Promise<void> {
   const off = core.host.status.filter((s) => !s.on).map((s) => s.id);
   core.log('info', 'core', `시작 ${server.kind}${off.length ? `, 꺼진 모듈 ${off.join(' ')}` : ''}`);
   server.connection.onChange((online) => core.log('info', 'core', online ? '서버 연결됨' : '서버 연결 끊김'));
-  core.session.onChange((code, reason) => core.log('info', 'room', code ? `들어감 ${code}` : `나옴${reason ? ` ${reason}` : ''}`));
+  // 방 코드만 알면 방에 들어올 수 있어서 디스코드로 가는 자동 오류 보고 로그에 남기지 않는다
+  core.session.onChange((code, reason) => core.log('info', 'room', code ? '들어감' : `나옴${reason ? ` ${reason}` : ''}`));
 
   createRoot(root).render(
     <>
