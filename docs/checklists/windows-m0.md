@@ -96,7 +96,7 @@
 
 ## M2a 서버 운영 스크립트
 
-- [ ] `node scripts/backup.ts`를 두 번 실행하면 `~/isshoni-hatarakou-backups`에 오늘 날짜 JSON이 생기고 두 번째 실행은 새 파일 0개라고 적습니다. 선물하는 사람 PC의 예약 작업에 하루 한 번으로 등록합니다.
+- [ ] `node scripts/backup.ts`를 두 번 실행하면 `~/isshoni-hatarakou-backups`에 오늘 날짜 JSON이 생기고 두 번째 실행은 새 파일 0개라고 적습니다. 관리자 PC의 예약 작업에 하루 한 번으로 등록합니다.
 - [ ] `PROTO`를 올린 버전을 친구가 받은 것을 `node scripts/ops.ts versions`로 확인한 뒤 `node scripts/set-min-protocol.ts <번호>`를 실행하면 옛 앱은 방에 들어갈 때 업데이트 안내를 봅니다. 아직 낮은 프로토콜의 기기가 있으면 스크립트가 그 목록을 보여 주고 `--force` 없이는 바꾸지 않습니다.
 
 ## 설치와 출시

@@ -173,7 +173,7 @@ function SetupCode({ submit }: { submit: (code: string) => Promise<void> }) {
   };
   return (
     <form onSubmit={(e) => (e.preventDefault(), send())}>
-      <p>선물받은 설정 코드를 붙여 넣어 주세요.</p>
+      <p>받은 설정 코드를 붙여 넣어 주세요.</p>
       {error && <p role="alert">{error}</p>}
       <input autoFocus aria-label="설정 코드" value={code} disabled={busy} onChange={(e) => setCode(e.target.value)} style={{ width: '100%' }} />
       <p><button type="submit" disabled={busy}>{busy ? '확인 중' : '시작하기'}</button></p>

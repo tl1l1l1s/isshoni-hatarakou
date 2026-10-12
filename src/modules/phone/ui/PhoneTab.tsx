@@ -40,7 +40,7 @@ export default function PhoneTab({ ctx }: SlotProps) {
       </p>
       {key ? (
         <>
-          {link ? <Qr text={link} /> : <p>안내 페이지 주소가 아직 없어요. 선물한 사람에게 알려 주세요.</p>}
+          {link ? <Qr text={link} /> : <p>안내 페이지 주소가 아직 없어요. 관리자에게 알려 주세요.</p>}
           <ol className={css.steps}>
             <li>폰에서 QR을 찍어 안내 페이지를 열어요.</li>
             <li>안내대로 신호를 보내는 자동화를 만들어요.</li>

@@ -36,7 +36,7 @@ export default function ReportTab({ ctx }: { ctx: Ctx }) {
 
   return (
     <div className={css.form}>
-      <p className={css.hint}>이상한 점이나 바라는 점을 적어 보내 주세요. 선물한 사람만 읽어요.</p>
+      <p className={css.hint}>이상한 점이나 바라는 점을 적어 보내 주세요. 관리자만 읽어요.</p>
       <textarea
         rows={6}
         maxLength={TEXT_MAX}

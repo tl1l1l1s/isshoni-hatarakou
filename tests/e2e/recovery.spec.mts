@@ -162,7 +162,7 @@ test('자동 진단 기록은 저장 실패 후 재연결하면 한 번만 남�
   await verify('report-recovery', async s => {
     await start(s);
     const st = await menu(s, '설정', '설정');
-    await expect(st.getByLabel('오류가 나면 선물한 사람에게 자동으로 알리기')).toBeChecked();
+    await expect(st.getByLabel('오류가 나면 관리자에게 자동으로 알리기')).toBeChecked();
     await s.stage.evaluate(async () => {
       const w = window as unknown as W, ctx = w.core.ctxs.get('report')!.ctx;
       const user = ctx.server.user.bind(ctx.server); w.failWrites = true;

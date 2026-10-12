@@ -21,7 +21,7 @@ export default defineModule({
     version: 1,
     scope: 'device',
     schema: z.object({ autoReport: z.boolean().default(true) }),
-    fields: { autoReport: { label: '오류가 나면 선물한 사람에게 자동으로 알리기', widget: 'toggle' } },
+    fields: { autoReport: { label: '오류가 나면 관리자에게 자동으로 알리기', widget: 'toggle' } },
   },
   server: {
     version: 1,
