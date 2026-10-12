@@ -9,6 +9,8 @@ export default (t: Templates): RuleNode => ({
         '.validate': "newData.hasChildren(['cap', 'v'])",
         // 2와 5는 @shared/constants의 ROOM_CAP_MIN, ROOM_CAP_MAX (rules.test.ts가 맞춰 본다)
         cap: { '.validate': 'newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 2 && newData.val() <= 5' },
+        v: { '.validate': 'newData.val() === 1' },
+        $other: { '.validate': false },
       },
     },
   },

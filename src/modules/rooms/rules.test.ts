@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ROOM_CAP_MAX, ROOM_CAP_MIN } from '@shared/constants';
 import { buildRules } from '../../../rules/build.ts';
 import { templates, type RuleNode } from '../../../rules/core.ts';
+import { issued } from '../../../rules/tests/issued.ts';
 import fragment from './rules';
 
 describe('rooms 규칙 조각', () => {
@@ -45,6 +46,7 @@ describe.skipIf(!HOST)('rooms 규칙 (에뮬레이터)', () => {
         },
       }),
     );
+    await env.withSecurityRulesDisabled((ctx) => ctx.database().ref().update(issued('alice', 'bob', 'carol')));
   });
 
   it('주인만 정원을 쓰고 2부터 10까지 정수만 받는다', async () => {
@@ -62,5 +64,10 @@ describe.skipIf(!HOST)('rooms 규칙 (에뮬레이터)', () => {
 
   it('지운 방에는 쓰지 못한다', async () => {
     await assertFails(cfg('alice', 'GONE22').set({ cap: 3, v: 1 }));
+  });
+
+  it('v는 1만 받고 정하지 않은 칸은 받지 않는다', async () => {
+    await assertFails(cfg('alice').set({ cap: 3, v: 2 }));
+    await assertFails(cfg('alice').set({ cap: 3, v: 1, big: 'x' }));
   });
 });

@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { NAME_MAX_LENGTH } from '@shared/constants';
 import { buildRules } from '../../../rules/build.ts';
 import type { RuleNode } from '../../../rules/core.ts';
+import { issued } from '../../../rules/tests/issued.ts';
 import { MSG_MAX, msgKey } from './logic';
 import fragment from './rules';
 
@@ -41,6 +42,7 @@ describe.skipIf(!HOST)('chat 규칙 (에뮬레이터)', () => {
     await env.withSecurityRulesDisabled((ctx) =>
       ctx.database().ref().set({ rooms: { ROOM22: { meta: { kind: 'work', owner: 'alice', createdAt: 1 }, roster: { alice: 1, bob: 1 } } } }),
     );
+    await env.withSecurityRulesDisabled((ctx) => ctx.database().ref().update(issued('alice', 'bob', 'carol')));
   });
 
   it('멤버는 자기 uid로 서버 시각 메시지를 만들기만 한다', async () => {

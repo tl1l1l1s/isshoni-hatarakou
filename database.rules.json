@@ -31,7 +31,7 @@
           }
         },
         "presence": {
-          ".read": "(auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid) || (auth != null && root.child('mod/friends/u/' + $uid + '/list/' + auth.uid).exists())",
+          ".read": "(auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid) || (auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('mod/friends/u/' + $uid + '/list/' + auth.uid).exists())",
           ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid",
           "online": {
             ".read": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists()",
@@ -100,10 +100,10 @@
           }
         },
         "members": {
-          ".read": "auth != null && root.child('rooms/' + $room + '/roster/' + auth.uid).exists()",
+          ".read": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/roster/' + auth.uid).exists()",
           ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && !newData.exists() && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && newData.parent().child('meta/deletedAt').exists()",
           "$key": {
-            ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && (($key.beginsWith(auth.uid + '_') && (!newData.exists() || (auth != null && root.child('rooms/' + $room + '/roster/' + auth.uid).exists() && !root.child('rooms/' + $room + '/meta/deletedAt').exists() && (!root.child('config/minProtocol').exists() || newData.child('proto').val() >= root.child('config/minProtocol').val())))) || (!newData.exists() && auth != null && root.child('rooms/' + $room + '/roster/' + auth.uid).exists() && (!data.exists() || now - data.child('seenAt').val() > 150000)))",
+            ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && (($key.beginsWith(auth.uid + '_') && (!newData.exists() || (auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/roster/' + auth.uid).exists() && !root.child('rooms/' + $room + '/meta/deletedAt').exists() && (!root.child('config/minProtocol').exists() || newData.child('proto').val() >= root.child('config/minProtocol').val())))) || (!newData.exists() && auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/roster/' + auth.uid).exists() && (!data.exists() || now - data.child('seenAt').val() > 150000)))",
             ".validate": "newData.hasChildren(['uid', 'name', 'state', 'proto', 'joinedAt', 'seenAt']) && newData.child('uid').val() === auth.uid",
             "uid": {
               ".validate": "newData.isString()"
@@ -150,10 +150,10 @@
           }
         },
         "ev": {
-          ".read": "auth != null && root.child('rooms/' + $room + '/roster/' + auth.uid).exists()",
+          ".read": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/roster/' + auth.uid).exists()",
           ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && !newData.exists() && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && newData.parent().child('meta/deletedAt').exists()",
           "$id": {
-            ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && ((!data.exists() && auth != null && root.child('rooms/' + $room + '/roster/' + auth.uid).exists() && !root.child('rooms/' + $room + '/meta/deletedAt').exists()) || (!newData.exists() && (data.child('uid').val() === auth.uid || (auth != null && root.child('rooms/' + $room + '/roster/' + auth.uid).exists() && now - data.child('at').val() > 60000))))",
+            ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && ((!data.exists() && auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/roster/' + auth.uid).exists() && !root.child('rooms/' + $room + '/meta/deletedAt').exists()) || (!newData.exists() && (data.child('uid').val() === auth.uid || (auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/roster/' + auth.uid).exists() && now - data.child('at').val() > 60000))))",
             ".validate": "newData.hasChildren(['t', 'uid', 'at', 'p'])",
             "t": {
               ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 64"
@@ -202,7 +202,7 @@
         "u": {
           "$uid": {
             "photo": {
-              ".read": "(auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid) || (auth != null && root.child('mod/friends/u/' + $uid + '/list/' + auth.uid).exists())",
+              ".read": "(auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid) || (auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('mod/friends/u/' + $uid + '/list/' + auth.uid).exists())",
               ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid",
               ".validate": "newData.isString() && newData.val().matches(/^[0-9a-f]{64}$/)"
             },
@@ -221,7 +221,7 @@
         "r": {
           "$room": {
             "msgs": {
-              ".read": "auth != null && root.child('rooms/' + $room + '/roster/' + auth.uid).exists()",
+              ".read": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/roster/' + auth.uid).exists()",
               "$id": {
                 ".validate": "newData.hasChildren(['uid', 'name', 'text', 'at', 'v']) && $id.matches(/^[0-9]{15}_/) && $id < '00' + (now + 60000) && $id.endsWith('_' + auth.uid) && root.child('mod/chat/r/' + $room + '/cfg/on').val() !== false",
                 "uid": {
@@ -242,13 +242,13 @@
                 "$other": {
                   ".validate": false
                 },
-                ".write": "(auth != null && root.child('rooms/' + $room + '/roster/' + auth.uid).exists() && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists())) && !data.exists() && newData.exists()"
+                ".write": "(auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/roster/' + auth.uid).exists() && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists())) && !data.exists() && newData.exists()"
               },
-              ".write": "auth != null && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && !newData.exists()"
+              ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && !newData.exists()"
             },
             "cfg": {
-              ".read": "auth != null && root.child('rooms/' + $room + '/roster/' + auth.uid).exists()",
-              ".write": "auth != null && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists())",
+              ".read": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/roster/' + auth.uid).exists()",
+              ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists())",
               ".validate": "newData.hasChildren(['on', 'v'])",
               "on": {
                 ".validate": "newData.isBoolean()"
@@ -303,7 +303,7 @@
               }
             },
             "pub": {
-              ".read": "(auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid) || (auth != null && root.child('mod/friends/u/' + $uid + '/list/' + auth.uid).exists())",
+              ".read": "(auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid) || (auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('mod/friends/u/' + $uid + '/list/' + auth.uid).exists())",
               ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid",
               "$id": {
                 ".validate": "newData.hasChildren(['name', 'date', 'fromOne', 'color', 'notify', 'pub', 'v'])",
@@ -442,9 +442,9 @@
       "gacha": {
         "r": {
           "$room": {
-            ".read": "auth != null && root.child('rooms/' + $room + '/roster/' + auth.uid).exists()",
+            ".read": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/roster/' + auth.uid).exists()",
             "cfg": {
-              ".write": "auth != null && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists())",
+              ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists())",
               ".validate": "newData.hasChildren(['adders', 'secPerTicket', 'onRemove', 'v']) && (!data.child('legacySecPerTicket').exists() || newData.child('legacySecPerTicket').exists()) && (newData.child('secPerTicket').val() === data.child('secPerTicket').val() || newData.child('legacySecPerTicket').exists())",
               "adders": {
                 ".validate": "newData.val() === 'owner' || newData.val() === 'members'"
@@ -466,9 +466,9 @@
               }
             },
             "items": {
-              ".write": "auth != null && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && !newData.exists() && newData.parent().child('tomb/_room').exists()",
+              ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && !newData.exists() && newData.parent().child('tomb/_room').exists()",
               "$itemId": {
-                ".write": "(auth != null && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && (newData.exists() || newData.parent().parent().child('tomb/' + $itemId).exists() || newData.parent().parent().child('tomb/_room').exists())) || (auth != null && root.child('rooms/' + $room + '/roster/' + auth.uid).exists() && !data.exists() && newData.exists() && newData.child('by').val() === auth.uid && root.child('mod/gacha/r/' + $room + '/cfg/adders').val() === 'members' && !root.child('mod/gacha/r/' + $room + '/tomb/_room').exists())",
+                ".write": "(auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && (newData.exists() || newData.parent().parent().child('tomb/' + $itemId).exists() || newData.parent().parent().child('tomb/_room').exists())) || (auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/roster/' + auth.uid).exists() && !data.exists() && newData.exists() && newData.child('by').val() === auth.uid && root.child('mod/gacha/r/' + $room + '/cfg/adders').val() === 'members' && !root.child('mod/gacha/r/' + $room + '/tomb/_room').exists())",
                 ".validate": "newData.hasChildren(['name', 'file', 'w', 'by', 'st', 'at', 'v'])",
                 "name": {
                   ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20"
@@ -504,7 +504,7 @@
             },
             "tomb": {
               "$itemId": {
-                ".write": "auth != null && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && !data.exists() && newData.exists()",
+                ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && !data.exists() && newData.exists()",
                 ".validate": "newData.hasChildren(['mode', 'at'])",
                 "mode": {
                   ".validate": "newData.val() === 'keep' || newData.val() === 'revoke'"
@@ -627,7 +627,7 @@
         "u": {
           "$uid": {
             "home": {
-              ".read": "(auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid) || (auth != null && root.child('mod/friends/u/' + $uid + '/list/' + auth.uid).exists())",
+              ".read": "(auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid) || (auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('mod/friends/u/' + $uid + '/list/' + auth.uid).exists())",
               ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid",
               ".validate": "newData.hasChildren(['v'])",
               "profile": {
@@ -723,14 +723,14 @@
               }
             },
             "in": {
-              ".read": "(auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid) || (auth != null && root.child('mod/friends/u/' + $uid + '/list/' + auth.uid).exists())",
+              ".read": "(auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid) || (auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('mod/friends/u/' + $uid + '/list/' + auth.uid).exists())",
               ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid && !newData.exists()",
               "$sender": {
                 ".validate": "newData.hasChildren()",
                 "gift": {
                   "$gid": {
                     ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid && !newData.exists()",
-                    ".validate": "((auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid) || (auth != null && root.child('mod/friends/u/' + $uid + '/list/' + auth.uid).exists())) && newData.hasChildren(['file', 'msg', 'name', 'at'])",
+                    ".validate": "((auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid) || (auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('mod/friends/u/' + $uid + '/list/' + auth.uid).exists())) && newData.hasChildren(['file', 'msg', 'name', 'at'])",
                     "file": {
                       ".validate": "newData.isString() && newData.val().matches(/^[0-9a-f]{64}$/)"
                     },
@@ -749,12 +749,12 @@
                   }
                 },
                 "clap": {
-                  ".validate": "((auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid) || (auth != null && root.child('mod/friends/u/' + $uid + '/list/' + auth.uid).exists())) && newData.isNumber() && ((!data.exists() && newData.val() === 1) || newData.val() === data.val() + 1)"
+                  ".validate": "((auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid) || (auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('mod/friends/u/' + $uid + '/list/' + auth.uid).exists())) && newData.isNumber() && ((!data.exists() && newData.val() === 1) || newData.val() === data.val() + 1)"
                 },
                 ".read": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $sender",
                 ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && (auth.uid === $sender || (auth.uid === $uid && !newData.exists()))",
                 "$id": {
-                  ".validate": "((auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid) || (auth != null && root.child('mod/friends/u/' + $uid + '/list/' + auth.uid).exists())) && newData.hasChildren(['name', 'text', 'at'])",
+                  ".validate": "((auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid) || (auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('mod/friends/u/' + $uid + '/list/' + auth.uid).exists())) && newData.hasChildren(['name', 'text', 'at'])",
                   "name": {
                     ".validate": "newData.isString() && newData.val().length >= 0 && newData.val().length <= 20"
                   },
@@ -797,7 +797,7 @@
               }
             },
             "shelfPub": {
-              ".read": "(auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid) || (auth != null && root.child('mod/friends/u/' + $uid + '/list/' + auth.uid).exists())",
+              ".read": "(auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid) || (auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('mod/friends/u/' + $uid + '/list/' + auth.uid).exists())",
               ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid",
               "$i": {
                 ".validate": "$i.matches(/^([0-9]|[1-4][0-9])$/) && newData.hasChildren(['title', 'url', 'color', 'pub'])",
@@ -898,11 +898,11 @@
       "photo": {
         "r": {
           "$room": {
-            ".read": "auth != null && root.child('rooms/' + $room + '/roster/' + auth.uid).exists()",
+            ".read": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/roster/' + auth.uid).exists()",
             "slots": {
-              ".write": "auth != null && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && !newData.exists()",
+              ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && !newData.exists()",
               "$i": {
-                ".write": "auth != null && root.child('rooms/' + $room + '/roster/' + auth.uid).exists() && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && $i.matches(/^[0-3]$/) && (!data.exists() || data.child('uid').val() === auth.uid || now - data.child('at').val() > 900000) && (!newData.exists() || newData.child('uid').val() === auth.uid)",
+                ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/roster/' + auth.uid).exists() && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && $i.matches(/^[0-3]$/) && (!data.exists() || data.child('uid').val() === auth.uid || now - data.child('at').val() > 900000) && (!newData.exists() || newData.child('uid').val() === auth.uid)",
                 ".validate": "newData.hasChildren(['uid', 'at'])",
                 "uid": {
                   ".validate": "newData.isString()"
@@ -916,9 +916,9 @@
               }
             },
             "p": {
-              ".write": "auth != null && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && !newData.exists()",
+              ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && !newData.exists()",
               "$i": {
-                ".write": "auth != null && root.child('rooms/' + $room + '/roster/' + auth.uid).exists() && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && $i.matches(/^[0-3]$/) && (root.child('mod/photo/r/' + $room + '/slots/' + $i + '/uid').val() === auth.uid || (!newData.exists() && !newData.parent().parent().child('slots/' + $i).exists()))",
+                ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/roster/' + auth.uid).exists() && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && $i.matches(/^[0-3]$/) && (root.child('mod/photo/r/' + $room + '/slots/' + $i + '/uid').val() === auth.uid || (!newData.exists() && !newData.parent().parent().child('slots/' + $i).exists()))",
                 ".validate": "newData.hasChildren(['x', 'f', 'z', 'j'])",
                 "x": {
                   ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= -10 && newData.val() <= 10"
@@ -938,7 +938,7 @@
               }
             },
             "cfg": {
-              ".write": "(auth != null && root.child('rooms/' + $room + '/roster/' + auth.uid).exists() && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && ((root.child('mod/photo/r/' + $room + '/slots/0/uid').val() === auth.uid || (!root.child('mod/photo/r/' + $room + '/slots/0').exists() && (root.child('mod/photo/r/' + $room + '/slots/1/uid').val() === auth.uid || (!root.child('mod/photo/r/' + $room + '/slots/1').exists() && (root.child('mod/photo/r/' + $room + '/slots/2/uid').val() === auth.uid || (!root.child('mod/photo/r/' + $room + '/slots/2').exists() && root.child('mod/photo/r/' + $room + '/slots/3/uid').val() === auth.uid)))))) || (!newData.exists() && !newData.parent().child('slots').exists()))) || (auth != null && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && !newData.exists())",
+              ".write": "(auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/roster/' + auth.uid).exists() && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && ((root.child('mod/photo/r/' + $room + '/slots/0/uid').val() === auth.uid || (!root.child('mod/photo/r/' + $room + '/slots/0').exists() && (root.child('mod/photo/r/' + $room + '/slots/1/uid').val() === auth.uid || (!root.child('mod/photo/r/' + $room + '/slots/1').exists() && (root.child('mod/photo/r/' + $room + '/slots/2/uid').val() === auth.uid || (!root.child('mod/photo/r/' + $room + '/slots/2').exists() && root.child('mod/photo/r/' + $room + '/slots/3/uid').val() === auth.uid)))))) || (!newData.exists() && !newData.parent().child('slots').exists()))) || (auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && !newData.exists())",
               ".validate": "newData.hasChildren(['o', 'n', 'bg', 'fl', 'fr', 'own', 't0'])",
               "o": {
                 ".validate": "newData.val() === 'wide' || newData.val() === 'tall'"
@@ -966,9 +966,9 @@
               }
             },
             "shots": {
-              ".write": "!newData.exists() && ((auth != null && root.child('rooms/' + $room + '/roster/' + auth.uid).exists() && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && ((root.child('mod/photo/r/' + $room + '/slots/0/uid').val() === auth.uid || (!root.child('mod/photo/r/' + $room + '/slots/0').exists() && (root.child('mod/photo/r/' + $room + '/slots/1/uid').val() === auth.uid || (!root.child('mod/photo/r/' + $room + '/slots/1').exists() && (root.child('mod/photo/r/' + $room + '/slots/2/uid').val() === auth.uid || (!root.child('mod/photo/r/' + $room + '/slots/2').exists() && root.child('mod/photo/r/' + $room + '/slots/3/uid').val() === auth.uid)))))) || !newData.parent().child('slots').exists())) || auth != null && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()))",
+              ".write": "!newData.exists() && ((auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/roster/' + auth.uid).exists() && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && ((root.child('mod/photo/r/' + $room + '/slots/0/uid').val() === auth.uid || (!root.child('mod/photo/r/' + $room + '/slots/0').exists() && (root.child('mod/photo/r/' + $room + '/slots/1/uid').val() === auth.uid || (!root.child('mod/photo/r/' + $room + '/slots/1').exists() && (root.child('mod/photo/r/' + $room + '/slots/2/uid').val() === auth.uid || (!root.child('mod/photo/r/' + $room + '/slots/2').exists() && root.child('mod/photo/r/' + $room + '/slots/3/uid').val() === auth.uid)))))) || !newData.parent().child('slots').exists())) || auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()))",
               "$i": {
-                ".write": "auth != null && root.child('rooms/' + $room + '/roster/' + auth.uid).exists() && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && (root.child('mod/photo/r/' + $room + '/slots/0/uid').val() === auth.uid || (!root.child('mod/photo/r/' + $room + '/slots/0').exists() && (root.child('mod/photo/r/' + $room + '/slots/1/uid').val() === auth.uid || (!root.child('mod/photo/r/' + $room + '/slots/1').exists() && (root.child('mod/photo/r/' + $room + '/slots/2/uid').val() === auth.uid || (!root.child('mod/photo/r/' + $room + '/slots/2').exists() && root.child('mod/photo/r/' + $room + '/slots/3/uid').val() === auth.uid)))))) && $i.matches(/^[0-3]$/) && !data.exists() && newData.exists()",
+                ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/roster/' + auth.uid).exists() && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && (root.child('mod/photo/r/' + $room + '/slots/0/uid').val() === auth.uid || (!root.child('mod/photo/r/' + $room + '/slots/0').exists() && (root.child('mod/photo/r/' + $room + '/slots/1/uid').val() === auth.uid || (!root.child('mod/photo/r/' + $room + '/slots/1').exists() && (root.child('mod/photo/r/' + $room + '/slots/2/uid').val() === auth.uid || (!root.child('mod/photo/r/' + $room + '/slots/2').exists() && root.child('mod/photo/r/' + $room + '/slots/3/uid').val() === auth.uid)))))) && $i.matches(/^[0-3]$/) && !data.exists() && newData.exists()",
                 ".validate": "newData.hasChildren(['o', 'n', 'bg', 'fl', 'fr', 'own', 't0'])",
                 "o": {
                   ".validate": "newData.val() === 'wide' || newData.val() === 'tall'"
@@ -1078,11 +1078,17 @@
         "r": {
           "$room": {
             "cfg": {
-              ".read": "auth != null && root.child('rooms/' + $room + '/roster/' + auth.uid).exists()",
-              ".write": "auth != null && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists())",
+              ".read": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/roster/' + auth.uid).exists()",
+              ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists())",
               ".validate": "newData.hasChildren(['cap', 'v'])",
               "cap": {
                 ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 2 && newData.val() <= 5"
+              },
+              "v": {
+                ".validate": "newData.val() === 1"
+              },
+              "$other": {
+                ".validate": false
               }
             }
           }
@@ -1122,7 +1128,7 @@
               }
             },
             "pub": {
-              ".read": "(auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid) || (auth != null && root.child('mod/friends/u/' + $uid + '/list/' + auth.uid).exists())",
+              ".read": "(auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid) || (auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('mod/friends/u/' + $uid + '/list/' + auth.uid).exists())",
               ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid",
               "$id": {
                 ".validate": "newData.hasChildren(['date', 'title', 'memo', 'pub', 'v'])",
@@ -1161,7 +1167,7 @@
         "u": {
           "$uid": {
             "share": {
-              ".read": "(auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid) || (auth != null && root.child('mod/friends/u/' + $uid + '/list/' + auth.uid).exists())",
+              ".read": "(auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid) || (auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('mod/friends/u/' + $uid + '/list/' + auth.uid).exists())",
               ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && auth.uid === $uid",
               ".validate": "newData.hasChildren(['v'])",
               "$p": {

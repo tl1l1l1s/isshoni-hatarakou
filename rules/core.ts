@@ -11,13 +11,13 @@ export const ISSUED = "root.child('users/' + auth.uid + '/public/friendCode').ex
 const AUTH = `${SIGNED_IN} && ${ISSUED}`;
 const OWN = `${AUTH} && auth.uid === $uid`;
 const ROOM = (sub: string) => `root.child('rooms/' + $room + '/${sub}')`;
-// roster, 방 meta, 친구 목록은 발급 계정만 만드므로 IN_ROSTER, ROOM_OWNER, IS_FRIEND는 로그인만 본다
-export const IN_ROSTER = `${SIGNED_IN} && root.child('rooms/' + $room + '/roster/' + auth.uid).exists()`;
+// IN_ROSTER, ROOM_OWNER, IS_FRIEND도 발급을 확인한다. friendCode를 지우면 이미 들어간 방과 친구 목록에서도 바로 막힌다 (ADR 0039)
+export const IN_ROSTER = `${AUTH} && root.child('rooms/' + $room + '/roster/' + auth.uid).exists()`;
 export const NOT_DELETED = `!${ROOM('meta/deletedAt')}.exists()`;
 /** 방 주인. 지운 방에서는 지우기만 한다 (남은 기록 정리) */
-export const ROOM_OWNER = `${SIGNED_IN} && ${ROOM('meta/owner')}.val() === auth.uid && (${NOT_DELETED} || !newData.exists())`;
+export const ROOM_OWNER = `${AUTH} && ${ROOM('meta/owner')}.val() === auth.uid && (${NOT_DELETED} || !newData.exists())`;
 /** 다른 모듈 경로를 읽는 유일한 예외 (10.14의 16번) */
-export const IS_FRIEND = `${SIGNED_IN} && root.child('mod/friends/u/' + $uid + '/list/' + auth.uid).exists()`;
+export const IS_FRIEND = `${AUTH} && root.child('mod/friends/u/' + $uid + '/list/' + auth.uid).exists()`;
 
 /** 앱이 켜져 있는 동안 코어가 true로 두는 계정 접속 기록 (keyedWrite의 PC 실행 중 표시) */
 export const PC_ON = `root.child('users/' + $uid + '/presence/online').val() === true`;

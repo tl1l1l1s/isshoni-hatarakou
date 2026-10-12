@@ -310,6 +310,17 @@ describe.skipIf(!HOST)('database rules', () => {
       await assertSucceeds(at('carol', `files/${'d'.repeat(64)}`).set('x'));
       await assertSucceeds(at('carol', 'rooms/NEW222/meta').set({ kind: 'work', owner: 'carol', createdAt: 1 }));
     });
+    it('friendCode를 지운 계정은 이미 들어간 방과 친구 범위 기록도 읽고 쓰지 못한다', async () => {
+      await assertSucceeds(at('bob', `mod/hello/r/${ROOM}/msgs`).get());
+      await assertSucceeds(at('bob', 'mod/hello/u/alice/memo').get());
+      await env.withSecurityRulesDisabled((ctx) => ctx.database().ref('users/bob/public/friendCode').remove());
+      await assertFails(at('bob', `mod/hello/r/${ROOM}/msgs`).get());
+      await assertFails(at('bob', `mod/hello/r/${ROOM}/msgs/m1`).set({ text: 'x' }));
+      await assertFails(at('bob', `rooms/${ROOM}/members`).get());
+      await assertFails(at('bob', 'mod/hello/u/alice/memo').get());
+      await env.withSecurityRulesDisabled((ctx) => ctx.database().ref('users/alice/public/friendCode').remove());
+      await assertFails(at('alice', `mod/hello/r/${ROOM}/cfg`).set({ a: 1 }));
+    });
     it('공개 프로필 이름은 NAME_MAX_LENGTH자까지 (M20)', async () => {
       await assertSucceeds(at('alice', 'users/alice/public').update({ name: '가'.repeat(NAME_MAX_LENGTH) }));
       await assertFails(at('alice', 'users/alice/public').update({ name: '가'.repeat(NAME_MAX_LENGTH + 1) }));
