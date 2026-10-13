@@ -15,16 +15,16 @@ export function remember(d: DisplayLike): SavedDisplay {
 /** 스테이지 자리: 사용자가 끌어 옮긴 창의 아래 가운데 점을 작업 영역 안의 비율로 둔다. 배율이나 해상도가 바뀌어도 같은 쪽에 남는다 */
 export interface Anchor { x: number; y: number }
 
-/** 창이 작업 영역 밖으로 나가지 않게 옮긴다. 작업 영역보다 높으면 아래를 맞춘다 */
-export function clampIn(area: Rect, b: Rect): Rect {
+/** 창이 작업 영역 밖으로 나가지 않게 옮긴다. 위쪽은 spare만큼 작업 영역 위로 나가도 된다. 작업 영역보다 높으면 아래를 맞춘다 */
+export function clampIn(area: Rect, b: Rect, spare = 0): Rect {
   const x = Math.min(Math.max(b.x, area.x), area.x + area.width - b.width);
-  const y = Math.min(Math.max(b.y, area.y), area.y + area.height - b.height);
+  const y = Math.min(Math.max(b.y, area.y - spare), area.y + area.height - b.height);
   return { ...b, x, y };
 }
 
 /** anchor 자리에 size 크기 창을 놓는다. anchor가 없으면 아래 가운데 */
-export function placeAt(area: Rect, size: { width: number; height: number }, a: Anchor = { x: 0.5, y: 1 }): Rect {
-  return clampIn(area, { x: Math.round(area.x + a.x * area.width - size.width / 2), y: Math.round(area.y + a.y * area.height - size.height), ...size });
+export function placeAt(area: Rect, size: { width: number; height: number }, a: Anchor = { x: 0.5, y: 1 }, spare = 0): Rect {
+  return clampIn(area, { x: Math.round(area.x + a.x * area.width - size.width / 2), y: Math.round(area.y + a.y * area.height - size.height), ...size }, spare);
 }
 
 export function anchorOf(area: Rect, b: Rect): Anchor {

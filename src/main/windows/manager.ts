@@ -16,6 +16,8 @@ const TITLE_BAR_H = 32;
 
 let stage: BrowserWindow | null = null;
 let size = { width: 400, height: 200 };
+/** 창 위쪽이 작업 영역 위로 나가도 되는 높이 (stage.setSize). 렌더러가 메뉴를 닫은 동안 캐릭터 클릭 영역 위 빈 곳만큼 보낸다 */
+let spare = 0;
 let rects: Rect[] = [];
 let hidden = false;
 let quitting = false;
@@ -179,7 +181,7 @@ export function workArea(): { width: number; height: number } {
   return { width, height };
 }
 
-/** 고른 모니터(없으면 주 모니터) 작업 영역의 끌어 둔 자리, 없으면 아래 가운데. 작업 영역 밖으로 나가지 않게 맞추고 크기와 위치가 같으면 다시 적용하지 않는다.
+/** 고른 모니터(없으면 주 모니터) 작업 영역의 끌어 둔 자리, 없으면 아래 가운데. 작업 영역 밖으로 나가지 않게 맞추고(위쪽은 spare만큼 나가도 된다) 크기와 위치가 같으면 다시 적용하지 않는다.
  *  작업 영역 크기가 마지막으로 알린 것과 다르면 렌더러에 알린다.
  *  ponytail: 위쪽에 끌어 둔 캐릭터의 메뉴를 열면 창이 작업 영역 안에 남도록 아래로 밀려 캐릭터가 메뉴를 닫을 때까지 내려간다. 거슬리면 메뉴를 아래로 연다 */
 let toldArea = '';
@@ -189,11 +191,22 @@ export function place(): void {
   if (!stage) return;
   const d = currentDisplay();
   const wa = d.workArea;
-  applyBounds(stage, placeAt(wa, size, kept ?? savedPlaces()[keyOf(d)]));
+  applyBounds(stage, placeAt(wa, size, kept ?? savedPlaces()[keyOf(d)], spare));
+  tellCut(wa, stage.getBounds());
   const key = `${wa.width}x${wa.height}`;
   if (key === toldArea) return;
   toldArea = key;
   send('stage.workArea', { width: wa.width, height: wa.height });
+}
+
+/** 창 위쪽이 작업 영역 위로 나간 높이. 바뀔 때만 알리고 렌더러는 알림과 말풍선을 그만큼 내린다.
+ *  스테이지를 다시 읽어도 첫 크기는 spare 0으로 오므로 여기도 0으로 돌아가 렌더러의 처음 값과 맞는다 */
+let toldCut = 0;
+function tellCut(area: Rect, b: Bounds): void {
+  const top = Math.max(0, area.y - b.y);
+  if (top === toldCut) return;
+  toldCut = top;
+  send('stage.cut', { top });
 }
 
 /** 이름표를 끄는 동안 시작할 때의 창 아래 가운데 점. 렌더러가 보낸 포인터 이동만큼 옮긴다 */
@@ -202,7 +215,7 @@ let holdUntil = 0;
 /** 끄는 동안 커서가 클릭 영역을 잠깐 벗어나도 클릭 통과로 바꾸지 않는다. 렌더러가 끝을 알리지 못해도 2초 뒤에 풀린다 */
 export const dragging = () => Date.now() < holdUntil;
 
-/** 고른 모니터의 작업 영역 안에서만 옮기고 모니터마다 자리를 기억한다 */
+/** 고른 모니터의 작업 영역 안에서만 옮기고(위쪽은 spare만큼 나가도 된다) 모니터마다 자리를 기억한다 */
 export function dragStage(phase: 'start' | 'move' | 'end', dx: number, dy: number): void {
   if (!stage) return;
   if (phase === 'start') {
@@ -218,9 +231,10 @@ export function dragStage(phase: 'start' | 'move' | 'end', dx: number, dy: numbe
   }
   holdUntil = Date.now() + 2000;
   const d = currentDisplay();
-  const b = clampIn(d.workArea, { x: Math.round(dragFrom.x + dx - size.width / 2), y: Math.round(dragFrom.y + dy - size.height), ...size });
+  const b = clampIn(d.workArea, { x: Math.round(dragFrom.x + dx - size.width / 2), y: Math.round(dragFrom.y + dy - size.height), ...size }, spare);
   store?.write(PLACE_FILE, { ...savedPlaces(), [keyOf(d)]: anchorOf(d.workArea, b) });
   applyBounds(stage, b);
+  tellCut(d.workArea, stage.getBounds());
 }
 
 const same = (a: Bounds, b: Bounds) => a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
@@ -232,14 +246,18 @@ function applyBounds(w: BrowserWindow, b: Bounds): void {
 }
 
 /** 좌석이 늘거나 줄어 폭만 바뀌면 왼쪽 끝을 그대로 두고 이번 실행 동안 그 자리를 쓴다(kept). 아래 가운데 점에 맞추면 맨 왼쪽의 내 캐릭터가
- *  누가 들어오고 나갈 때마다 옆으로 뛴다. 높이가 바뀌면(메뉴, 런처 화면) 그 자리에 다시 놓는다 */
-export function setSize(width: number, height: number): void {
+ *  누가 들어오고 나갈 때마다 옆으로 뛴다. 높이가 바뀌면(메뉴, 런처 화면) 그 자리에 다시 놓는다. spare만 바뀌어도 다시 놓는다 */
+export function setSize(width: number, height: number, nextSpare = 0): void {
   const next = { width: Math.ceil(width), height: Math.ceil(height) };
   const widthOnly = next.height === size.height && next.width !== size.width;
   size = next;
+  spare = Math.floor(nextSpare);
   if (stage && widthOnly && !dragFrom) {
-    const wa = currentDisplay().workArea;
-    kept = anchorOf(wa, clampIn(wa, { ...stage.getBounds(), ...size }));
+    const d = currentDisplay();
+    const wa = d.workArea;
+    const { x } = anchorOf(wa, clampIn(wa, { ...stage.getBounds(), ...size }, spare));
+    // 아래 끝은 지금 창이 아니라 놓으려던 자리를 따른다. 메뉴를 열었거나 키 큰 좌석이 들어와 spare가 줄면 지금 창은 아래로 밀려 있다
+    kept = { x, y: (kept ?? savedPlaces()[keyOf(d)])?.y ?? 1 };
   }
   place();
 }

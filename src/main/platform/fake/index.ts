@@ -18,7 +18,8 @@ export class FakePlatform implements Platform {
   };
   penApps = { user: new Set<AppKey>(), isPen: (k: AppKey) => this.pens.has(k) || this.penApps.user.has(k) };
   autoStart = { get: () => this.autoStartOn, set: (on: boolean) => void (this.autoStartOn = on) };
-  overlay = { options: { frame: false, transparent: true, skipTaskbar: true, hasShadow: false }, afterCreate: () => {}, setOpacity252: () => {} };
+  // Mac에서 시험할 때도 스테이지 위쪽이 작업 영역 위로 나가도록 Mac 구현처럼 enableLargerThanScreen을 켠다
+  overlay = { options: { frame: false, transparent: true, skipTaskbar: true, hasShadow: false, enableLargerThanScreen: true }, afterCreate: () => {}, setOpacity252: () => {} };
   idleSeconds = () => this.idle;
   cursorPoint = () => this.cursor;
 }

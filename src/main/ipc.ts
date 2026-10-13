@@ -49,7 +49,7 @@ export function registerIpc(store: Store): void {
     'store.read': [path, ({ path }) => store.read(path)],
     'store.write': [z.object({ path: z.string(), data: z.unknown() }), ({ path, data }) => store.write(path, data)],
     'store.quarantine': [path, ({ path }) => store.quarantine(path)],
-    'stage.setSize': [z.object({ width: size, height: size }), ({ width, height }) => setSize(width, height)],
+    'stage.setSize': [z.object({ width: size, height: size, spare: z.number().min(0).max(10_000).optional() }), ({ width, height, spare }) => setSize(width, height, spare)],
     'stage.setInteractive': [z.object({ rects: z.array(rect).max(256) }), ({ rects }) => setRects(rects)],
     'win.prepare': [
       z.object({

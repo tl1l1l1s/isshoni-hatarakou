@@ -94,8 +94,8 @@ test('M3 코어 계약이 앱에서 동작한다', async () => {
     const fxw = ws.find((w) => w.getTitle() === '효과')!;
     return { stage: s.getBounds(), fx: fxw.getBounds(), display: screen.getDisplayMatching(s.getBounds()).bounds, focusable: fxw.isFocusable() };
   });
-  // 모니터 크기로 열린다 (Mac은 메뉴 막대 아래로 내려 y가 다를 수 있다)
-  expect([geo.fx.x, geo.fx.width, geo.fx.height]).toEqual([geo.display.x, geo.display.width, geo.display.height]);
+  // 모니터 크기로 열린다. Mac도 enableLargerThanScreen이라 메뉴 막대 위까지 덮는다
+  expect(geo.fx).toEqual(geo.display);
   expect(geo.focusable).toBe(false);
   expect(fx.width).toBe(geo.fx.width);
   expect(Math.abs(fx.from.x - (geo.stage.x - geo.fx.x + body.x))).toBeLessThan(2);

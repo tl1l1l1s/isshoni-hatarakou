@@ -71,7 +71,7 @@ export class EffectWindow {
     standardsMode(win.document);
     win.document.title = '효과';
     copyStyles(document, win.document);
-    // OS가 창을 옮겼을 수 있어서(Mac은 메뉴 막대 아래로 내린다) 실제로 열린 영역을 쓴다
+    // OS가 창을 옮겼을 수 있어서 실제로 열린 영역을 쓴다
     const area = (await this.bridge.invoke('effects.bounds', { name })) ?? asked;
     return { win, area };
   }

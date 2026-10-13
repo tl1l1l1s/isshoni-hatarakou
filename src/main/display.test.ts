@@ -1,5 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { anchorOf, pickDisplay, placeAt, placeKey, remember } from './display';
+import { anchorOf, clampIn, pickDisplay, placeAt, placeKey, remember } from './display';
+
+describe('clampIn', () => {
+  const area = { x: 100, y: 50, width: 1000, height: 800 };
+  const size = { width: 200, height: 300 };
+  it('위쪽은 spare만큼만 작업 영역 위로 나간다', () => {
+    expect(clampIn(area, { x: 300, y: 10, ...size }, 60)).toEqual({ x: 300, y: 10, ...size });
+    expect(clampIn(area, { x: 300, y: -500, ...size }, 60)).toEqual({ x: 300, y: -10, ...size });
+    expect(clampIn(area, { x: 300, y: 10, ...size })).toEqual({ x: 300, y: 50, ...size });
+  });
+  it('아래쪽은 spare가 있어도 작업 영역 안에 남는다', () => {
+    expect(clampIn(area, { x: 300, y: 700, ...size }, 60)).toEqual({ x: 300, y: 550, ...size });
+  });
+  it('작업 영역보다 높은 창은 spare가 있어도 아래를 맞춘다', () => {
+    expect(clampIn(area, { x: 300, y: -500, width: 200, height: 900 }, 60)).toMatchObject({ y: -50 });
+    expect(clampIn(area, { x: 300, y: 0, width: 200, height: 900 }, 60)).toMatchObject({ y: -50 });
+  });
+  it('끌어 둔 자리로 다시 놓을 때도 spare만큼만 위로 나간다', () => {
+    const top = anchorOf(area, { x: 300, y: 20, ...size });
+    expect(placeAt(area, size, top, 60)).toMatchObject({ y: 20 });
+    expect(placeAt(area, size, top)).toMatchObject({ y: 50 });
+  });
+});
 
 describe('placeAt', () => {
   const area = { x: 100, y: 0, width: 1000, height: 800 };

@@ -44,6 +44,8 @@ export const mac: Omit<Platform, 'idleSeconds' | 'cursorPoint'> = {
       focusable: false,
       hasShadow: false,
       resizable: false,
+      // 없으면 macOS가 창을 메뉴 막대 아래로 되돌려 스테이지 위쪽이 작업 영역 위로 나가지 못한다 (stage.setSize의 spare)
+      enableLargerThanScreen: true,
     },
     afterCreate: (w) => w.setAlwaysOnTop(true, 'screen-saver'),
     // Windows 전용 우회라 Mac에서는 바꾸지 않는다

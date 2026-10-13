@@ -1,7 +1,7 @@
 import {
   Component, createContext, Fragment, Suspense, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type PointerEvent, type ReactNode,
 } from 'react';
-import { createPortal } from 'react-dom';
+import { createPortal, flushSync } from 'react-dom';
 import type { CharacterView, Point, PoseId, PoseImage } from '@render/port';
 import type { Rect } from '../../../preload/api';
 import { NOT_IN_ROOM, type ContributionDecl, type SeatView } from '../types';
@@ -62,6 +62,9 @@ export function Stage({ core }: { core: CoreRuntime }) {
   const running = mode === 'run' && !elsewhere;
   const target = running && !pick ? seats.find((s) => s.key === menu) : undefined;
   const root = useRef<HTMLDivElement>(null);
+  // 창 아래에서 잰 가장 높은 캐릭터 클릭 영역 위쪽(0은 아직 재지 않음)과 메인이 알린 창 위쪽이 작업 영역 위로 나간 높이 (stage.cut)
+  const [reach, setReach] = useState(0);
+  const [cut, setCut] = useState(0);
   // 좌석과 이름표 크기 (SET-07, SET-17), 머리 위 표시 (SET-14), 도트 렌더 (SET-13), 상태칩 자리 (SET-15)
   const { scale: wanted, showHead, pixel, chips } = useCoreSettings(core);
   const side = chips === 'below' ? null : chips;
@@ -114,6 +117,8 @@ export function Stage({ core }: { core: CoreRuntime }) {
   const rows = !target ? 0 : target.self ? count('menu.main') + 1 : Math.max(1, count('seat.menu')) + 1;
   const menuRoom = area ? area.height - closedH + MENU_CLOSED_H : Infinity;
   const menuH = target ? Math.max(MENU_CLOSED_H, Math.min(rows * MENU_ITEM_H + 28 + breaks * MENU_HR_H, menuRoom)) : MENU_CLOSED_H;
+  // 메뉴를 닫았으면 창 위쪽이 가장 높은 캐릭터 클릭 영역 2px 위까지 작업 영역 위로 나가도 된다. 메뉴를 열면 메뉴가 다 보이게 0으로 둔다
+  const spare = running && !target && reach ? Math.max(0, closedH - reach - 2) : 0;
   const seatOf = (key: string) => seats.find((s) => s.key === key)!;
   // 벤치에 겹쳐 앉은 좌석(겹친 좌석과 그 바로 앞 좌석)은 말풍선과 이름표를 좌석 간격 안으로 줄인다
   const benched = new Set(row.flatMap((s, i) => (joined.has(s.key) ? [s.key, row[i - 1]!.key] : [])));
@@ -121,6 +126,8 @@ export function Stage({ core }: { core: CoreRuntime }) {
     core, seat: s, size: seatSize, scale, showHead, paused: display === 'hidden',
     // 회사원 모드에서는 머리 위 말풍선을 숨긴다 (SET-03)
     showBubble: showHead && display === 'normal', pixel: pixel ? PIXEL : undefined, chipSide: side,
+    // cut은 메뉴를 닫았을 때만 생기므로 창 높이는 closedH다
+    shownH: cut ? closedH - cut : undefined, reach,
     benchMax: benched.has(s.key) ? benchStep - 6 : undefined,
     onHide: display === 'quiet' ? () => core.setDisplayMode('hidden') : undefined,
     riders: () => [...on].filter(([, under]) => under === s.key).map(([k]) => seatProps(seatOf(k))),
@@ -138,8 +145,10 @@ export function Stage({ core }: { core: CoreRuntime }) {
   // 창 크기: 좌석 수, 크기 배율, 올라탄 층 수, 메뉴 높이, 업데이트 안내로 정한다
   useEffect(() => {
     // 런처 화면에서는 좌석을 숨기고 알림만 띄울 작은 창으로 둔다 (SCR-02)
-    void core.deps.bridge.invoke('stage.setSize', running ? { width: stageW, height: closedH - MENU_CLOSED_H + menuH } : { width: 360, height: 120 + extra });
-  }, [core, stageW, closedH, menuH, running, extra]);
+    void core.deps.bridge.invoke('stage.setSize', running ? { width: stageW, height: closedH - MENU_CLOSED_H + menuH, spare } : { width: 360, height: 120 + extra });
+  }, [core, stageW, closedH, menuH, running, extra, spare]);
+
+  useEffect(() => core.deps.bridge.on('stage.cut', ({ top }) => setCut(top)), [core]);
 
   // 클릭 받을 영역: data-interactive 요소를 바뀔 때만 보낸다 (10.8.1)
   useLayoutEffect(() => {
@@ -157,6 +166,10 @@ export function Stage({ core }: { core: CoreRuntime }) {
       });
       const key = JSON.stringify(rects);
       if (key !== last) void core.deps.bridge.invoke('stage.setInteractive', { rects: JSON.parse((last = key)) as Rect[] });
+      // spare를 정할 가장 높은 캐릭터 클릭 영역. 좌석은 창 아래에 붙여 그리므로 창 아래에서 재면 메인이 창 높이를 바꾸는 중에도 같다.
+      // 클릭 영역이 하나도 없으면(몸이 효과로 자리를 떠남) 앞 값을 둔다
+      const tops = [...(root.current?.querySelectorAll<HTMLElement>(`.${css.hit}`) ?? [])].map((el) => window.innerHeight - el.getBoundingClientRect().top);
+      if (tops.length) setReach(Math.ceil(Math.max(...tops)));
     };
     // 그릴 일이 없어 프레임이 멈춘 동안에도 보내도록 타이머를 함께 건다
     const schedule = () => {
@@ -190,7 +203,8 @@ export function Stage({ core }: { core: CoreRuntime }) {
 
   return (
     <div ref={root} className={css.stage} onPointerDownCapture={() => core.windows.touch('')}>
-      <div className={css.toasts}>
+      {/* 창 위쪽이 작업 영역 위로 나가 있으면 알림을 그만큼 내려 보이게 한다 */}
+      <div className={css.toasts} style={{ marginTop: cut }}>
         {update && (
           <div data-interactive className={`${css.toast} ${css.update}`}>
             업데이트가 준비됐어요 ({update})
@@ -335,6 +349,10 @@ interface SeatProps {
   showBubble: boolean; pixel?: number; chipSide: 'right' | 'left' | null;
   /** 벤치에 겹쳐 앉은 좌석의 말풍선과 이름표 최대 폭(화면 픽셀). 이웃 말풍선과 이름표를 덮지 않게 한다 */
   benchMax?: number;
+  /** 창 위쪽이 작업 영역 위로 나가 있으면 창 아래에서 잰 보이는 높이. 말풍선이 이 위로 나가지 않게 내린다 */
+  shownH?: number;
+  /** 창 아래에서 잰 가장 높은 캐릭터 클릭 영역 위쪽. 창이 그대로인 채 좌석이 올라가면(상태칩 줄이 접힘) 바뀌어 말풍선을 다시 맞춘다 */
+  reach: number;
   /** 회사원 모드의 숨기기 칩 (SET-03) */
   onHide?: () => void;
   /** 이 좌석 머리 위에 올라탄 좌석 */
@@ -436,8 +454,28 @@ function Rider(props: SeatProps & { head: Point }) {
 
 /** 말풍선과 클릭 영역. 대상을 고르는 중이면 다른 사람 좌석을 강조하고 누르면 고른다.
  *  몸을 끌면 이름표처럼 스테이지를 옮긴다. 끌기로 본 뒤에는 흔들기를 세지 않고 짧게 누른 것으로도 보지 않는다 */
-function Body({ core, seat, scale, showBubble, onToggle, onAct, actLabel, onShake, onPick, hit, anchors }: SeatProps & { hit: Rect; anchors: { bubble: Point } }) {
+function Body({ core, seat, scale, showBubble, shownH, reach, onToggle, onAct, actLabel, onShake, onPick, hit, anchors }: SeatProps & { hit: Rect; anchors: { bubble: Point } }) {
   const bubble = core.bubbleOf(seat);
+  // 창 위쪽이 작업 영역 위로 나가 있으면 보이는 곳 위로 나가는 말풍선을 다 보일 만큼 내린다. 머리를 덮어도 된다.
+  // 창 아래에서 재므로 메인이 창 크기를 바꾸는 동안 뷰포트가 늦게 따라와도 맞다. 그림 말풍선은 그림을 읽은 뒤에 커지므로 크기도 지켜본다.
+  // 창은 그대로인 채 좌석만 올라가면 다른 값은 그대로라 reach가 바뀔 때도 다시 잰다. 말풍선은 클릭 영역이 아니라 내려도 reach는 그대로다.
+  // ponytail: reach는 가장 높은 클릭 영역만 보므로 가장 높지 않은 올라탄 캐릭터가 아래 좌석 자세 때문에 혼자 올라가면 다시 재지 않는다. 거슬리면 좌석마다 잰 높이를 넘긴다
+  const tip = useRef<HTMLDivElement>(null);
+  const [down, setDown] = useState(0);
+  const said = typeof bubble === 'string' ? bubble : bubble?.image;
+  useLayoutEffect(() => {
+    const el = tip.current;
+    if (!el || shownH === undefined) return void setDown(0);
+    const fit = () => {
+      const bottom = el.parentElement!.getBoundingClientRect().top + anchors.bubble.y;
+      setDown(Math.max(0, Math.ceil(window.innerHeight - bottom + el.getBoundingClientRect().height - shownH)));
+    };
+    fit();
+    // 관찰 콜백에서 바꾼 상태는 다음 프레임에 그려지므로 바로 그려서 그림 말풍선이 한 프레임 높게 보이지 않게 한다
+    const ro = new ResizeObserver(() => flushSync(fit));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [shownH, reach, anchors.bubble.y, scale, showBubble, said]);
   const press = useRef<(Shake & { at: number; dragging: boolean }) | null>(null);
   const drag = useDrag(
     core,
@@ -457,7 +495,7 @@ function Body({ core, seat, scale, showBubble, onToggle, onAct, actLabel, onShak
   return (
     <>
       {showBubble && bubble && (
-        <div className={css.bubble} style={{ left: anchors.bubble.x, top: anchors.bubble.y, transform: `translate(-50%, -100%) scale(${scale})` }}>
+        <div ref={tip} className={css.bubble} style={{ left: anchors.bubble.x, top: anchors.bubble.y + down, transform: `translate(-50%, -100%) scale(${scale})` }}>
           {typeof bubble === 'string' ? <span className={css.bubbleText}>{bubble}</span> : <FileImage core={core} hash={bubble.image} />}
         </div>
       )}

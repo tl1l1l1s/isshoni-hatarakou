@@ -17,8 +17,9 @@ export interface CoreInvokeMap {
   'store.write': { args: { path: string; data: unknown }; result: void };
   /** 읽어 보니 모양이 맞지 않는 파일을 <경로>.bak으로 옮긴다. 다음 읽기는 null이다 */
   'store.quarantine': { args: { path: string }; result: void };
-  /** 좌석 영역 크기로 스테이지 창 크기를 맞춘다. 창은 작업 영역 아래 가운데에 붙는다. 폭만 바뀌면 왼쪽 끝을 그대로 둔다 */
-  'stage.setSize': { args: { width: number; height: number }; result: void };
+  /** 좌석 영역 크기로 스테이지 창 크기를 맞춘다. 창은 작업 영역 아래 가운데에 붙는다. 폭만 바뀌면 왼쪽 끝을 그대로 둔다.
+   *  spare(기본 0)는 창 위쪽이 작업 영역 위로 나가도 되는 높이다. 실제로 나간 높이는 stage.cut 이벤트로 온다 */
+  'stage.setSize': { args: { width: number; height: number; spare?: number }; result: void };
   /** 클릭을 받을 영역(창 안 CSS 픽셀). 바뀔 때만 보낸다 (10.8.1 클릭 통과) */
   'stage.setInteractive': { args: { rects: Rect[] }; result: void };
   /** window.open 직전에 패널 창 옵션을 알린다. name은 window.open의 두 번째 인자.
@@ -80,7 +81,7 @@ export interface CoreInvokeMap {
   /** 효과 창을 열기 직전에 부른다. 캐릭터가 있는 모니터 전체 영역(DIP)을 돌려주고 이어서 window.open('', 'effects:<번호>')로 연다.
    *  효과 창은 투명하고 클릭을 통과하며 포커스를 받지 않는 항상 위 창이다 (10.8.2) */
   'effects.prepare': { args: Record<string, never>; result: Rect };
-  /** 연 효과 창의 실제 영역(DIP). OS가 창을 옮겼을 수 있다 (Mac은 메뉴 막대 아래로 내린다). 창이 없으면 null */
+  /** 연 효과 창의 실제 영역(DIP). OS가 창을 옮겼을 수 있다. 창이 없으면 null */
   'effects.bounds': { args: { name: string }; result: Rect | null };
   /** 대상 고르기(pickTarget) 동안 ESC를 전역 단축키로 받는다. 누르면 pick.cancel이 온다 */
   'pick.escape': { args: { on: boolean }; result: void };
@@ -89,7 +90,7 @@ export interface CoreInvokeMap {
   /** 캐릭터가 있는 모니터의 작업 영역 크기(DIP). 스테이지가 좌석 배율과 메뉴 높이를 이 안에 맞춘다. 바뀌면 stage.workArea 이벤트가 온다 */
   'stage.workArea': { args: Record<string, never>; result: { width: number; height: number } };
   /** 이름표를 끌어 스테이지를 옮긴다. dx, dy는 pointerdown 자리에서 움직인 거리(DIP)다. 메인은 끄는 동안 클릭 통과를 멈추고
-   *  고른 모니터의 작업 영역 안에서만 옮기며 자리를 모니터마다 기억한다 */
+   *  고른 모니터의 작업 영역 안에서만 옮기며(위쪽은 stage.setSize의 spare만큼 나가도 된다) 자리를 모니터마다 기억한다 */
   'stage.drag': { args: { phase: 'start' | 'move' | 'end'; dx: number; dy: number }; result: void };
   /** 렌더러의 처리하지 않은 오류. 메인이 로그에 적고 자동 오류 보고로 모은다 (NFR-21) */
   'crash.report': { args: { type: string; message: string; stack: string }; result: void };
@@ -117,6 +118,8 @@ export interface CoreEventMap {
   'stage.workArea': { width: number; height: number };
   /** 메인이 스테이지 창 크기를 바꿨다. 렌더러는 창의 resize 이벤트가 오지 않아도 이 크기에 맞춰 클릭 영역을 다시 보낸다 */
   'stage.resized': { width: number; height: number };
+  /** 스테이지 창 위쪽이 작업 영역 위로 나간 높이(DIP)가 바뀌었다. 렌더러는 알림과 말풍선을 그만큼 아래에 띄운다 */
+  'stage.cut': { top: number };
   /** keepAlive 패널을 닫아 숨겼거나(visible false) 다시 띄웠다. name은 window.open의 창 이름.
    *  about:blank 패널은 스테이지의 backgroundThrottling: false를 물려받아 숨겨도 문서가 visible로 남으므로 코어가 이 이벤트로 문서에 반영한다 */
   'win.visibility': { name: string; visible: boolean };
