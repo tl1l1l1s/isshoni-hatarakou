@@ -58,13 +58,15 @@ export const FACE_SIZE = 512;
 export const DEFAULT_BODY_COLOR = '#ffe4ec';
 
 /** 얼굴 그리기 편집 데이터. 다시 고칠 수 있게 Appearance.bodyExt.face에 둔다.
- *  use는 자세마다 얼굴 그리기로 만든 그림을 쓰는지(true) 직접 넣은 그림을 쓰는지(false) */
+ *  use는 자세마다 얼굴 그리기로 만든 그림을 쓰는지(true) 직접 넣은 그림을 쓰는지(false).
+ *  bare는 전부 지우기로 몸을 빼고 그림판 그림만 쓰는지. 옛 앱에서 얼굴을 고쳐 저장하면 이 값이 빠지고 몸이 돌아온다 */
 export const Face = z.object({
   tpl: z.string().max(64),
   color: z.string().regex(/^#[0-9a-f]{6}$/i),
   open: Sha256.optional(),
   closed: Sha256.optional(),
   use: z.object({ idle: z.boolean(), typing: z.boolean(), sleep: z.boolean() }),
+  bare: z.boolean().optional(),
 });
 export type Face = z.infer<typeof Face>;
 

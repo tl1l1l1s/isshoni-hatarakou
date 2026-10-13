@@ -20,7 +20,10 @@ const LAYOUT: Record<PoseId, { body: Ell; hands: Ell[]; face: Rect }> = {
   sleep: { body: [80, 144, 60, 46], hands: [[30, 174, 11, 8], [130, 174, 11, 8]], face: { x: 36, y: 96, w: 88, h: 88 } },
 };
 
-export const faceRect = (pose: PoseId): Rect => LAYOUT[pose].face;
+/** 몸 없이 그릴 때 그림판이 덮는 칸. 자세와 상관없이 좌석 너비를 채운 아래쪽 정사각형이다 */
+const BARE: Rect = { x: 0, y: 40, w: 160, h: 160 };
+
+export const faceRect = (pose: PoseId, bare = false): Rect => (bare ? BARE : LAYOUT[pose].face);
 
 function blob(g: G, [x, y, rx, ry]: Ell, fill: string, stroke = true) {
   g.beginPath();
@@ -70,18 +73,19 @@ export function clipBody(g: G, pose: PoseId) {
   g.clip();
 }
 
-/** 몸에 얼굴 그림을 합친다. 얼굴은 몸통 밖으로 나가지 않게 자른다 */
-export function drawPose(g: G, kind: BodyKind, pose: PoseId, color: string, face: CanvasImageSource | null) {
-  drawBody(g, kind, pose, color);
-  const r = LAYOUT[pose].face;
+/** 몸에 얼굴 그림을 합친다. 얼굴은 몸통 밖으로 나가지 않게 자른다. kind가 null이면 몸 없이 그림판 그림을 자르지 않고 그린다.
+ *  잠듦의 z는 그림판에 없어서 몸 없이 그리면 사용자 그림 위에 얹히므로 몸이 있을 때만 그린다 */
+export function drawPose(g: G, kind: BodyKind | null, pose: PoseId, color: string, face: CanvasImageSource | null) {
+  if (kind) drawBody(g, kind, pose, color);
+  const r = faceRect(pose, !kind);
   if (face) {
     g.save();
-    clipBody(g, pose);
+    if (kind) clipBody(g, pose);
     g.imageSmoothingQuality = 'high';
     g.drawImage(face, r.x, r.y, r.w, r.h);
     g.restore();
   }
-  if (pose === 'sleep') {
+  if (kind && pose === 'sleep') {
     g.fillStyle = INK;
     g.font = 'bold 22px sans-serif';
     g.fillText('z', 124, 76);
@@ -91,7 +95,7 @@ export function drawPose(g: G, kind: BodyKind, pose: PoseId, color: string, face
 }
 
 /** 자세 그림 한 장을 두 배 해상도(320x400) 캔버스에 그린다 */
-export function poseCanvas(kind: BodyKind, pose: PoseId, color: string, face: CanvasImageSource | null): OffscreenCanvas {
+export function poseCanvas(kind: BodyKind | null, pose: PoseId, color: string, face: CanvasImageSource | null): OffscreenCanvas {
   const c = new OffscreenCanvas(320, 400);
   const g = c.getContext('2d')!;
   g.scale(2, 2);
@@ -100,7 +104,7 @@ export function poseCanvas(kind: BodyKind, pose: PoseId, color: string, face: Ca
 }
 
 /** 자세 그림 한 장을 두 배 해상도(320x400) PNG로 굽는다 */
-export async function posePng(kind: BodyKind, pose: PoseId, color: string, face: CanvasImageSource | null): Promise<Uint8Array> {
+export async function posePng(kind: BodyKind | null, pose: PoseId, color: string, face: CanvasImageSource | null): Promise<Uint8Array> {
   const c = poseCanvas(kind, pose, color, face);
   return new Uint8Array(await (await c.convertToBlob({ type: 'image/png' })).arrayBuffer());
 }

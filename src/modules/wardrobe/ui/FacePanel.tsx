@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { PointerEvent } from 'react';
 import type { Ctx } from '@core/types';
 import { clipBody, drawBody, drawPose, faceRect, type BodyKind } from '../bodies';
-import type { FaceEdit, Op } from '../face';
+import { poseFace, type FaceEdit, type Op } from '../face';
 import { FACE_SIZE, faceView, fitStamp, POSE_IDS, resizeRect, toLocal, type Face, type PoseId, type Pt, type Rect } from '../logic';
 import css from './wardrobe.module.css';
 
@@ -12,12 +12,12 @@ const POSE_LABEL: Record<PoseId, string> = { idle: '기본', typing: '타이핑'
 
 interface Stamp { img: ImageBitmap; base: Rect; r: Rect; scale: number }
 
-/** 얼굴 그리기 (AVT-03, AVT-04). 몸과 몸 색을 고르고 표정과 감은 눈을 512px 그림판에 그린다 */
+/** 얼굴 그리기 (AVT-03, AVT-04). 몸과 몸 색을 고르고 표정과 감은 눈을 512px 그림판에 그린다. body가 null이면 몸 없이 그린다 */
 export default function FacePanel({ ctx, edit, face, body, onFace, onError }: {
   ctx: Ctx;
   edit: FaceEdit;
   face: Face;
-  body: BodyKind;
+  body: BodyKind | null;
   onFace: (f: Face) => void;
   onError: (msg: string) => void;
 }) {
@@ -34,7 +34,7 @@ export default function FacePanel({ ctx, edit, face, body, onFace, onError }: {
   const p = which === 'open' ? edit.open : edit.closed;
   const pose: PoseId = which === 'open' ? 'idle' : 'sleep';
 
-  // 얼굴 칸만큼 확대한 몸 위에 그림판을 몸통 모양으로 잘라 얹는다. 저장되는 모습과 같다
+  // 얼굴 칸만큼 확대한 몸 위에 그림판을 몸통 모양으로 잘라 얹는다. 몸이 없으면 그림판만 그린다. 저장되는 모습과 같다
   const paint = () => {
     const g = board.current?.getContext('2d');
     if (!g) return;
@@ -42,9 +42,9 @@ export default function FacePanel({ ctx, edit, face, body, onFace, onError }: {
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.clearRect(0, 0, FACE_SIZE, FACE_SIZE);
     g.setTransform(v.s, 0, 0, v.s, v.dx, v.dy);
-    drawBody(g, body, pose, face.color);
+    if (body) drawBody(g, body, pose, face.color);
     g.save();
-    clipBody(g, pose);
+    if (body) clipBody(g, pose);
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.drawImage(stroke.current ? p.preview(stroke.current) : p.layer, 0, 0);
     g.restore();
@@ -80,6 +80,27 @@ export default function FacePanel({ ctx, edit, face, body, onFace, onError }: {
     stamp?.img.close();
     setStamp(null);
   };
+  // 전부 지우기는 몸까지 빼서 빈 그림판을 남긴다. 다른 탭 그림도 몸의 얼굴 칸에 맞춘 것이라 몸 없이 그리면 커지므로
+  // 두 탭에 같은 기록을 넣어 함께 지운다. 몸이 이미 없으면 지금 탭만 지운다.
+  // 되돌리기와 다시 하기는 다른 탭도 그 기록이 다음 차례면 함께 옮겨서 두 탭 그림과 몸이 한 번에 돌아오고 다시 빠진다.
+  // 그 뒤 다른 탭에 그려서 함께 옮길 수 없으면 지금 탭만 옮기고 몸은 그대로 둔다. 몸만 바뀌면 다른 탭 그림이 맞지 않는 칸에 그려진다
+  const clearAll = () =>
+    act(() => {
+      if (!body) return p.add({ t: 'clear' });
+      const op: Op = { t: 'clear', bare: true };
+      edit.open.add(op);
+      edit.closed.add(op);
+      onFace({ ...face, bare: true });
+    });
+  const undoRedo = (back: boolean) =>
+    act(() => {
+      const op = back ? p.undo() : p.redo();
+      if (op?.t !== 'clear' || !op.bare) return;
+      const q = which === 'open' ? edit.closed : edit.open;
+      if (q.peek(back) !== op) return;
+      (back ? q.undo : q.redo)();
+      onFace({ ...face, bare: !back });
+    });
 
   // 창 안에서 Ctrl+Z 되돌리기, Ctrl+Shift+Z 다시 하기. 한글 조합 중에는 무시한다.
   // 이미지 찍기를 버리는 ESC는 창 닫기로 넘기지 않는다. 저장하지 않은 그림은 창(WardrobeWindow)이 닫기 전에 묻는다
@@ -94,7 +115,7 @@ export default function FacePanel({ ctx, edit, face, body, onFace, onError }: {
       if (e.isComposing || e.keyCode === 229) return;
       if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ') {
         e.preventDefault();
-        act(e.shiftKey ? p.redo : p.undo);
+        undoRedo(!e.shiftKey);
       } else if (stamp && e.key === 'Enter') {
         e.preventDefault();
         putStamp();
@@ -161,9 +182,9 @@ export default function FacePanel({ ctx, edit, face, body, onFace, onError }: {
       <div className={css.tools}>
         <span>몸 색</span>
         {SKINS.map(([c, name]) => (
-          <button key={c} className={css.swatch} style={{ background: c }} aria-label={`몸 색 ${name}`} aria-pressed={face.color === c} onClick={() => onFace({ ...face, color: c })} />
+          <button key={c} className={css.swatch} style={{ background: c }} aria-label={`몸 색 ${name}`} aria-pressed={face.color === c} disabled={!body} onClick={() => onFace({ ...face, color: c })} />
         ))}
-        <input type="color" aria-label="몸 색 고르기" value={face.color} onChange={(e) => onFace({ ...face, color: e.target.value })} />
+        <input type="color" aria-label="몸 색 고르기" value={face.color} disabled={!body} onChange={(e) => onFace({ ...face, color: e.target.value })} />
       </div>
       <nav className={css.steps} aria-label="그릴 얼굴">
         <button aria-pressed={which === 'open'} onClick={() => setWhich('open')}>표정</button>
@@ -181,9 +202,9 @@ export default function FacePanel({ ctx, edit, face, body, onFace, onError }: {
       <div className={css.tools}>
         <button aria-pressed={sym} onClick={() => setSym((s) => !s)}>대칭</button>
         <button aria-pressed={erase} onClick={() => setErase((s) => !s)}>지우개</button>
-        <button disabled={!p.canUndo()} onClick={() => act(p.undo)}>되돌리기</button>
-        <button disabled={!p.canRedo()} onClick={() => act(p.redo)}>다시 하기</button>
-        <button onClick={() => act(() => p.add({ t: 'clear' }))}>전부 지우기</button>
+        <button disabled={!p.canUndo()} onClick={() => undoRedo(true)}>되돌리기</button>
+        <button disabled={!p.canRedo()} onClick={() => undoRedo(false)}>다시 하기</button>
+        <button onClick={clearAll}>전부 지우기</button>
         <button onClick={() => void pickStamp()}>그림 넣기</button>
       </div>
       {stamp && (
@@ -199,7 +220,7 @@ export default function FacePanel({ ctx, edit, face, body, onFace, onError }: {
         </div>
       )}
       <p className={css.hint}>
-        {stamp ? '그림을 끌어서 옮기고 크기를 맞춘 뒤 찍기를 눌러 주세요.' : which === 'open' ? '표정은 기본 자세와 타이핑 자세에 들어가요.' : '감은 눈은 잠든 자세에 들어가요.'}
+        {stamp ? '그림을 끌어서 옮기고 크기를 맞춘 뒤 찍기를 눌러 주세요.' : !body ? '몸 없이 그리고 있어요. 몸을 다시 쓰려면 위에서 사람이나 동물을 눌러 주세요.' : which === 'open' ? '표정은 기본 자세와 타이핑 자세에 들어가요.' : '감은 눈은 잠든 자세에 들어가요.'}
       </p>
       <div className={css.face}>
         <canvas ref={board} width={FACE_SIZE} height={FACE_SIZE} className={css.board} aria-label="얼굴 그림판"
@@ -219,14 +240,14 @@ export default function FacePanel({ ctx, edit, face, body, onFace, onError }: {
 }
 
 /** 얼굴 그리기로 만들 자세 그림 미리보기. 저장 전이라 올리지 않고 바로 그린다 */
-export function PoseThumb({ edit, body, color, pose, small = false }: { edit: FaceEdit; body: BodyKind; color: string; pose: PoseId; small?: boolean }) {
+export function PoseThumb({ edit, body, color, pose, small = false }: { edit: FaceEdit; body: BodyKind | null; color: string; pose: PoseId; small?: boolean }) {
   const v = useSyncExternalStore(edit.subscribe, edit.version);
   const c = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const g = c.current?.getContext('2d');
     if (!g) return;
     g.clearRect(0, 0, 160, 200);
-    drawPose(g, body, pose, color, (pose === 'sleep' ? edit.closed : edit.open).layer);
+    drawPose(g, body, pose, color, poseFace(edit, pose, !body));
   }, [v, edit, body, color, pose]);
   return <canvas ref={c} width={160} height={200} className={small ? css.mini : css.thumb} aria-label={`${POSE_LABEL[pose]} 미리보기`} />;
 }

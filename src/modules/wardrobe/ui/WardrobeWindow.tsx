@@ -33,6 +33,8 @@ export default function WardrobeWindow({ ctx }: { ctx: Ctx }) {
   const desk = draft.slots.desk?.[0];
   const unlocked = local.unlockedAt !== null;
   const face = faceOf(draft);
+  // 전부 지우기로 몸을 뺐으면 null이다. 몸 단추가 눌리지 않고 얼굴 그리기와 자세 미리보기가 몸 없이 그린다
+  const kind = face.bare ? null : draft.body;
   // 위 미리보기는 저장하지 않은 얼굴도 그린다. 저장할 때 구울 그림을 올리지 않고 바로 그린다
   const poses = useMemo(() => (step === 1 ? undefined : facePoses(draft, edit)), [step, draft, edit]);
 
@@ -48,6 +50,8 @@ export default function WardrobeWindow({ ctx }: { ctx: Ctx }) {
   };
   const setBody = (body: Appearance['body']) => {
     edit.touched = true;
+    // 몸 없이 그리는 중이면 고른 몸을 다시 쓴다
+    if (face.bare) setFace({ ...face, bare: false });
     setDraft((a) => ({ ...a, body }));
   };
 
@@ -132,8 +136,8 @@ export default function WardrobeWindow({ ctx }: { ctx: Ctx }) {
           ))}
         </nav>
         <nav className={css.steps} aria-label="캐릭터 종류">
-          <button aria-pressed={draft.body === 'human'} onClick={() => setBody('human')}>사람</button>
-          <button aria-pressed={draft.body === 'animal'} disabled={!unlocked} onClick={() => setBody('animal')}>동물</button>
+          <button aria-pressed={kind === 'human'} onClick={() => setBody('human')}>사람</button>
+          <button aria-pressed={kind === 'animal'} disabled={!unlocked} onClick={() => setBody('animal')}>동물</button>
         </nav>
         {!unlocked && <small className={css.hint}>동물은 {w.need()}레벨부터</small>}
       </div>
@@ -155,7 +159,7 @@ export default function WardrobeWindow({ ctx }: { ctx: Ctx }) {
           </nav>
         )}
       </div>
-      {step === 1 && mode === 'face' && <FacePanel ctx={ctx} edit={edit} face={face} body={draft.body} onFace={setFace} onError={setMsg} />}
+      {step === 1 && mode === 'face' && <FacePanel ctx={ctx} edit={edit} face={face} body={kind} onFace={setFace} onError={setMsg} />}
       {step === 1 && mode === 'file' && (
         <>
           <p className={css.hint}>320x400px에 배경이 투명한 PNG가 좋아요.</p>
@@ -164,7 +168,7 @@ export default function WardrobeWindow({ ctx }: { ctx: Ctx }) {
               <div key={pose} className={css.card}>
                 <b>{label}</b>
                 {face.use[pose]
-                  ? <div className={css.pic}><PoseThumb edit={edit} body={draft.body} color={face.color} pose={pose} /></div>
+                  ? <div className={css.pic}><PoseThumb edit={edit} body={kind} color={face.color} pose={pose} /></div>
                   : <Pic id={draft.poses[pose]} load={ctx.files.get} empty="기본 그림" />}
                 <button disabled={busy} onClick={() => void run(async () => {
                   const h = await upload();

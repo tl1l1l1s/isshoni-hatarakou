@@ -4,9 +4,10 @@ import type { Appearance } from '@shared/schemas';
 import { BODIES, faceRect, poseCanvas, posePng } from './bodies';
 import { FACE_SIZE, faceOf, faceView, mirror, POSE_IDS, pushOp, redoOp, undoOp, withFace, type History, type PoseId, type Pt, type Rect } from './logic';
 
+/** bare는 얼굴 그리기의 전부 지우기가 몸까지 뺐는지. 되돌리면 몸도 돌아온다 */
 export type Op =
   | { t: 'line'; color: string; size: number; erase: boolean; sym: boolean; pts: Pt[] }
-  | { t: 'clear' }
+  | { t: 'clear'; bare?: boolean }
   | { t: 'stamp'; img: CanvasImageSource; r: Rect };
 
 type G = OffscreenCanvasRenderingContext2D;
@@ -52,11 +53,12 @@ export function painter(changed: () => void) {
     h.done.forEach((op) => drawOp(g, op));
     changed();
   };
-  const move = (next: History<Op>) => {
-    if (next === h) return;
+  const move = (next: History<Op>, op: Op | undefined) => {
+    if (next === h) return op;
     h = next;
     dirty = true;
     redraw();
+    return op;
   };
   return {
     layer,
@@ -73,8 +75,11 @@ export function painter(changed: () => void) {
       drawOp(g, op);
       changed();
     },
-    undo: () => move(undoOp(h)),
-    redo: () => move(redoOp(h)),
+    /** 되돌리기와 다시 하기는 옮긴 획을 돌려준다. 얼굴 그리기가 몸까지 뺀 전부 지우기인지 본다 */
+    undo: () => move(undoOp(h), h.done.at(-1)),
+    redo: () => move(redoOp(h), h.undone.at(-1)),
+    /** 되돌리기(back)나 다시 하기가 다음에 옮길 획. 옮기지 않고 본다 */
+    peek: (back: boolean) => (back ? h.done : h.undone).at(-1),
     /** 그리는 중인 획을 얹은 모습 */
     preview(op: Op) {
       const s = scratch.getContext('2d')!;
@@ -156,6 +161,18 @@ export function faceEdit(ctx: Ctx, a: Appearance) {
 }
 export type FaceEdit = ReturnType<typeof faceEdit>;
 
+/** 그림판에 alpha가 0보다 큰 픽셀이 하나도 없는지 */
+function blank(c: OffscreenCanvas): boolean {
+  const px = c.getContext('2d')!.getImageData(0, 0, FACE_SIZE, FACE_SIZE).data;
+  for (let i = 3; i < px.length; i += 4) if (px[i]) return false;
+  return true;
+}
+
+/** 자세에 들어갈 얼굴 그림판. 잠듦은 감은 눈을 쓰는데 몸 없이 그릴 때 감은 눈이 비어 있으면 표정을 써서 잠들어도 캐릭터가 사라지지 않는다.
+ *  몸이 있으면 픽셀을 읽지 않는다 */
+export const poseFace = (e: FaceEdit, pose: PoseId, bare = false) =>
+  (pose !== 'sleep' || (bare && blank(e.closed.layer)) ? e.open : e.closed).layer;
+
 const png = async (c: OffscreenCanvas) => new Uint8Array(await (await c.convertToBlob({ type: 'image/png' })).arrayBuffer());
 
 /** 저장하면 bakeFace가 구울 자세 그림을 올리지 않고 바로 그린다. 미리보기가 저장하기 전 얼굴을 보이게 한다.
@@ -163,7 +180,7 @@ const png = async (c: OffscreenCanvas) => new Uint8Array(await (await c.convertT
 export function facePoses(a: Appearance, e: FaceEdit): Partial<Record<PoseId, OffscreenCanvas>> | undefined {
   if (!e.touched) return undefined;
   const f = faceOf(a);
-  return Object.fromEntries(POSE_IDS.filter((p) => f.use[p]).map((p) => [p, poseCanvas(a.body, p, f.color, (p === 'sleep' ? e.closed : e.open).layer)]));
+  return Object.fromEntries(POSE_IDS.filter((p) => f.use[p]).map((p) => [p, poseCanvas(f.bare ? null : a.body, p, f.color, poseFace(e, p, f.bare))]));
 }
 
 /** 얼굴 그리기를 쓰는 자세의 그림을 굽고 올려 poses에 넣고 고칠 수 있는 편집 데이터를 bodyExt.face에 남긴다 */
@@ -177,7 +194,7 @@ export async function bakeFace(ctx: Ctx, a: Appearance, e: FaceEdit): Promise<Ap
     keep(e.open, f.open),
     keep(e.closed, f.closed),
     // 자세 그림은 좌석의 두 배 해상도(320x400) 그대로 올린다
-    ...POSE_IDS.map((p) => (f.use[p] ? posePng(a.body, p, f.color, (p === 'sleep' ? e.closed : e.open).layer).then((b) => up(b, 400)) : null)),
+    ...POSE_IDS.map((p) => (f.use[p] ? posePng(f.bare ? null : a.body, p, f.color, poseFace(e, p, f.bare)).then((b) => up(b, 400)) : null)),
   ]);
   const poses = { ...a.poses };
   POSE_IDS.forEach((p, i) => {

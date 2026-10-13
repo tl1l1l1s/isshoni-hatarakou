@@ -1,5 +1,5 @@
 import type { Appearance } from '@shared/schemas';
-import type { TrashRecord } from './logic';
+import { faceOf, type TrashRecord } from './logic';
 
 export interface WardrobeApi {
   /** 지금 쓰는 캐릭터 슬롯의 외형 */
@@ -18,6 +18,9 @@ export interface WardrobeApi {
 
 /** 여럿이 함께 앉는 벤치 책상의 자리 수 (AVT-21). 책상 그림은 desks.ts에 있다 */
 export const BENCH_SEATS: Readonly<Record<string, number>> = { 'wardrobe.desk.bench2': 2, 'wardrobe.desk.bench3': 3 };
+
+/** 동물 캐릭터인지. 얼굴 그리기의 전부 지우기로 몸을 뺀 캐릭터는 사람도 동물도 아니다. 자리 모듈이 올라타기(COM-16)에 쓴다 */
+export const isAnimal = (a: Appearance): boolean => a.body === 'animal' && !faceOf(a).bare;
 
 /** 얼굴 그리기의 512px 그림판. 스티커 모듈이 직접 그리기와 칠판(AVT-09, AVT-10)에 쓴다 */
 export { painter, type Op, type Painter } from './face';

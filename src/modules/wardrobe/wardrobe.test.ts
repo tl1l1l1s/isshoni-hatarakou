@@ -3,11 +3,14 @@ import { readLocal } from '@core/persist';
 import { emptyAppearance } from '@shared/schemas';
 import type { Appearance } from '@shared/schemas';
 import fixture from './fixtures/account.v1.json';
+import { isAnimal } from './api';
+import { faceRect } from './bodies';
+import { poseFace, type FaceEdit } from './face';
 import { soloKey, soloSeats } from './solo';
 import wardrobe from './index';
 import {
   activeOf, animalUnlocked, CharRecord, DEFAULT_BODY_COLOR, emptyChar, expiredTrash, faceOf, faceView, fileRefs, fitStamp, fromExport,
-  initialLocal, mergeChars, mirror, pushOp, redoOp, remapFiles, resizeRect, toExport, toLocal, TRASH_KEEP_MS, undoOp, withDesk, withFace,
+  initialLocal, mergeChars, mirror, POSE_IDS, pushOp, redoOp, remapFiles, resizeRect, toExport, toLocal, TRASH_KEEP_MS, undoOp, withDesk, withFace,
   withPose, withPoseFile, type Char, type Face, type History,
 } from './logic';
 
@@ -156,6 +159,28 @@ describe('얼굴 그리기 (AVT-03, AVT-04)', () => {
     expect([r.x * v.s + v.dx, r.y * v.s + v.dy]).toEqual([0, 0]);
     expect([(r.x + r.w) * v.s + v.dx, (r.y + r.h) * v.s + v.dy]).toEqual([512, 512]);
     expect(toLocal(160, 85, { left: 10, top: 10, width: 300, height: 300 }, 512)).toEqual([256, 128]);
+  });
+  it('전부 지우기로 몸을 뺀 것은 편집 데이터에 남고 그림판은 자세와 상관없이 좌석 아래쪽 정사각형을 덮는다', () => {
+    expect(faceOf(withFace(emptyAppearance(), { ...face, bare: true })).bare).toBe(true);
+    for (const p of POSE_IDS) expect(faceRect(p, true)).toEqual({ x: 0, y: 40, w: 160, h: 160 });
+    expect(faceRect('sleep')).toEqual({ x: 36, y: 96, w: 88, h: 88 });
+  });
+  it('몸을 뺀 캐릭터는 동물로 치지 않아서 올라타지 못한다 (COM-16)', () => {
+    const animal: Appearance = { ...emptyAppearance(), body: 'animal' };
+    expect(isAnimal(animal)).toBe(true);
+    expect(isAnimal(withFace(animal, face))).toBe(true);
+    expect(isAnimal(withFace(animal, { ...face, bare: true }))).toBe(false);
+    expect(isAnimal(emptyAppearance())).toBe(false);
+  });
+  it('몸 없이 그릴 때 감은 눈이 비어 있으면 잠듦에도 표정을 넣는다', () => {
+    // 픽셀 두 개짜리 가짜 그림판. 둘째 픽셀의 alpha만 바꾼다. 몸이 있으면 픽셀을 읽지 않으므로 빈 객체로 둔다
+    const pad = (alpha: number) => ({ getContext: () => ({ getImageData: () => ({ data: new Uint8ClampedArray([0, 0, 0, 0, 0, 0, 0, alpha]) }) }) });
+    const edit = (closed: object) => ({ open: { layer: {} }, closed: { layer: closed } }) as unknown as FaceEdit;
+    const empty = edit(pad(0)), drawn = edit(pad(1)), withBody = edit({});
+    expect(poseFace(empty, 'sleep', true)).toBe(empty.open.layer);
+    expect(poseFace(drawn, 'sleep', true)).toBe(drawn.closed.layer);
+    expect(poseFace(withBody, 'sleep')).toBe(withBody.closed.layer);
+    expect(poseFace(empty, 'idle', true)).toBe(empty.open.layer);
   });
   it('대칭 획은 좌우를 뒤집는다', () => {
     expect(mirror([[0, 5], [100, 7], [256, 9]], 512)).toEqual([[512, 5], [412, 7], [256, 9]]);

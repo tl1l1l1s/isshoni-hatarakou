@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineModule, type Ctx } from '@core/types';
-import { BENCH_SEATS } from '@modules/wardrobe/api';
+import { BENCH_SEATS, isAnimal } from '@modules/wardrobe/api';
 import type { Appearance } from '@shared/schemas';
 import { benchReason, layoutOf, mineOf, rideTarget } from './logic';
 import Chip from './ui/Chip';
@@ -12,7 +12,8 @@ const uid = z.string().max(128).nullable();
 const me = (ctx: Ctx) => mineOf(ctx.room.members().find((s) => s.self));
 const capOf = (a: Appearance) => BENCH_SEATS[a.slots.desk?.[0]?.item ?? ''] ?? 0;
 const ride = (ctx: Ctx, args: unknown) => {
-  if (ctx.modules.get('wardrobe')?.appearance().body !== 'animal') return { reason: '동물 캐릭터만 머리 위에 올라탈 수 있어요.' };
+  const a = ctx.modules.get('wardrobe')?.appearance();
+  if (!a || !isAnimal(a)) return { reason: '동물 캐릭터만 머리 위에 올라탈 수 있어요.' };
   return rideTarget(ctx.room.members(), ctx.self.uid(), target(args));
 };
 
@@ -61,7 +62,7 @@ export default defineModule({
     const wardrobe = ctx.modules.get('wardrobe')!;
     ctx.room.setMine({ on: null, bench: null, cap: capOf(wardrobe.appearance()) });
     // 동물이 아니게 되면 내려온다. 내 책상이 벤치인지는 바뀔 때마다 알린다
-    wardrobe.onChange((a) => ctx.room.setMine({ cap: capOf(a), ...(a.body !== 'animal' && { on: null }) }));
+    wardrobe.onChange((a) => ctx.room.setMine({ cap: capOf(a), ...(!isAnimal(a) && { on: null }) }));
     // 다른 방으로 옮기면 올라타기와 벤치를 푼다. 절전 뒤나 기기를 가져온 뒤 같은 방에 다시 들어가면 그대로 둔다
     let code = ctx.room.current();
     ctx.room.onChange((c) => {
