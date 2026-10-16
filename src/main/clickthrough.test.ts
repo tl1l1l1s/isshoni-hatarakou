@@ -27,10 +27,15 @@ describe('shouldIgnore', () => {
 });
 
 describe('pollDelay', () => {
-  it('스테이지 안이나 40px 안이면 자주 보고 멀면 드물게 본다', () => {
-    expect(pollDelay({ x: 250, y: 600 }, win)).toBe(CURSOR_POLL_NEAR_MS);
-    expect(pollDelay({ x: 70, y: 480 }, win)).toBe(CURSOR_POLL_NEAR_MS);
-    expect(pollDelay({ x: 0, y: 0 }, win)).toBe(CURSOR_POLL_MS);
-    expect(pollDelay({ x: 250, y: 760 }, win)).toBe(CURSOR_POLL_MS);
+  it('클릭 영역 안이나 40px 안이면 자주 보고 멀면 창 안이어도 드물게 본다', () => {
+    // 영역은 화면 좌표로 x 150~250, y 550~650
+    expect(pollDelay({ x: 200, y: 600 }, win, rects)).toBe(CURSOR_POLL_NEAR_MS);
+    expect(pollDelay({ x: 111, y: 511 }, win, rects)).toBe(CURSOR_POLL_NEAR_MS);
+    expect(pollDelay({ x: 290, y: 690 }, win, rects)).toBe(CURSOR_POLL_NEAR_MS);
+    expect(pollDelay({ x: 350, y: 600 }, win, rects)).toBe(CURSOR_POLL_MS);
+    expect(pollDelay({ x: 200, y: 690 }, win, rects)).toBe(CURSOR_POLL_NEAR_MS);
+    expect(pollDelay({ x: 200, y: 695 }, win, rects)).toBe(CURSOR_POLL_MS);
+    expect(pollDelay({ x: 0, y: 0 }, win, rects)).toBe(CURSOR_POLL_MS);
+    expect(pollDelay({ x: 200, y: 600 }, win, [])).toBe(CURSOR_POLL_MS);
   });
 });
