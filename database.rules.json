@@ -268,6 +268,74 @@
           }
         }
       },
+      "cowork": {
+        "r": {
+          "$room": {
+            ".read": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/roster/' + auth.uid).exists()",
+            "cur": {
+              ".write": "(auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/roster/' + auth.uid).exists() && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && (((!data.exists() || data.child('st').val() === 'stop' || (data.child('st').val() === 'run' && now > data.child('go').val() + 5000 + (data.child('f').val() + data.child('b').val()) * 60000) || (data.child('st').val() === 'wait' && now > data.child('at').val() + 1800000)) && newData.child('by').val() === auth.uid && newData.child('id').val() !== data.child('id').val() && newData.child('st').val() === 'wait' && newData.child('at').val() >= now - 60000 && newData.child('at').val() <= now + 60000 && !newData.child('go').exists()) || (!(!data.exists() || data.child('st').val() === 'stop' || (data.child('st').val() === 'run' && now > data.child('go').val() + 5000 + (data.child('f').val() + data.child('b').val()) * 60000) || (data.child('st').val() === 'wait' && now > data.child('at').val() + 1800000)) && data.child('st').val() === 'wait' && data.child('by').val() === auth.uid && newData.child('st').val() === 'run' && newData.child('id').val() === data.child('id').val() && newData.child('by').val() === data.child('by').val() && newData.child('title').val() === data.child('title').val() && newData.child('f').val() === data.child('f').val() && newData.child('b').val() === data.child('b').val() && newData.child('at').val() === data.child('at').val() && newData.child('go').val() >= now - 60000 && newData.child('go').val() <= now + 60000) || (!(!data.exists() || data.child('st').val() === 'stop' || (data.child('st').val() === 'run' && now > data.child('go').val() + 5000 + (data.child('f').val() + data.child('b').val()) * 60000) || (data.child('st').val() === 'wait' && now > data.child('at').val() + 1800000)) && (data.child('by').val() === auth.uid || auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists())) && newData.child('st').val() === 'stop' && newData.child('id').val() === data.child('id').val() && newData.child('by').val() === data.child('by').val() && newData.child('title').val() === data.child('title').val() && newData.child('f').val() === data.child('f').val() && newData.child('b').val() === data.child('b').val() && newData.child('at').val() === data.child('at').val() && newData.child('go').val() === data.child('go').val()))) || (auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && !newData.exists())",
+              ".validate": "newData.hasChildren(['id', 'by', 'title', 'f', 'b', 'st', 'at', 'v'])",
+              "id": {
+                ".validate": "newData.isString() && newData.val().matches(/^[A-Za-z0-9_-]{1,32}$/)"
+              },
+              "by": {
+                ".validate": "newData.isString()"
+              },
+              "title": {
+                ".validate": "newData.isString() && newData.val().length <= 20"
+              },
+              "f": {
+                ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 5 && newData.val() <= 180"
+              },
+              "b": {
+                ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 60"
+              },
+              "st": {
+                ".validate": "newData.val() === 'wait' || newData.val() === 'run' || newData.val() === 'stop'"
+              },
+              "at": {
+                ".validate": "newData.isNumber()"
+              },
+              "go": {
+                ".validate": "newData.isNumber()"
+              },
+              "v": {
+                ".validate": "newData.val() === 1"
+              },
+              "$other": {
+                ".validate": false
+              }
+            },
+            "parts": {
+              ".write": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/meta/owner').val() === auth.uid && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && !newData.exists()",
+              "$uid": {
+                ".write": "(auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists() && root.child('rooms/' + $room + '/roster/' + auth.uid).exists() && (!root.child('rooms/' + $room + '/meta/deletedAt').exists() || !newData.exists()) && $uid === auth.uid) || (auth != null && $uid === auth.uid && !newData.exists())",
+                ".validate": "newData.hasChildren(['sid', 'at', 'v'])",
+                "sid": {
+                  ".validate": "newData.isString() && newData.val().length <= 32"
+                },
+                "at": {
+                  ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+                },
+                "goal": {
+                  ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
+                },
+                "v": {
+                  ".validate": "newData.val() === 1"
+                },
+                "$other": {
+                  ".validate": false
+                }
+              }
+            }
+          }
+        },
+        "g": {
+          "tunables": {
+            ".read": "auth != null && root.child('users/' + auth.uid + '/public/friendCode').exists()"
+          }
+        }
+      },
       "dday": {
         "u": {
           "$uid": {

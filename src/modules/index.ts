@@ -3,6 +3,7 @@ import type { ModuleManifest } from '@core/types';
 import account from './account';
 import awaypic from './awaypic';
 import chat from './chat';
+import cowork from './cowork';
 import focus from './focus';
 import friends from './friends';
 import gacha from './gacha';
@@ -26,4 +27,4 @@ import upcoming from './upcoming';
 import notice from './notice';
 import report from './report';
 
-export const modules = [account, focus, growth, status, wardrobe, rooms, gacha, stickers, chat, friends, home, sound, launcher, awaypic, scheduler, dday, upcoming, play, seating, photo, goals, pomodoro, phone, notice, report] as ModuleManifest[];
+export const modules = [account, focus, growth, status, wardrobe, rooms, gacha, stickers, chat, friends, home, sound, launcher, awaypic, scheduler, dday, upcoming, play, seating, photo, goals, pomodoro, cowork, phone, notice, report] as ModuleManifest[];
