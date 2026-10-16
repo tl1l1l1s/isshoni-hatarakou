@@ -287,6 +287,24 @@ test('춤추기 효과 창이 열렸다 닫힌다', async () => {
   await expect.poll(() => effects.isClosed(), { timeout: 15_000 }).toBe(true);
 });
 
+test('같이 작업하기를 열어 시작하면 칩과 머리 위에 남은 시간이 보이고 끝내면 사라진다 (ROM-15)', async () => {
+  const w = await menu('같이 작업하기', '같이 작업하기');
+  await w.getByLabel('집중 (분)').fill('5');
+  await w.getByLabel('휴식 (분)').fill('0');
+  await w.getByRole('button', { name: '만들기' }).click();
+  await expect(w.getByText('참여자 1명')).toBeVisible();
+  await w.getByRole('button', { name: '시작' }).click();
+  await expect(w.getByText('함께 집중', { exact: true })).toBeVisible({ timeout: 15_000 });
+  // 앞 시험에서 고른 상태 글(밥 먹는 중)이 머리 위에서 함께 집중보다 먼저 보이므로(CHR-09) 칩만 본다
+  await expect(stage.getByRole('button', { name: '같이 5분' })).toBeVisible();
+  await shot(w, 'cowork');
+  await w.getByRole('button', { name: '세션 끝내기' }).click();
+  await w.getByRole('alertdialog').getByRole('button', { name: '끝내기' }).click();
+  await expect(w.getByRole('button', { name: '만들기' })).toBeVisible();
+  await expect(stage.getByRole('button', { name: /^같이 / })).toHaveCount(0);
+  await w.close();
+});
+
 test('혼자 스티커 사진을 한 컷 찍어 PNG로 저장한다', async () => {
   // 저장하기는 OS 저장 창을 띄우므로 내려받을 자리를 먼저 정해 둔다
   const downloads = join(userData, 'downloads');
