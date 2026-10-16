@@ -1,7 +1,7 @@
 {
   "name": "isshoni-hatarakou",
   "productName": "Isshoni Hatarakou",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "친구에게 선물하는 데스크톱 작업 메이트",
   "main": "./out/main/index.js",
