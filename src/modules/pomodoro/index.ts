@@ -1,5 +1,6 @@
 import { defineModule, type Ctx } from '@core/types';
 import { Local, minLeft, minutes, next, Pomo, sameShare, shareOf, STALE_MS, type Phase, type Run, type Shared } from './logic';
+import type { PomodoroApi } from './api';
 import DrawerButton from './ui/DrawerButton';
 
 
@@ -31,12 +32,16 @@ function announce(ctx: Ctx, l: Local, ended: Phase, n: Run): void {
       : `집중이 끝났어요. ${minutes(l, n.phase)}분 쉬어요.`;
   ctx.notify({ title: '뽀모도로', body, onClick: () => ctx.ui.open('pomodoro.timer') });
   ctx.ui.toast(body);
-  if (l.sound) {
-    try {
-      chime();
-    } catch (e) {
-      ctx.log.warn(`알림 소리를 내지 못했습니다: ${(e as Error).message}`);
-    }
+  ring(ctx);
+}
+
+/** 끝날 때 소리를 켰으면 짧은 두 음을 낸다. 같이 작업하기도 이 설정을 따른다 (ROM-15) */
+function ring(ctx: Ctx): void {
+  if (!ctx.local.get<Local>('device').sound) return;
+  try {
+    chime();
+  } catch (e) {
+    ctx.log.warn(`알림 소리를 내지 못했습니다: ${(e as Error).message}`);
   }
 }
 
@@ -67,9 +72,12 @@ export default defineModule({
     ],
   },
   commands: [{ id: 'pomodoro.open', run: (ctx) => ctx.ui.open('pomodoro.timer') }],
-  setup(ctx) {
+  setup(ctx): PomodoroApi {
     let sent: Shared | null | undefined;
     let shown = '';
+    const isRunning = () => ctx.local.get<Local>('device').run !== null;
+    const subs = new Set<(running: boolean) => void>();
+    let wasRunning = isRunning();
     const tick = () => {
       const now = ctx.clock.now();
       const l = ctx.local.get<Local>('device');
@@ -79,6 +87,11 @@ export default defineModule({
         const n = next(l, l.run, now);
         ctx.local.update<Local>('device', (x) => ({ ...x, run: n }));
         announce(ctx, l, l.run.phase, n);
+      }
+      // 창에서 시작하거나 끝내면 다음 틱에 알린다
+      if (isRunning() !== wasRunning) {
+        wasRunning = !wasRunning;
+        subs.forEach((fn) => fn(wasRunning));
       }
       const r = ctx.local.get<Local>('device').run;
       const serverNow = ctx.clock.serverNow();
@@ -98,5 +111,17 @@ export default defineModule({
     };
     tick();
     ctx.timers.every(1000, tick);
+    return {
+      running: isRunning,
+      stop: () => {
+        ctx.local.update<Local>('device', (x) => ({ ...x, run: null }));
+        tick();
+      },
+      onChange: (fn) => {
+        subs.add(fn);
+        return () => void subs.delete(fn);
+      },
+      chime: () => ring(ctx),
+    };
   },
 });
