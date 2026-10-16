@@ -129,8 +129,6 @@ export interface WindowDecl {
   component: () => Promise<{ default: ComponentType<{ ctx: Ctx }> }>;
   width?: number;
   height?: number;
-  /** 키보드 입력이 필요한 창만 켠다 (기본 끔) */
-  focusable?: boolean;
   /** 닫으면 숨기기만 하고 컴포넌트를 남긴다. 다시 열면 같은 창이 보인다 (플레이리스트 재생 유지, SND-04 메모) */
   keepAlive?: boolean;
   resizable?: boolean;

@@ -57,7 +57,6 @@ export function registerIpc(store: Store): void {
         title: z.string().max(200),
         width: size,
         height: size,
-        focusable: z.boolean(),
         resizable: z.boolean(),
         keepAlive: z.boolean().optional(),
         user: z.boolean().optional(),

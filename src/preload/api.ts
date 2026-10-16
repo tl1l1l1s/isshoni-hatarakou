@@ -25,7 +25,7 @@ export interface CoreInvokeMap {
   /** window.open 직전에 패널 창 옵션을 알린다. name은 window.open의 두 번째 인자.
    *  keepAlive 창은 사용자가 닫으면 메인이 숨기기만 한다 (SND-04 메모). 창은 작업 영역보다 크면 줄여서 열고
    *  user는 사용자가 누르거나 키를 쳐서 연 창이다. 메인은 모든 패널을 앞 앱을 바꾸지 않고 띄우고 user인 창에만 키보드 포커스를 준다 */
-  'win.prepare': { args: { name: string; title: string; width: number; height: number; focusable: boolean; resizable: boolean; keepAlive?: boolean; user?: boolean }; result: void };
+  'win.prepare': { args: { name: string; title: string; width: number; height: number; resizable: boolean; keepAlive?: boolean; user?: boolean }; result: void };
   /** 숨긴 keepAlive 패널을 다시 보이거나 숨긴다. 이미 열린 패널을 다시 열 때도 win.show로 맨 위로 올린다. user면 포커스도 준다 */
   'win.show': { args: { name: string; user?: boolean }; result: void };
   'win.hide': { args: { name: string }; result: void };

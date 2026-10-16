@@ -62,7 +62,7 @@ export default defineModule({
     },
   ],
   ui: {
-    windows: [{ id: 'pomodoro.timer', title: '뽀모도로', width: 300, height: 420, focusable: true, component: () => import('./ui/TimerWindow') }],
+    windows: [{ id: 'pomodoro.timer', title: '뽀모도로', width: 300, height: 420, component: () => import('./ui/TimerWindow') }],
     contributions: [
       { slot: 'focus.drawer', id: 'pomodoro.drawer', label: '뽀모도로', component: DrawerButton, order: 10 },
       { slot: 'menu.main', id: 'pomodoro.menu', label: '뽀모도로', command: 'pomodoro.open', order: 13 },

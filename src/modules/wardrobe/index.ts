@@ -30,7 +30,7 @@ export default defineModule<WardrobeApi>({
   gates: { 'wardrobe.animal': { requires: { module: 'growth', key: 'level', gte: { tunable: 'animalUnlockLevel' } }, label: '동물 캐릭터 만들기' } },
   ui: {
     windows: [
-      { id: 'wardrobe.create', title: '캐릭터 만들기', width: 520, height: 760, focusable: true, component: () => import('./ui/WardrobeWindow') },
+      { id: 'wardrobe.create', title: '캐릭터 만들기', width: 520, height: 760, component: () => import('./ui/WardrobeWindow') },
       { id: 'wardrobe.conflict', title: '캐릭터 맞추기', width: 440, height: 460, component: () => import('./ui/ConflictWindow') },
     ],
     contributions: [

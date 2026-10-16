@@ -52,7 +52,7 @@ export class WindowClient {
     const existing = this.open.get().find((w) => w.id === decl.id);
     if (existing && !existing.win.closed) {
       this.touch(decl.id);
-      // 포커스를 받지 않는 창은 렌더러의 focus()로 앞에 오지 않으므로 메인이 맨 위로 올린다
+      // 메인이 맨 위로 올리고 사용자가 연 창이면 포커스를 준다
       await this.bridge.invoke('win.show', { name: nameOf(decl.id), user });
       return;
     }
@@ -63,7 +63,6 @@ export class WindowClient {
       title: decl.title,
       width: decl.width ?? 360,
       height: decl.height ?? 420,
-      focusable: decl.focusable ?? false,
       resizable: decl.resizable ?? false,
       keepAlive,
       user,

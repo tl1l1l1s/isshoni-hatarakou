@@ -125,14 +125,14 @@ export function setPanelVisible(name: string, show: boolean, user = false): void
     // 숨긴 사이 모니터가 빠졌으면 화면 밖에 뜨지 않게 가운데로 옮긴다
     if (!visible(w.getBounds())) w.center();
     raise(w);
-    if (user && w.isFocusable()) w.focus();
+    if (user) w.focus();
     send('win.visibility', { name, visible: true });
     return;
   }
   hidePanel(name, w);
 }
 
-/** Windows에서 포커스를 받지 않는 창은 눌러도 위로 오지 않고 focus()도 듣지 않아 다른 앱 뒤에 남는다. 다시 보일 때마다 맨 위로 올린다 */
+/** 포커스를 주지 않고 보이는 창(모듈이 저절로 연 창)도 다른 앱 뒤에 남지 않게 다시 보일 때마다 맨 위로 올린다 */
 function raise(w: BrowserWindow): void {
   w.showInactive();
   w.moveTop();
@@ -380,7 +380,7 @@ export function createStage(): void {
     }
     const p = prepared.get(frameName);
     if (url !== 'about:blank' || !p) return { action: 'deny' };
-    const { title, focusable, resizable } = p;
+    const { title, resizable } = p;
     // 작업 영역보다 큰 창은 작업 영역에 맞춰 줄이고 내용은 창 안에서 스크롤한다 (body.panel). 기억한 자리도 작업 영역 안으로 맞추고
     // 기억한 자리가 없으면 캐릭터 모니터 가운데에 둔다. useContentSize라 제목 표시줄 높이를 따로 뺀다
     const saved = savedBounds()[frameName];
@@ -391,9 +391,10 @@ export function createStage(): void {
     const at = visible(saved) ? saved : { x: Math.round(wa.x + (wa.width - outer.width) / 2), y: Math.round(wa.y + (wa.height - outer.height) / 2) };
     const { x, y } = clampIn(wa, { x: at.x, y: at.y, ...outer });
     return {
-      // show: true는 포커스를 받지 않는 창도 앱을 앞으로 가져와(Mac) 작업 앱이 키보드를 잃는다. 숨긴 채 만들고 did-create-window에서 띄운다
+      // show: true는 앱을 앞으로 가져와(Mac) 작업 앱이 키보드를 잃는다. 숨긴 채 만들고 did-create-window에서 띄운다.
+      // 패널은 모두 포커스를 받는다. Windows는 포커스를 받지 않는 창의 제목 표시줄 ×와 끌기를 받지 않는다 (ADR 0041)
       action: 'allow',
-      overrideBrowserWindowOptions: { title, width, height, x, y, focusable, resizable, useContentSize: true, show: false, ...panelMaterial },
+      overrideBrowserWindowOptions: { title, width, height, x, y, resizable, useContentSize: true, show: false, ...panelMaterial },
     };
   });
   // Windows 기본 메뉴 막대와 그 단축키(Ctrl+R, Ctrl+W)를 패널에서 빼고 패널 안의 링크로 창을 열거나 이동하지 못하게 한다
@@ -418,7 +419,7 @@ export function createStage(): void {
     // 맨 위에 보이기만 하고 키보드 포커스는 사용자가 누르거나 키를 쳐서 연 창에만 준다. 모듈이 저절로 연 창(친구 신청, 자리 안내)은
     // 그림을 그리는 중인 앱의 키보드를 가져가지 않는다
     raise(child);
-    if (p?.user && child.isFocusable()) child.focus();
+    if (p?.user) child.focus();
     log.info(`[win] ${frameName}`);
     // 저장하지 않은 일이 있는 패널은 beforeunload로 닫기를 막고 창 안에 묻는다 (ctx.ui.guard). 앱을 끝낼 때는 막지 않는다
     child.webContents.on('will-prevent-unload', (e) => {

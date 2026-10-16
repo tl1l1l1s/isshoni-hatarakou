@@ -33,7 +33,7 @@ export default defineModule({
   ],
   ui: {
     windows: [
-      { id: 'status.pick', title: '상태 고르기', width: 260, height: 320, focusable: true, component: () => import('./ui/PickWindow') },
+      { id: 'status.pick', title: '상태 고르기', width: 260, height: 320, component: () => import('./ui/PickWindow') },
       { id: 'status.leave', title: '자리비움 안내', width: 340, height: 170, component: () => import('./ui/LeaveWindow') },
     ],
     contributions: [
