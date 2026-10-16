@@ -1,5 +1,6 @@
 // Realtime Database 경로 배치와 파일 인코딩 (10.7.2). 메모리 구현도 같은 배치를 써서 두 구현의 결과를 맞춘다.
 import { FILE_MAX_BASE64_BYTES, FILE_MAX_RAW_BYTES } from '@shared/constants';
+import { sha256 } from '@shared/sha256';
 import type { AccountPresence, Namespace } from '../port';
 
 export function nsPath(ns: Namespace): string {
@@ -73,9 +74,4 @@ export async function decodeFile(hash: string, v: unknown): Promise<Uint8Array |
     return null;
   }
   return (await sha256(bytes)) === hash ? bytes : null;
-}
-
-async function sha256(bytes: Uint8Array): Promise<string> {
-  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes as Uint8Array<ArrayBuffer>));
-  return Array.from(digest, (b) => b.toString(16).padStart(2, '0')).join('');
 }
