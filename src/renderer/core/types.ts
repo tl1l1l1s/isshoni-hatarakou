@@ -129,11 +129,11 @@ export interface WindowDecl {
   component: () => Promise<{ default: ComponentType<{ ctx: Ctx }> }>;
   width?: number;
   height?: number;
-  /** 키보드 입력이 필요한 창만 켠다 (기본 끔) */
-  focusable?: boolean;
   /** 닫으면 숨기기만 하고 컴포넌트를 남긴다. 다시 열면 같은 창이 보인다 (플레이리스트 재생 유지, SND-04 메모) */
   keepAlive?: boolean;
   resizable?: boolean;
+  /** false면 ESC로 닫지 않는다 (런처는 닫으면 앱이 꺼진다) */
+  closeOnEsc?: boolean;
 }
 
 /** 창 안에서 묻는 글과 단추 이름 (ctx.ui.ask, confirmLeave). cancel을 빼면 ask는 취소, confirmLeave는 계속하기 */
@@ -453,9 +453,10 @@ export interface Ctx {
     setAlwaysOnTop(windowId: string, on: boolean): Promise<void>;
     /** 알림. 사용자가 방금 누르거나 키를 친 창(기능 창이나 런처) 위쪽에 뜨고 그런 창이 없으면 실행 화면에 뜬다. 한 번에 두 개까지 보인다 */
     toast(message: string): void;
-    /** 저장하지 않은 일이 있으면 떠나기 전에 묻는다. check는 물을 글(예: 캐릭터를 저장하지 않았어요. 나갈까요?)이나 null을 돌려준다.
-     *  ESC, 창의 닫기 단추(제목 표시줄 ×), 설정 창 탭 바꾸기처럼 코어가 창을 닫거나 화면을 바꿀 때 그 창 안에 글과 나가기, 계속하기를 띄우고
-     *  나가기를 눌러야 떠난다. 모듈이 ctx.ui.close로 닫을 때와 앱을 끝낼 때는 묻지 않는다 */
+    /** 저장하지 않은 일이 있으면 떠나기 전에 묻는다. check는 저장하지 않은 것을 알리는 글(예: 캐릭터를 저장하지 않았어요.)이나 null을 돌려준다.
+     *  ESC, 창의 닫기 단추(제목 표시줄 ×), 설정 창 탭 바꾸기처럼 코어가 창을 닫거나 화면을 바꿀 때 그 창 안에 글 뒤에 나갈까요?를 붙여 나가기, 계속하기로 묻고
+     *  나가기를 눌러야 떠난다. 앱을 끌 때는 종료할까요?를 붙여 종료, 계속하기로 묻는다 (ADR 0042).
+     *  모듈이 ctx.ui.close로 닫을 때와 Windows 로그오프, OS를 끌 때는 묻지 않는다 */
     guard(windowId: string, check: () => string | null): Dispose;
     /** 모듈이 제 화면을 바꾸기 전에(창 안의 탭, 뒤로) 같은 물음을 띄운다. 물을 글이 없거나 떠나기 단추를 누르면 true.
      *  q를 주면 그 글과 단추 이름으로 묻는다 (예: 슬롯 바꾸기 { text: '캐릭터를 저장하지 않았어요. 바꿀까요?', ok: '바꾸기' }) */

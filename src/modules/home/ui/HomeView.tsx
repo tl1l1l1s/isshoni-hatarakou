@@ -50,7 +50,7 @@ export default function HomeView({ ctx, uid, name }: { ctx: Ctx; uid: string; na
 
   // 편집한 것을 저장하지 않고 ESC, 창 닫기 단추, 탭으로 떠나려 하면 코어가 묻는다. 편집을 시작하면 draft가 home과 같고 고칠 때마다 새 값이 된다
   const dirty = mode !== 'view' && draft !== home;
-  useEffect(() => (dirty ? ctx.ui.guard('home.main', () => '마이홈 편집을 저장하지 않았어요. 나갈까요?') : undefined), [ctx, dirty]);
+  useEffect(() => (dirty ? ctx.ui.guard('home.main', () => '마이홈 편집을 저장하지 않았어요.') : undefined), [ctx, dirty]);
 
   const shown = (mode !== 'view' && draft) || home;
   const files = useFiles(ctx, shown ? [...shown.stickers.map((s) => s.file), ...('file' in shown.bg ? [shown.bg.file] : []), ...(shown.wall ? [shown.wall] : [])] : []);

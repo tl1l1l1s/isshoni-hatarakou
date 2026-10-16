@@ -1,10 +1,11 @@
 # 창과 OS 연동
 
-기능 창은 앞에 있는 앱을 바꾸지 않고 맨 위에 뜨고 사용자가 누르거나 키를 쳐서 연 입력란 있는 창만 포커스를 받는다. 자리비움 안내나 업데이트 소식처럼 저절로 열린 창은 그리는 중인 앱의 키보드를 가져가지 않는다. 이미 열린 기능 창을 ▼ 메뉴로 다시 열면 그 창이 다른 창 위로 올라오고 입력란이 있는 창은 포커스를 받는다. 닫아서 숨긴 플레이리스트 창은 위치가 화면 밖이면 가운데에 다시 뜬다. 화면을 숨기면 메인 프로세스가 커서 위치를 읽지 않고 다시 보이면 함께 숨긴 창을 맨 위로 올린다. PC를 켤 때 자동 실행은 OS 로그인 항목을 기준으로 시작할 때 설정 창에 맞춘다. 대상 고르기 동안 가져온 전역 ESC는 고르기가 끝나거나 스테이지가 다시 만들어지거나 10초가 지나면 풀린다. Windows 로그오프가 시작되면 앱이 저장하고 스스로 끝난다.
+기능 창은 모두 포커스를 받는 창이다. 앞에 있는 앱을 바꾸지 않고 맨 위에 뜨고 사용자가 누르거나 키를 쳐서 연 창만 포커스를 받는다. 자리비움 안내나 업데이트 소식처럼 저절로 열린 창은 그리는 중인 앱의 키보드를 가져가지 않는다. 이미 열린 기능 창을 ▼ 메뉴로 다시 열면 그 창이 다른 창 위로 올라오고 포커스를 받는다. 닫아서 숨긴 플레이리스트 창은 위치가 화면 밖이면 가운데에 다시 뜬다. 화면을 숨기면 메인 프로세스가 커서 위치를 읽지 않고 다시 보이면 함께 숨긴 창을 맨 위로 올린다. PC를 켤 때 자동 실행은 OS 로그인 항목을 기준으로 시작할 때 설정 창에 맞춘다. 대상 고르기 동안 가져온 전역 ESC는 고르기가 끝나거나 스테이지가 다시 만들어지거나 10초가 지나면 풀린다. Windows 로그오프가 시작되면 앱이 저장하고 스스로 끝난다.
 
 ## Sub-features
 
-- `o2-reopen`은 열린 창을 다시 열면 메인이 그 창을 맨 위로 올리고 포커스를 받는 창에만 포커스를 주는 것이다.
+- `o2-reopen`은 열린 창을 다시 열면 메인이 그 창을 맨 위로 올리고 포커스를 주는 것이다.
+- `panel-focusable`은 기능 창이 모두 포커스를 받는 창이라 Windows 제목 표시줄의 ×와 끌기가 듣는 것이다. 레벨 보상, 포커스 기록, 다가오는 일정 창이 닫히지 않던 v0.1.1 제보의 회귀 확인이다 (ADR 0041).
 - `auto-open`은 모듈이 저절로 연 창(자리비움 안내, 업데이트 소식, 캐릭터 맞추기)이 맨 위에 보이기만 하고 포커스를 받지 않으며 앞 앱을 바꾸지 않는 것이다. 실행 화면이나 OS 알림을 누르고 5초 안에, 또는 열린 창에서 누르거나 키를 친 직후에 연 창은 사용자가 연 창이다.
 - `lock-sleep`은 화면을 잠근 채 절전했다 깨어나도 잠금을 풀 때까지 내 상태가 자리비움이고 잠그지 않은 절전은 깨어나면 돌아오는 것이다.
 - `os-notify`는 OS 알림이 소리 없이 뜨는 것이다. 소리는 앱의 알림음이 설정과 회사원 모드를 따라 낸다.
@@ -35,7 +36,8 @@ Preconditions:
 - 새 `verify()` 세션에서 시작하기를 눌러 실행 화면에 있다.
 - 메인의 창 메서드 호출은 화면에 보이지 않으니 `s.app.evaluate`로 `BrowserWindow.prototype`의 `moveTop`, `showInactive`, `focus`, `center`를 감싸 창 제목과 함께 `globalThis.calls`에 모은다.
 
-- **다시 열기.** `await menu(s, '포커스 기록', '포커스 기록')`을 두 번 실행한다. 두 번째 뒤 기록은 `포커스 기록:showInactive`, `포커스 기록:moveTop`이다. `상태 고르기`로 같은 순서를 하면 끝에 `상태 고르기:focus`가 더해진다. 같은 제목의 창은 하나다.
+- **다시 열기.** `await menu(s, '포커스 기록', '포커스 기록')`을 두 번 실행한다. 두 번째 뒤 기록은 `포커스 기록:showInactive`, `포커스 기록:moveTop`, `포커스 기록:focus`다. 같은 제목의 창은 하나다.
+- **모두 포커스를 받는 창 (panel-focusable).** [마이홈](./home.md)의 스케줄러에 오늘 일정을 하나 넣고 `menu(s, '레벨 보상', '레벨 보상')`, `menu(s, '포커스 기록', '포커스 기록')`, 실행 화면 `getByRole('button', { name: /^다가오는 일정/ })`을 눌러 세 창을 연다. 나머지 창은 코어로 연다(준비 조건이라 보고에 적는다). `goals.week`, `gacha.inventory`, `notice.main`, `notice.updates`, `focus.mini`, `status.leave`마다 `core.windows.show(core.registry.windows.get(id).decl, ...ctx)`를 부른다. 메인의 `BrowserWindow.getAllWindows()`에서 실행 화면을 뺀 모든 창의 `isFocusable()`이 true이고 실행 화면만 false다. 이어서 세 창마다 메인에서 `close()`를 부르면 그 창이 사라진다.
 - **저절로 연 창.** 메인에서 `BrowserWindow.prototype.focus`를 감싸 제목을 모은다. 실행 화면이나 창을 마지막으로 누른 뒤 5.5초를 기다리고 `const w = core.registry.windows.get('friends.main')`과 `await core.windows.show(w.decl, w.ctx)`로 모듈이 저절로 열 때처럼 연다. `친구` 창이 보이고 `isVisible()`이 true지만 focus 기록에 `친구`가 없다. 실행 전에 `osascript -e 'tell application "Finder" to activate'`로 다른 앱을 앞에 두면 `lsappinfo front`의 번들 ID가 `com.github.Electron`으로 바뀌지 않는다. 같은 세션에서 ▼ 메뉴로 연 `설정`은 focus 기록에 들어간다.
 - **두 번 열기.** 스테이지에서 `window.open`을 세는 함수로 감싼 뒤 `const w = core.registry.windows.get('status.pick')`과 `await Promise.all([core.windows.show(w.decl, w.ctx), core.windows.show(w.decl, w.ctx)])`를 실행한다. `window.open`은 한 번 불리고 `상태 고르기` 창은 하나다. 사용자가 이만큼 빠르게 누를 수 없어서 코어 함수를 직접 부른다.
 - **화면 밖 플레이어.** `await menu(s, '플레이리스트', '플레이리스트')` 뒤 메인에서 그 창의 `close()`와 `setBounds({ x: -6000, y: -6000 })`을 부른다. 창은 숨겨진 채로 남는다. 메뉴로 다시 열면 기록에 `플레이리스트:center`가 있고 창이 보이며 위치가 `screen.getDisplayMatching(b).workArea` 안이다.
@@ -53,7 +55,8 @@ Preconditions:
 ## Gotchas
 
 - 로그오프와 `session-end` 확인은 앱이 스스로 끝난다. 끝난 뒤에는 `s.app.evaluate`를 부를 수 없으니 데이터 폴더 경로를 먼저 읽어 둔다. `session-end`를 내는 `evaluate`는 앱이 끝나면서 실패하므로 `.catch`로 삼킨다.
-- 설정 창, 상태 고르기, 플레이리스트는 포커스를 받는 창이다. 포커스를 받지 않는 창은 포커스 기록, 달성표, 보관함 등이다.
+- 기능 창은 모두 포커스를 받는 창이다. 포커스를 받지 않는 창은 실행 화면과 효과 창뿐이고 가짜 플랫폼의 실행 화면도 `isFocusable()`이 false다.
+- Windows 제목 표시줄의 ×와 끌기는 이 하네스로 누를 수 없다. 메인의 `close()`는 같은 닫기 경로가 막히지 않았는지만 보여 준다. 실제 ×와 끌기는 `docs/checklists/windows-m0.md`로 확인한다.
 - Playwright 클릭도 사용자 입력이다. 저절로 연 창을 보려면 마지막 클릭 뒤 5초를 넘겨 기다리고 창 안 클릭의 사용자 활성화도 끝나야 한다. 다른 앱을 앞에 두는 검사는 사용자의 터미널이 다시 앞으로 올 수 있으니 앞 앱이 이 앱(`com.github.Electron`)이 아닌지로 본다.
 - Mac에서 실행 화면 캐릭터를 누르면 앱이 앞으로 오는 것은 알려진 문제다(Electron 44의 `type: 'panel'`). `osclick.ts`의 참고 항목이 본다.
 - 메인의 `close()`는 사용자가 닫기 단추를 누른 것과 같다. 플레이리스트는 숨기기만 하고 렌더러의 `window.close()`는 실제로 닫는다.

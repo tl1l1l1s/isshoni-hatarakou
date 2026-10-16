@@ -44,7 +44,7 @@ export default defineModule<GachaApi>({
   },
   ui: {
     windows: [
-      { id: 'gacha.room', title: '가챠', width: 360, height: 540, focusable: true, component: () => import('./ui/RoomWindow') },
+      { id: 'gacha.room', title: '가챠', width: 360, height: 540, component: () => import('./ui/RoomWindow') },
       { id: 'gacha.inventory', title: '보관함', width: 360, height: 480, component: () => import('./ui/InventoryWindow') },
     ],
     contributions: [

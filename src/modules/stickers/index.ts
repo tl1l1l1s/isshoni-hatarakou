@@ -13,7 +13,7 @@ export default defineModule({
   requires: ['wardrobe'],
   optionalRequires: ['gacha'],
   ui: {
-    windows: [{ id: 'stickers.edit', title: '꾸미기', width: 560, height: 640, focusable: true, component: () => import('./ui/EditWindow') }],
+    windows: [{ id: 'stickers.edit', title: '꾸미기', width: 560, height: 640, component: () => import('./ui/EditWindow') }],
     contributions: [{ slot: 'menu.main', id: 'stickers.open', label: '꾸미기', command: 'stickers.open', order: 43 }],
   },
   commands: [{ id: 'stickers.open', run: (ctx) => ctx.ui.open('stickers.edit') }],

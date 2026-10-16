@@ -17,7 +17,7 @@ export function coreModule(core: CoreRuntime): ModuleManifest {
     ui: {
       windows: [
         // 탭이 한 줄에 들어가고 일반 탭의 소리 묶음까지 한 화면에 보이는 크기
-        { id: 'core.settings', title: '설정', width: 500, height: 640, focusable: true, component: async () => ({ default: () => <SettingsWindow core={core} /> }) },
+        { id: 'core.settings', title: '설정', width: 500, height: 640, component: async () => ({ default: () => <SettingsWindow core={core} /> }) },
       ],
       contributions: [{ slot: 'settings.tabs', id: 'core.display', label: '화면', order: 5, component: ({ ctx }) => <DisplayTab core={core} ctx={ctx} /> }],
     },

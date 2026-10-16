@@ -49,7 +49,7 @@ export default defineModule<SoundApi>({
   externalOrigins: ['https://www.youtube-nocookie.com'],
   ui: {
     windows: [
-      { id: WINDOW, title: '플레이리스트', width: PLAYER.width, height: PLAYER.height, focusable: true, keepAlive: true, component: () => import('./ui/PlayerWindow') },
+      { id: WINDOW, title: '플레이리스트', width: PLAYER.width, height: PLAYER.height, keepAlive: true, component: () => import('./ui/PlayerWindow') },
     ],
     contributions: [
       { slot: 'menu.main', id: 'sound.menu', label: '플레이리스트', command: 'sound.open', order: 44 },

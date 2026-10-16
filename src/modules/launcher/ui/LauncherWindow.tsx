@@ -13,8 +13,8 @@ export default function LauncherWindow({ ctx }: { ctx: Ctx }) {
     const off = ctx.self.onChange((s) => setName(s.name));
     return () => {
       off();
-      // 런처 창만 닫으면 화면에 아무것도 남지 않으니 실행 화면으로 넘긴다
-      if (ctx.app.mode() === 'launcher') ctx.app.setMode('run');
+      // 런처 창을 닫으면(×, Alt+F4) 앱을 끈다. 저장하지 않은 편집을 묻다가 계속하기를 누르면 런처를 다시 연다
+      if (ctx.app.mode() === 'launcher') void ctx.commands.run('core.quit').then((quit) => quit || ctx.ui.open('launcher.main'));
     };
   }, [ctx]);
 

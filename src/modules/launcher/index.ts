@@ -16,7 +16,8 @@ export default defineModule({
   optionalRequires: ['growth'],
   ui: {
     // 창 제목은 package.json productName과 같게 둔다
-    windows: [{ id: 'launcher.main', title: 'Isshoni Hatarakou', width: 380, height: 600, focusable: true, component: () => import('./ui/LauncherWindow') }],
+    // 닫으면 앱이 꺼지므로 ESC로는 닫지 않는다
+    windows: [{ id: 'launcher.main', title: 'Isshoni Hatarakou', width: 380, height: 600, closeOnEsc: false, component: () => import('./ui/LauncherWindow') }],
     contributions: [{ slot: 'menu.main', id: 'launcher.back', label: '« 런처로', command: 'launcher.open', order: 1000 }],
   },
   commands: [{ id: 'launcher.open', run: open }],

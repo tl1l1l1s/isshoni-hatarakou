@@ -33,8 +33,8 @@ export default defineModule<RoomsApi>({
   },
   ui: {
     windows: [
-      { id: 'rooms.join', title: '워킹룸', width: 340, height: 420, focusable: true, component: () => import('./ui/JoinWindow') },
-      { id: 'rooms.settings', title: '방 설정', width: 340, height: 560, focusable: true, component: () => import('./ui/SettingsWindow') },
+      { id: 'rooms.join', title: '워킹룸', width: 340, height: 420, component: () => import('./ui/JoinWindow') },
+      { id: 'rooms.settings', title: '방 설정', width: 340, height: 560, component: () => import('./ui/SettingsWindow') },
     ],
     contributions: [
       { slot: 'menu.main', id: 'rooms.menu', label: '워킹룸', command: 'rooms.open', order: 20 },

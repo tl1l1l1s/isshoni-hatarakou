@@ -46,7 +46,7 @@ export default defineModule<ChatApi>({
   ],
   ui: {
     windows: [
-      { id: WINDOW, title: '대화하기', width: 360, height: 600, focusable: true, component: () => import('./ui/ChatWindow') },
+      { id: WINDOW, title: '대화하기', width: 360, height: 600, component: () => import('./ui/ChatWindow') },
       { id: 'chat.emoji', title: '이모티콘', width: 260, height: 260, component: () => import('./ui/EmojiWindow') },
     ],
     contributions: [

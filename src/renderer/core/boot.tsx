@@ -121,7 +121,7 @@ async function signIn(bridge: Bridge, server: ServerPort, deviceId: string): Pro
 async function askSetupCode(bridge: Bridge, signIn: (code: string) => Promise<string>): Promise<string | null> {
   const name = 'panel:core.setup';
   // 앱을 처음 켠 사람이 바로 코드를 붙여 넣도록 포커스를 준다
-  await bridge.invoke('win.prepare', { name, title: '설정 코드 입력', width: 360, height: 220, focusable: true, resizable: false, user: true });
+  await bridge.invoke('win.prepare', { name, title: '설정 코드 입력', width: 360, height: 220, resizable: false, user: true });
   const win = window.open('', name);
   if (!win) throw new Error('설정 코드 창을 열지 못했어요. 앱을 다시 켜 주세요.');
   standardsMode(win.document);

@@ -111,10 +111,10 @@ export function Stage({ core }: { core: CoreRuntime }) {
   const fit = fitScale(wanted, { width: m.stageW, height: m.closedH }, { width: 16, height: MENU_CLOSED_H + extra }, area && { width: area.width, height: area.height - menuMin });
   if (fit < wanted) m = measure(fit);
   const { scale, seatSize, benchStep, left, deskOf, stageW, closedH } = m;
-  // ▼ 메뉴는 항목과 설정에 묶음 사이 구분선, 다른 사용자 메뉴는 이름 줄과 항목(없으면 안내 한 줄).
+  // ▼ 메뉴는 항목과 설정, 종료에 묶음 사이 구분선, 다른 사용자 메뉴는 이름 줄과 항목(없으면 안내 한 줄).
   // 작업 영역에 남는 높이까지만 커지고 나머지는 메뉴 안에서 스크롤한다
   const breaks = target?.self ? menuBreaks(core.registry.slot('menu.main')) : 0;
-  const rows = !target ? 0 : target.self ? count('menu.main') + 1 : Math.max(1, count('seat.menu')) + 1;
+  const rows = !target ? 0 : target.self ? count('menu.main') + 2 : Math.max(1, count('seat.menu')) + 1;
   const menuRoom = area ? area.height - closedH + MENU_CLOSED_H : Infinity;
   const menuH = target ? Math.max(MENU_CLOSED_H, Math.min(rows * MENU_ITEM_H + 28 + breaks * MENU_HR_H, menuRoom)) : MENU_CLOSED_H;
   // 메뉴를 닫았으면 창 위쪽이 가장 높은 캐릭터 클릭 영역 2px 위까지 작업 영역 위로 나가도 된다. 메뉴를 열면 메뉴가 다 보이게 0으로 둔다
@@ -208,7 +208,7 @@ export function Stage({ core }: { core: CoreRuntime }) {
         {update && (
           <div data-interactive className={`${css.toast} ${css.update}`}>
             업데이트가 준비됐어요 ({update})
-            <button onClick={() => void core.deps.bridge.invoke('update.install', {})}>다시 시작</button>
+            <button onClick={() => void core.restartToUpdate()}>다시 시작</button>
           </div>
         )}
         {elsewhere && (
@@ -686,6 +686,7 @@ function Menu({ core, maxHeight, onClose }: { core: CoreRuntime; maxHeight: numb
         );
       })}
       <button onClick={() => run('core.settings')}>설정</button>
+      <button onClick={() => run('core.quit')}>종료</button>
     </div>
   );
 }

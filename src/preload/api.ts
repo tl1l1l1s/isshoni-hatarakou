@@ -25,7 +25,7 @@ export interface CoreInvokeMap {
   /** window.open 직전에 패널 창 옵션을 알린다. name은 window.open의 두 번째 인자.
    *  keepAlive 창은 사용자가 닫으면 메인이 숨기기만 한다 (SND-04 메모). 창은 작업 영역보다 크면 줄여서 열고
    *  user는 사용자가 누르거나 키를 쳐서 연 창이다. 메인은 모든 패널을 앞 앱을 바꾸지 않고 띄우고 user인 창에만 키보드 포커스를 준다 */
-  'win.prepare': { args: { name: string; title: string; width: number; height: number; focusable: boolean; resizable: boolean; keepAlive?: boolean; user?: boolean }; result: void };
+  'win.prepare': { args: { name: string; title: string; width: number; height: number; resizable: boolean; keepAlive?: boolean; user?: boolean }; result: void };
   /** 숨긴 keepAlive 패널을 다시 보이거나 숨긴다. 이미 열린 패널을 다시 열 때도 win.show로 맨 위로 올린다. user면 포커스도 준다 */
   'win.show': { args: { name: string; user?: boolean }; result: void };
   'win.hide': { args: { name: string }; result: void };
@@ -51,7 +51,10 @@ export interface CoreInvokeMap {
   'dialog.openImage': { args: Record<string, never>; result: { name: string; bytes: Uint8Array } | null };
   'log.write': { args: { level: 'info' | 'warn' | 'error'; scope: string; message: string }; result: void };
   'shell.openLogFolder': { args: Record<string, never>; result: void };
+  /** 렌더러가 묻고 저장을 마쳤다. 메인이 바로 끝낸다 */
   'app.quit': { args: Record<string, never>; result: void };
+  /** 렌더러가 저장하지 않은 편집을 묻는 중이다. 메인은 1.5초가 지나도 끝내지 않고 기다린다 */
+  'app.quitWait': { args: Record<string, never>; result: void };
   /** 컴퓨터 켤 때 자동 실행. OS 로그인 항목을 읽고 쓴다 (SET-01) */
   'autostart.get': { args: Record<string, never>; result: boolean };
   'autostart.set': { args: { on: boolean }; result: void };
@@ -123,6 +126,8 @@ export interface CoreEventMap {
   /** keepAlive 패널을 닫아 숨겼거나(visible false) 다시 띄웠다. name은 window.open의 창 이름.
    *  about:blank 패널은 스테이지의 backgroundThrottling: false를 물려받아 숨겨도 문서가 visible로 남으므로 코어가 이 이벤트로 문서에 반영한다 */
   'win.visibility': { name: string; visible: boolean };
+  /** 트레이 종료나 Mac Cmd+Q(ask), 로그오프나 업데이트 설치로 끝낸다. 렌더러는 ask면 저장하지 않은 편집을 묻고 모듈에 shutdown을 알려 저장한 뒤 app.quit을 부른다 */
+  'quit.request': { ask: boolean };
   /** 메인이 새 자동 오류 보고를 만들었다. 렌더러는 crash.pending으로 받아 서버 기록으로 남긴다 */
   'crash.added': Record<string, never>;
 }
