@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { leftOf, Local, mmss, next, pause, resume, roundText, start, type Run } from './logic';
+import { leftOf, Local, minLeft, mmss, next, pause, resume, roundText, sameShare, shareOf, start, type Run } from './logic';
 
 const M = 60_000;
 const l = Local.parse({});
@@ -36,5 +36,27 @@ describe('뽀모도로', () => {
     expect(resume(p, 50 * M).endsAt).toBe(65 * M);
     expect(mmss(15 * M)).toBe('15:00');
     expect(mmss(61_001)).toBe('1:02');
+  });
+
+  it('방에는 끝나는 서버 시각을 보내고 받는 PC가 남은 분을 계산한다. 0.1.1 앱의 min도 읽는다', () => {
+    const r = start(l, 0);
+    // 이 PC 시각 0, 서버 시각 1000초. 25분 뒤 끝나는 타이머는 서버 시각 1000초 + 25분에 끝난다
+    const s = shareOf(r, 0, 1_000_000)!;
+    expect(s).toEqual({ ph: 'f', end: 1_000_000 + 25 * M });
+    expect(shareOf(pause(r, 0), 0, 0)).toBeNull();
+    expect(minLeft(s, 1_000_000)).toBe(25);
+    expect(minLeft(s, 1_000_000 + 24 * M + 1)).toBe(1);
+    // 다음 단계가 오기 전 몇 초는 0분 대신 1분으로 둔다
+    expect(minLeft(s, 1_000_000 + 26 * M)).toBe(1);
+    expect(minLeft({ ph: 'b', min: 7 }, 0)).toBe(7);
+  });
+
+  it('서버 시각 보정이 2초 안에서 바뀌면 다시 보내지 않고 단계나 멈춤이 바뀌면 보낸다', () => {
+    const a = { ph: 'f' as const, end: 100_000 };
+    expect(sameShare(a, { ph: 'f', end: 101_500 })).toBe(true);
+    expect(sameShare(a, { ph: 'f', end: 102_001 })).toBe(false);
+    expect(sameShare(a, { ph: 'b', end: 100_000 })).toBe(false);
+    expect(sameShare(a, null)).toBe(false);
+    expect(sameShare(null, null)).toBe(true);
   });
 });
