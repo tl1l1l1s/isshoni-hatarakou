@@ -110,7 +110,7 @@ Isshoni Hatarakou는 한 사람이 AI 도구와 함께 만들고 친구 몇 명�
         |  window.open + React portal (같은 프로세스, 같은 JS 힙)
         v
   패널 창 (설정, 꾸미기, 가챠, 채팅 ...)   모두 포커스 받는 창 (ADR 0041)
-  효과 창 (P2 연출 동안만, 화면 전체, 클릭 통과)
+  효과 창 (P2 연출 동안만, 화면 전체나 실행 화면 둘레, 클릭 통과)
         |
         |  Firebase JS SDK (TLS)
         v
@@ -126,7 +126,7 @@ GitHub Actions: lint, 타입 검사, 시험, 에뮬레이터 규칙 시험, 설�
 | Electron 메인 프로세스 | 생명주기(단일 실행, 절전과 복귀, 화면 잠금, 모니터 변경, 렌더러 충돌 뒤 재시작, 로그오프 때 빠른 종료), 창 관리자, platform adapter, 500밀리초 활동 샘플링, 원자적 파일 저장, 로그와 진단, 트레이, 화면 숨기기 단축키, 업데이트를 처리합니다. 기능 로직은 두지 않습니다. | 스테이지 렌더러(preload 브리지), OS |
 | 스테이지 렌더러 | 투명하고 좌석 영역 크기이며 포커스를 받지 않는 캐릭터 창입니다. 모듈 호스트, 모든 모듈 로직과 상태, Firebase 연결 하나, RoomSession, 카탈로그, CharacterView, 좌석과 이름표와 상태칩이 여기서 실행됩니다. 창을 숨겨도 Chromium이 타이머 간격을 늘리지 않도록 `backgroundThrottling: false`로 만들고 그리기 fps는 코어가 직접 0으로 낮춥니다. | 메인 프로세스, Firebase, 패널 창 |
 | 패널 창 | 스테이지가 `window.open`으로 연 창에 React portal로 모듈 화면을 그립니다. 같은 렌더러 프로세스와 JavaScript 힙을 쓰고 모든 패널이 포커스를 받는 창입니다. Windows는 포커스를 받지 않는 창의 제목 표시줄 ×와 끌기를 받지 않아서 `ui.windows`에 포커스 여부를 고르는 값을 두지 않습니다(ADR 0041). 모듈이 저절로 연 창은 맨 위에 보이기만 하고 키보드 포커스는 사용자가 연 창에만 줍니다. | 스테이지 렌더러, 메인 프로세스의 창 관리자 |
-| 효과 창(P2) | 화면을 가로지르는 연출 동안만 여는 화면 전체 크기의 클릭 통과 창입니다. 다른 사람을 겨누는 동안만 `ctx.ui.pickTarget()`이 몇 초 동안 클릭을 받는 상태로 바꿉니다(10.8.2). | 스테이지 렌더러 |
+| 효과 창(P2) | 연출 동안만 여는 클릭 통과 창입니다. 화면을 가로지르는 연출(날리기, 채팅 날리기)은 화면 전체 크기이고 캐릭터 둘레에서 끝나는 연출(춤, 때리기, 폭탄)은 실행 화면 둘레 크기입니다(ADR 0043). 다른 사람을 겨누는 동안만 `ctx.ui.pickTarget()`이 몇 초 동안 클릭을 받는 상태로 바꿉니다(10.8.2). | 스테이지 렌더러 |
 | Firebase | Realtime Database(`asia-southeast1`)와 Authentication입니다. 서버 함수는 필요한 모듈이 생길 때까지 두지 않습니다. | 스테이지 렌더러, 운영 스크립트 |
 | 운영 스크립트 | 선물하는 사람 PC에서 실행하는 Node 명령입니다. 계정 발급, 카탈로그 배포, 최소 버전 올리기, 규칙 배포, 백업, 서버 migration을 처리합니다. | Firebase(firebase-admin, firebase-tools) |
 | CI | GitHub Actions에서 lint, 타입 검사, 시험, 에뮬레이터 규칙 시험, 설치 파일 빌드를 실행합니다. | 업데이트 파일 저장소, Firebase 에뮬레이터 |
@@ -218,7 +218,7 @@ export default defineModule({
 | `emits`, `on` | 내보내는 이벤트 이름과 payload 타입(`EventMap` 확장), 받을 이벤트와 처리 함수입니다. | 같은 프로세스 안의 bus로 전달하고 처리 함수마다 오류를 따로 잡아 한 모듈의 예외가 다른 모듈을 멈추지 않게 합니다. |
 | 공개 API | `setup`이 돌려주는 객체이고 타입은 `ModuleApis` 확장으로 선언합니다. | `requires`에 적은 모듈에게만 `ctx.modules.get(id)`로 줍니다. |
 | `characterStates` | 자세 id, 우선순위, 조건 함수입니다. 조건 함수가 받는 `seat`에는 코어 필드(`name`, `state`, `look`)와 presence 필드 `m.<id>`가 있습니다. | 매 프레임 높은 순서부터 평가하고 남의 좌석도 같은 `seat` 값으로 평가합니다. 렌더링 backend에 정의되지 않은 id는 기본 자세로 그립니다. |
-| `effects` | 효과 id, 한 번 또는 반복, 시드 사용 여부, 렌더링 backend별 구현입니다. 구현은 `(surface, { from, to, seed, appearance }) => Dispose` 모양이고 `surface`는 효과 창의 canvas와 DOM 루트입니다. | `ctx.render.playEffect(seatId, id, seed)`로 실행합니다. 캐릭터가 좌석을 떠나는 효과는 `CharacterView.detach()`로 좌석 그림을 숨기고 효과 창에 같은 외형을 그린 뒤 `reattach()`로 되돌립니다. 표시 모드가 `quiet`이면 실행을 건너뛰고 지금 backend에 구현이 없으면 로그만 남깁니다. |
+| `effects` | 효과 id, 한 번 또는 반복, 시드 사용 여부, 화면 전체를 쓰는지(`screen`), 렌더링 backend별 구현입니다. 구현은 `(surface, { from, to, seed, appearance }) => Dispose` 모양이고 `surface`는 효과 창의 canvas와 DOM 루트입니다. | `ctx.render.playEffect(seatId, id, seed)`로 실행합니다. 캐릭터가 좌석을 떠나는 효과는 `CharacterView.detach()`로 좌석 그림을 숨기고 효과 창에 같은 외형을 그린 뒤 `reattach()`로 되돌립니다. 표시 모드가 `quiet`이면 실행을 건너뛰고 지금 backend에 구현이 없으면 로그만 남깁니다. |
 | `catalog` | 모듈이 정하는 카탈로그 종류와 다른 종류의 항목에 붙일 `ext` 필드 schema입니다. | 앱에 든 기본값과 서버 값을 합쳐 버전 번호로 캐시하고 앱보다 새 schema 번호의 항목은 건너뜁니다. |
 | `gates` | 잠금 해제 조건과 계정에 남길지 여부(`sticky`)입니다. 조건은 `{ module: 'growth', key: 'level', gte: tunable('animalUnlockLevel') }`처럼 데이터로 적습니다. | 코어는 gate를 선언한 모듈의 `requires`에 있는 모듈의 공개 API만 읽어 조건을 평가하고 슬롯, 명령, 창의 표시 조건에서 참조합니다. `sticky`이면 `users/{uid}/private/gates/{gateId}`에 해금 시각을 남겨 PC를 바꿔도 열려 있습니다(GRW-03). 방 이벤트는 보낸 쪽만 gate를 확인하고 받는 쪽은 다시 확인하지 않아서 버전이 다른 앱 사이에서도 연출이 어긋나지 않습니다. 구매로 여는 기능은 두지 않습니다(9.1 결정 5). |
 | `tunables` | 서버 조정값의 zod schema와 기본값입니다. | 값을 `mod/<id>/g/tunables`에 두고 카탈로그처럼 버전 번호로 캐시합니다. 값마다 `{ value, from, until }` 목록을 받아 기간 한정 조정(OPS-12, GRW-03 행사)을 앱 배포 없이 처리하고 `ctx.tunables.get(key)`가 지금 적용할 값을 줍니다. |

@@ -64,6 +64,7 @@ test('M3 코어 계약이 앱에서 동작한다', async () => {
     w.core.effects.set('test.fly', {
       id: 'test.fly',
       detach: true,
+      screen: true,
       durationMs: 1500,
       run: (surface: { root: HTMLElement; canvas: HTMLCanvasElement; width: number; height: number }, args: { from: { x: number; y: number }; to?: { x: number; y: number }; sprite?: unknown; rand(): number }) => {
         w.fx = { from: args.from, to: args.to, width: surface.width, height: surface.height, sprite: !!args.sprite, own: surface.root.ownerDocument !== document, r: args.rand() };
@@ -103,6 +104,25 @@ test('M3 코어 계약이 앱에서 동작한다', async () => {
   expect(fx.to!.x).toBeGreaterThan(fx.from.x);
   await fxWin.screenshot({ path: 'test-results/m3-effect.png' });
   await expect.poll(() => fxWin.isClosed(), { timeout: 5_000 }).toBe(true);
+
+  // 화면을 가로지르지 않는 효과는 실행 화면 둘레만 덮는 작은 창에 그린다 (ADR 0043)
+  await stage.evaluate((key) => {
+    const w = window as unknown as Win;
+    w.core.effects.set('test.near', { id: 'test.near', durationMs: 1500, run: () => () => {} });
+    w.core.playEffect('test', key, 'test.near', {});
+  }, me);
+  const nearWin = await windowTitled(app, '효과');
+  const near = await app.evaluate(({ BrowserWindow, screen }) => {
+    const ws = BrowserWindow.getAllWindows();
+    const s = ws.find((w) => !w.webContents.getURL().startsWith('about:'))!;
+    const fxw = ws.find((w) => w.getTitle() === '효과')!;
+    return { stage: s.getBounds(), fx: fxw.getBounds(), display: screen.getDisplayMatching(s.getBounds()).bounds };
+  });
+  const inside = (a: typeof near.fx, b: typeof near.fx) => a.x >= b.x && a.y >= b.y && a.x + a.width <= b.x + b.width && a.y + a.height <= b.y + b.height;
+  expect(inside(near.stage, near.fx)).toBe(true);
+  expect(inside(near.fx, near.display)).toBe(true);
+  expect(near.fx.width * near.fx.height).toBeLessThan(near.display.width * near.display.height);
+  await expect.poll(() => nearWin.isClosed(), { timeout: 5_000 }).toBe(true);
   expect(await stage.evaluate(() => (window as unknown as Win).fxDone)).toBe(true);
   expect(await stage.evaluate(() => (window as unknown as Win).core.away.get().size)).toBe(0);
 

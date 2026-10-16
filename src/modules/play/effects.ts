@@ -59,6 +59,7 @@ export const effects: EffectDecl[] = [
   {
     id: 'play.fly',
     detach: true,
+    screen: true,
     durationMs: FLY_MS,
     run: (s, a) => {
       const c = sprite(s, a, '50% 50%');
@@ -112,6 +113,7 @@ export const effects: EffectDecl[] = [
   // 동작 줄이기에서는 가운데에 나타났다가 제자리에서 사라진다
   {
     id: 'play.text',
+    screen: true,
     durationMs: TEXT_MS,
     run: (s, a) => {
       const d = a.data as TextData;

@@ -38,11 +38,23 @@ const saveBounds = (name: string, w: BrowserWindow) => !isEffects(name) && store
 // 효과 창 (10.8.2). 연출 동안만 렌더러가 effects:<번호> 이름으로 열고 마지막 연출이 끝나면 닫는다.
 // 이름마다 새 창이라 닫히는 중인 창을 window.open이 다시 돌려주지 않는다
 const isEffects = (name: string) => name.startsWith('effects:');
-let effectsArea: Rect | null = null;
-/** 캐릭터가 있는 모니터 전체. 효과 좌표는 이 영역 기준이다 */
-export function prepareEffects(): Rect {
-  const { x, y, width, height } = currentDisplay().bounds;
-  return (effectsArea = { x, y, width, height });
+/** 효과 창 이름마다 연 영역. 효과 좌표는 이 영역 기준이다 */
+const effectsAreas = new Map<string, Rect>();
+/** 실행 화면 둘레 효과 창의 여백. 폭탄 포물선(160px)과 춤의 뛰기가 실행 화면 위로 나가는 만큼 위쪽을 넉넉히 둔다 */
+const NEAR = { top: 240, side: 120, bottom: 40 };
+/** wide면 캐릭터가 있는 모니터 전체(날리기, 채팅 날리기), 아니면 실행 화면 둘레만 덮는다.
+ *  창 버퍼가 창 크기에 비례하므로 춤처럼 캐릭터 둘레에서 끝나는 효과는 작은 창에 그린다 (ADR 0025) */
+export function prepareEffects(name: string, wide: boolean): Rect {
+  const d = currentDisplay().bounds;
+  const s = stage?.getBounds();
+  let area: Rect = { x: d.x, y: d.y, width: d.width, height: d.height };
+  if (!wide && s) {
+    const x = Math.max(d.x, s.x - NEAR.side);
+    const y = Math.max(d.y, s.y - NEAR.top);
+    area = { x, y, width: Math.min(d.x + d.width, s.x + s.width + NEAR.side) - x, height: Math.min(d.y + d.height, s.y + s.height + NEAR.bottom) - y };
+  }
+  effectsAreas.set(name, area);
+  return area;
 }
 export function effectsBounds(name: string): Rect | null {
   const w = panels.get(name);
@@ -376,8 +388,9 @@ export function createStage(): void {
   });
   // 패널은 win.prepare로 알린 이름의 about:blank만 연다. 같은 렌더러 프로세스에서 React portal로 그린다
   win.webContents.setWindowOpenHandler(({ url, frameName }) => {
-    if (isEffects(frameName) && url === 'about:blank' && effectsArea) {
-      return { action: 'allow', overrideBrowserWindowOptions: { ...platform.overlay.options, ...effectsArea, focusable: false, resizable: false, show: false } };
+    const area = isEffects(frameName) ? effectsAreas.get(frameName) : undefined;
+    if (area && url === 'about:blank') {
+      return { action: 'allow', overrideBrowserWindowOptions: { ...platform.overlay.options, ...area, focusable: false, resizable: false, show: false } };
     }
     const p = prepared.get(frameName);
     if (url !== 'about:blank' || !p) return { action: 'deny' };
@@ -407,9 +420,13 @@ export function createStage(): void {
       panels.set(frameName, child);
       child.setIgnoreMouseEvents(true);
       platform.overlay.afterCreate(child);
-      if (effectsArea) applyBounds(child, effectsArea);
+      const area = effectsAreas.get(frameName);
+      if (area) applyBounds(child, area);
       child.showInactive();
-      child.on('closed', () => panels.get(frameName) === child && panels.delete(frameName));
+      child.on('closed', () => {
+        effectsAreas.delete(frameName);
+        if (panels.get(frameName) === child) panels.delete(frameName);
+      });
       return;
     }
     const p = prepared.get(frameName);

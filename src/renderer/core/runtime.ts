@@ -101,7 +101,8 @@ export class CoreRuntime {
   readonly elsewhere = createStore(false);
   private elsewhereRoom: string | null = null;
   private effects = new Map<string, EffectDecl>();
-  private effectWindow: EffectWindow;
+  /** 화면을 가로지르는 효과(wide)와 캐릭터 둘레 효과의 창 */
+  private effectWindows: { wide: EffectWindow; near: EffectWindow };
   private gates = new Map<string, { decl: GateDecl; owner: ModuleManifest; ctx: Ctx }>();
   private stickyGates = new Set<string>();
   private gateState = new Map<string, boolean>();
@@ -128,7 +129,7 @@ export class CoreRuntime {
     this.windows = new WindowClient(deps.bridge, (w, e) => this.onPanelKey(w, e), deps.material ?? false);
     this.displayMode = createStore<DisplayMode>(this.savedMode());
     this.watchConnection();
-    this.effectWindow = new EffectWindow(deps.bridge);
+    this.effectWindows = { wide: new EffectWindow(deps.bridge, true), near: new EffectWindow(deps.bridge, false) };
     this.fileCache = openFileCache(deps.uid);
     this.registry.hidden = (c) => (c.quiet === 'hide' && this.displayMode.get() === 'quiet') || (c.gate !== undefined && !this.gateOpen(c.gate));
     this.registry.blocked = (c) => {
@@ -433,7 +434,7 @@ export class CoreRuntime {
       const seat = this.allSeats().find((s) => s.key === seatKey);
       const appearance = seat ? await this.seatAppearance(seat) : null;
       const sprite = decl.detach ? await this.sprite(appearance, from) : undefined;
-      const s = stopped ? null : await this.effectWindow.open();
+      const s = stopped ? null : await this.effectWindows[decl.screen ? 'wide' : 'near'].open();
       if (!s) return finish();
       // 창을 여는 동안 멈췄다
       if (stopped) return s.close();
