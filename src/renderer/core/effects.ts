@@ -1,4 +1,4 @@
-// 효과 창 (10.8.2). 연출이 있는 동안만 연다. 모니터 전체 크기의 투명하고 클릭을 통과하는 창이고
+// 효과 창 (10.8.2). 연출이 있는 동안만 연다. 투명하고 클릭을 통과하는 창이고 wide면 모니터 전체, 아니면 실행 화면 둘레만 덮는다.
 // DOM은 패널처럼 스테이지 렌더러가 같은 JS 힙에서 그린다. 마지막 효과가 끝나면 닫는다.
 import type { Bridge, Rect } from '../../preload/api';
 import type { EffectSurface } from './types';
@@ -11,7 +11,7 @@ export class EffectWindow {
   private count = 0;
   private seq = 0;
 
-  constructor(private bridge: Bridge) {}
+  constructor(private bridge: Bridge, private wide: boolean) {}
 
   /** 효과 하나가 그릴 루트와 canvas. 창을 열지 못하면 null */
   async open(): Promise<OpenSurface | null> {
@@ -28,7 +28,7 @@ export class EffectWindow {
     const dpr = w.win.devicePixelRatio || 1;
     const root = doc.body.appendChild(doc.createElement('div'));
     root.style.cssText = 'position:fixed;inset:0;overflow:hidden;pointer-events:none';
-    // 모니터 전체 크기 canvas는 수십 MB라 효과가 canvas를 읽을 때만 만든다. 효과가 더한 DOM보다 아래에 둔다
+    // 창 크기 canvas는 수십 MB일 수 있어 효과가 canvas를 읽을 때만 만든다. 효과가 더한 DOM보다 아래에 둔다
     let canvas: HTMLCanvasElement | null = null;
     const surface: EffectSurface = {
       root, width, height,
@@ -64,8 +64,8 @@ export class EffectWindow {
   }
 
   private async create() {
-    const asked = await this.bridge.invoke('effects.prepare', {});
-    const name = `effects:${++this.seq}`;
+    const name = `effects:${this.wide ? 'w' : 'n'}${++this.seq}`;
+    const asked = await this.bridge.invoke('effects.prepare', { name, wide: this.wide });
     const win = window.open('', name);
     if (!win) return null;
     standardsMode(win.document);

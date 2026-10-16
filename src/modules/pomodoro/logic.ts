@@ -38,6 +38,22 @@ export const start = (l: Local, now: number): Run => ({ phase: 'focus', round: 1
 
 export const leftOf = (r: Run, now: number): number => (r.endsAt === null ? r.leftMs : Math.max(0, r.endsAt - now));
 
+// 방에는 단계와 끝나는 서버 시각(end)을 단계마다 한 번 보내고 남은 분은 각 PC가 계산한다. 0.1.1까지는 남은 분(min)을 1분마다 보냈다
+const Ph = z.enum(['f', 'b']);
+export const Pomo = z.union([z.object({ ph: Ph, end: z.number() }), z.object({ ph: Ph, min: z.number().int().min(0).max(999) })]).nullable();
+export type Shared = { ph: 'f' | 'b'; end: number };
+
+/** 방에 보낼 값. endsAt은 이 PC 시각이라 서버 시각으로 옮긴다. 멈춘 타이머는 보내지 않는다 */
+export const shareOf = (r: Run | null, now: number, serverNow: number): Shared | null =>
+  r && r.endsAt !== null ? { ph: r.phase === 'focus' ? 'f' : 'b', end: r.endsAt - now + serverNow } : null;
+
+/** 서버 시각 보정은 조금씩 바뀌므로 단계가 같고 끝나는 시각이 2초 안이면 다시 보내지 않는다 */
+export const sameShare = (a: Shared | null, b: Shared | null): boolean => (a === null || b === null ? a === b : a.ph === b.ph && Math.abs(a.end - b.end) <= 2_000);
+
+/** 머리 위에 보일 남은 분. 보낸 PC가 다음 단계를 알리기 전의 몇 초는 1분으로 둔다. 0.1.1 앱이 보낸 min은 그대로 쓴다 */
+export const minLeft = (p: NonNullable<z.infer<typeof Pomo>>, serverNow: number): number =>
+  'end' in p ? Math.max(1, Math.ceil((p.end - serverNow) / 60_000)) : p.min;
+
 export const pause = (r: Run, now: number): Run => ({ ...r, endsAt: null, leftMs: leftOf(r, now) });
 export const resume = (r: Run, now: number): Run => ({ ...r, endsAt: now + r.leftMs, leftMs: 0 });
 

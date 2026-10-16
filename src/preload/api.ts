@@ -81,9 +81,9 @@ export interface CoreInvokeMap {
   'stage.coverHide': { args: { on: boolean }; result: void };
   /** 스테이지를 다시 읽는다. 연결 해제(ACC-05) 뒤 신원 단계부터 다시 시작한다 */
   'stage.reload': { args: Record<string, never>; result: void };
-  /** 효과 창을 열기 직전에 부른다. 캐릭터가 있는 모니터 전체 영역(DIP)을 돌려주고 이어서 window.open('', 'effects:<번호>')로 연다.
-   *  효과 창은 투명하고 클릭을 통과하며 포커스를 받지 않는 항상 위 창이다 (10.8.2) */
-  'effects.prepare': { args: Record<string, never>; result: Rect };
+  /** 효과 창을 열기 직전에 그 창 이름으로 부른다. wide면 캐릭터가 있는 모니터 전체, 아니면 실행 화면 둘레 영역(DIP)을 돌려주고
+   *  이어서 window.open('', name)으로 연다. 효과 창은 투명하고 클릭을 통과하며 포커스를 받지 않는 항상 위 창이다 (10.8.2) */
+  'effects.prepare': { args: { name: string; wide: boolean }; result: Rect };
   /** 연 효과 창의 실제 영역(DIP). OS가 창을 옮겼을 수 있다. 창이 없으면 null */
   'effects.bounds': { args: { name: string }; result: Rect | null };
   /** 대상 고르기(pickTarget) 동안 ESC를 전역 단축키로 받는다. 누르면 pick.cancel이 온다 */

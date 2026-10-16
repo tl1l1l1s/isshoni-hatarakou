@@ -211,6 +211,8 @@ export interface EffectDecl {
   durationMs?: number;
   /** 캐릭터가 자리를 떠나는 효과. 그동안 좌석의 캐릭터를 숨기고 args.sprite를 준다 (책상은 남는다) */
   detach?: boolean;
+  /** 모니터 전체에 그린다 (화면을 가로지르는 효과). 아니면 실행 화면 둘레만 덮는 작은 창에 그려 메모리를 덜 쓴다 */
+  screen?: boolean;
   run: (surface: EffectSurface, args: EffectArgs) => Dispose;
 }
 

@@ -20,6 +20,7 @@ import type { SeatLayout } from './seats';
 import { WindowClient, type OpenWindow } from './ui/windows';
 import { RoomSession } from './room/session';
 import { activeTunable } from './tunables';
+import { openFileCache, type FileCache } from './files/diskCache';
 import { prepareImage } from './files/image';
 import { reportError } from './bridge';
 
@@ -100,7 +101,8 @@ export class CoreRuntime {
   readonly elsewhere = createStore(false);
   private elsewhereRoom: string | null = null;
   private effects = new Map<string, EffectDecl>();
-  private effectWindow: EffectWindow;
+  /** 화면을 가로지르는 효과(wide)와 캐릭터 둘레 효과의 창 */
+  private effectWindows: { wide: EffectWindow; near: EffectWindow };
   private gates = new Map<string, { decl: GateDecl; owner: ModuleManifest; ctx: Ctx }>();
   private stickyGates = new Set<string>();
   private gateState = new Map<string, boolean>();
@@ -113,6 +115,7 @@ export class CoreRuntime {
   private activitySubs = new Set<(s: ActivitySample) => void>();
   private lifecycleSubs = new Set<(e: LifecycleEvent) => void>();
   private files = new Map<string, Promise<Uint8Array | null>>();
+  private fileCache: FileCache | null;
   private manifests: ModuleManifest[] = [];
   private presenceDecls: Record<string, NonNullable<ModuleManifest['presence']>> = {};
   /** 계정 접속 기록의 m. start 전에 모듈이 정한 값은 첫 쓰기에 함께 들어간다 */
@@ -126,7 +129,8 @@ export class CoreRuntime {
     this.windows = new WindowClient(deps.bridge, (w, e) => this.onPanelKey(w, e), deps.material ?? false);
     this.displayMode = createStore<DisplayMode>(this.savedMode());
     this.watchConnection();
-    this.effectWindow = new EffectWindow(deps.bridge);
+    this.effectWindows = { wide: new EffectWindow(deps.bridge, true), near: new EffectWindow(deps.bridge, false) };
+    this.fileCache = openFileCache(deps.uid);
     this.registry.hidden = (c) => (c.quiet === 'hide' && this.displayMode.get() === 'quiet') || (c.gate !== undefined && !this.gateOpen(c.gate));
     this.registry.blocked = (c) => {
       if (c.quiet === 'block' && this.displayMode.get() === 'quiet') return '회사원 모드에서는 쓸 수 없어요.';
@@ -430,7 +434,7 @@ export class CoreRuntime {
       const seat = this.allSeats().find((s) => s.key === seatKey);
       const appearance = seat ? await this.seatAppearance(seat) : null;
       const sprite = decl.detach ? await this.sprite(appearance, from) : undefined;
-      const s = stopped ? null : await this.effectWindow.open();
+      const s = stopped ? null : await this.effectWindows[decl.screen ? 'wide' : 'near'].open();
       if (!s) return finish();
       // 창을 여는 동안 멈췄다
       if (stopped) return s.close();
@@ -579,14 +583,22 @@ export class CoreRuntime {
     return r.success ? r.data : null;
   }
 
-  /** 자주 쓴 순서로 FILE_CACHE_MAX개까지 둔다. 빠진 파일은 다시 받는다 */
+  /** 자주 쓴 순서로 FILE_CACHE_MAX개까지 메모리에 둔다. 빠진 파일은 디스크 캐시에서 읽고 없으면 서버에서 받는다 */
   getFile(hash: string): Promise<Uint8Array | null> {
     let p = lruGet(this.files, hash);
     if (!p) {
-      this.files.set(hash, (p = this.deps.server.files.get(hash)));
+      this.files.set(hash, (p = this.loadFile(hash)));
       lruTrim(this.files, FILE_CACHE_MAX);
     }
     return p;
+  }
+
+  private async loadFile(hash: string): Promise<Uint8Array | null> {
+    const cached = await this.fileCache?.get(hash).catch(() => null);
+    if (cached) return cached;
+    const bytes = await this.deps.server.files.get(hash);
+    if (bytes) this.fileCache?.put(hash, bytes);
+    return bytes;
   }
 
   // ---- 상태 -----------------------------------------------------------------

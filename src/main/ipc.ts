@@ -110,7 +110,7 @@ export function registerIpc(store: Store): void {
     'stage.setVisible': [z.object({ visible: z.boolean() }), ({ visible }) => setVisible(visible)],
     'stage.coverHide': [on, ({ on }) => setCoverHide(on)],
     'stage.reload': [none, reloadStage],
-    'effects.prepare': [none, prepareEffects],
+    'effects.prepare': [z.object({ name: z.string().regex(/^effects:\w{1,32}$/), wide: z.boolean() }), ({ name, wide }) => prepareEffects(name, wide)],
     'effects.bounds': [panel, ({ name }) => effectsBounds(name)],
     // 고르는 몇 초 동안만 ESC를 가져온다. 등록에 실패하면 취소 버튼과 시간 제한으로 끝난다
     'pick.escape': [on, ({ on }) => pickEscape(on)],

@@ -8,8 +8,8 @@ import { LIST_MAX, parsePlans, type Row } from './logic';
 /** 친구 일정에는 이름을 두지 않고 names에서 읽어 붙인다. 이름은 일정과 따로 다시 읽기 때문이다 */
 interface Store { mine: Row[]; friends: Map<string, Array<Omit<PlanItem, 'who'>>>; names: Map<string, string>; subs: Set<() => void> }
 const stores = new WeakMap<Ctx, Store>();
-/** 친구 이름을 다시 읽는 간격 */
-const NAME_MS = 60_000;
+/** 친구 이름을 다시 읽는 간격. 이름은 드물게 바뀌므로 바꾼 이름이 늦게 보여도 친구마다 서버를 1분마다 읽지 않는다 */
+const NAME_MS = 30 * 60_000;
 
 function store(ctx: Ctx): Store {
   let s = stores.get(ctx);
@@ -45,11 +45,10 @@ function readName(ctx: Ctx, s: Store, uid: string): void {
 }
 
 /** 친구의 공개 일정. 규칙이 막으면(아직 나를 친구로 등록하지 않음) 구독하지 않는다.
- *  권한은 첫 항목 하나만 읽어 확인한다. 공개 일정 전체를 미리 받지 않는다 */
+ *  권한은 첫 항목 하나만 읽어 확인한다. 공개 일정 전체를 미리 받지 않는다. 이름은 공개 일정이 올 때마다 다시 읽는다 */
 function watchFriend(ctx: Ctx, s: Store, uid: string): Dispose {
   let stop: Dispose | null = null;
   let alive = true;
-  readName(ctx, s, uid);
   void ctx.server
     .userOf(uid, ['pub'])
     .list({ limit: 1 })
@@ -58,6 +57,7 @@ function watchFriend(ctx: Ctx, s: Store, uid: string): Dispose {
       stop = ctx.server.userOf(uid).watchList('pub', { limit: LIST_MAX, last: true }, (rows) => {
         s.friends.set(uid, parsePlans(rows).map(({ id, date, title }) => ({ id, owner: uid, date, title })));
         changed(ctx, s);
+        readName(ctx, s, uid);
       });
     })
     .catch(() => undefined);
@@ -88,7 +88,7 @@ export function watchPlans(ctx: Ctx): void {
   };
   sync(friends.list());
   friends.onChange(sync);
-  // ponytail: 프로필을 구독할 수 없어 공개 일정이 있는 친구의 이름을 1분마다 다시 읽는다. 프로필 구독이 생기면 그것으로 바꾼다
+  // ponytail: 프로필을 구독할 수 없어 공개 일정이 있는 친구의 이름을 30분마다 다시 읽는다. 프로필 구독이 생기면 그것으로 바꾼다
   ctx.timers.every(NAME_MS, () => {
     for (const [uid, plans] of s.friends) if (plans.length) readName(ctx, s, uid);
   });

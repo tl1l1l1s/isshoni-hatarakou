@@ -1,9 +1,7 @@
-import { z } from 'zod';
 import { defineModule, type Ctx } from '@core/types';
-import { leftOf, Local, minutes, next, STALE_MS, type Phase, type Run } from './logic';
+import { Local, minLeft, minutes, next, Pomo, sameShare, shareOf, STALE_MS, type Phase, type Run, type Shared } from './logic';
 import DrawerButton from './ui/DrawerButton';
 
-const Pomo = z.object({ ph: z.enum(['f', 'b']), min: z.number().int().min(0).max(999) }).nullable();
 
 /** 짧은 두 음. 소리 파일 없이 Web Audio로 낸다 */
 function chime(): void {
@@ -55,9 +53,9 @@ export default defineModule({
     {
       id: 'pomodoro.left',
       priority: 150,
-      text: (seat) => {
+      text: (seat, ctx) => {
         const p = Pomo.safeParse(seat.m.pomodoro?.pomo).data;
-        return p ? `${p.ph === 'f' ? '집중' : '휴식'} ${p.min}분 남음` : null;
+        return p ? `${p.ph === 'f' ? '집중' : '휴식'} ${minLeft(p, ctx.clock.serverNow())}분 남음` : null;
       },
     },
   ],
@@ -70,7 +68,8 @@ export default defineModule({
   },
   commands: [{ id: 'pomodoro.open', run: (ctx) => ctx.ui.open('pomodoro.timer') }],
   setup(ctx) {
-    let sent = '';
+    let sent: Shared | null | undefined;
+    let shown = '';
     const tick = () => {
       const now = ctx.clock.now();
       const l = ctx.local.get<Local>('device');
@@ -82,10 +81,20 @@ export default defineModule({
         announce(ctx, l, l.run.phase, n);
       }
       const r = ctx.local.get<Local>('device').run;
-      const pomo = r && r.endsAt !== null ? { ph: r.phase === 'focus' ? 'f' : 'b', min: Math.ceil(leftOf(r, now) / 60_000) } : null;
-      if (JSON.stringify(pomo) === sent) return;
-      sent = JSON.stringify(pomo);
-      ctx.room.setMine({ pomo });
+      const serverNow = ctx.clock.serverNow();
+      const pomo = shareOf(r, now, serverNow);
+      if (sent === undefined || !sameShare(sent, pomo)) {
+        sent = pomo;
+        ctx.room.setMine({ pomo });
+      }
+      // 다른 PC의 남은 분은 여기서 계산하므로 분이 바뀌면 좌석 말풍선을 다시 그린다
+      const mins = ctx.room.members().map((s) => {
+        const p = Pomo.safeParse(s.m.pomodoro?.pomo).data;
+        return p ? minLeft(p, serverNow) : '';
+      });
+      if (mins.join() === shown) return;
+      shown = mins.join();
+      ctx.seats.refresh();
     };
     tick();
     ctx.timers.every(1000, tick);
