@@ -304,9 +304,9 @@ it('패널 ESC: 모듈이 이미 처리한 ESC(defaultPrevented)는 창을 닫�
 
   // 물을 글이 있으면 닫지 않고 묻는다. 묻는 중의 ESC는 계속하기이고 닫기를 누르면 닫는다
   let dirty = true;
-  const off = core.ctxs.get('core')!.ctx.ui.guard('demo.w', () => (dirty ? '저장하지 않았어요' : null));
+  const off = core.ctxs.get('core')!.ctx.ui.guard('demo.w', () => (dirty ? '저장하지 않았어요.' : null));
   esc();
-  expect(core.windows.asking.get()).toMatchObject({ id: 'demo.w', text: '저장하지 않았어요' });
+  expect(core.windows.asking.get()).toMatchObject({ id: 'demo.w', text: '저장하지 않았어요. 나갈까요?' });
   esc();
   expect(core.windows.asking.get()).toBeNull();
   esc();
@@ -320,6 +320,46 @@ it('패널 ESC: 모듈이 이미 처리한 ESC(defaultPrevented)는 창을 닫�
   expect(await core.windows.confirm('demo.w')).toBe(true);
 });
 
+it('종료: 저장하지 않은 편집이 있으면 메인에 기다리라고 알리고 그 창을 띄워 묻는다. 계속하기면 끝내지 않고 종료를 누르면 저장하고 끝낸다', async () => {
+  const { core, invoked, listeners } = await boot([]);
+  core.windows.live = () => true;
+  core.windows.open.set([{ id: 'demo.w', win: {} } as OpenWindow]);
+  core.ctxs.get('core')!.ctx.ui.guard('demo.w', () => '캐릭터를 저장하지 않았어요.');
+  const sent = () => invoked.map(([ch]) => ch).filter((ch) => ch.startsWith('app.') || ch === 'win.show');
+
+  listeners.get('quit.request')!({ ask: true });
+  await vi.waitFor(() => expect(core.windows.asking.get()).toMatchObject({ id: 'demo.w', text: '캐릭터를 저장하지 않았어요. 종료할까요?', ok: '종료', cancel: '계속하기' }));
+  // 묻는 중에 트레이 종료를 또 누르면 기다리라고만 다시 알린다
+  listeners.get('quit.request')!({ ask: true });
+  core.windows.asking.get()!.answer(false);
+  expect(sent()).toEqual(['app.quitWait', 'win.show', 'app.quitWait']);
+  await vi.waitFor(() => expect(core['askingQuit']).toBe(false));
+  expect(core.windows.asking.get()).toBeNull();
+
+  const quitting = core.quit();
+  await vi.waitFor(() => expect(core.windows.asking.get()).not.toBeNull());
+  core.windows.asking.get()!.answer(true);
+  expect(await quitting).toBe(true);
+  expect(sent().at(-1)).toBe('app.quit');
+});
+
+it('로그오프와 OS 끄기(ask false)는 저장하지 않은 편집이 있어도 묻지 않고 끝낸다. closeOnEsc가 false인 창은 ESC로 닫지 않는다', async () => {
+  const demo = defineModule({ id: 'demo', ui: { windows: [{ id: 'demo.w', title: 'w', closeOnEsc: false, component: async () => ({ default: () => null }) }] }, setup: () => undefined });
+  const { core, invoked, listeners } = await boot([demo]);
+  const closed: string[] = [];
+  core.windows.close = (id) => void closed.push(id);
+  core.windows.live = () => true;
+  core.windows.open.set([{ id: 'demo.w', win: {} } as OpenWindow]);
+  core['onPanelKey']({ id: 'demo.w' } as OpenWindow, { key: 'Escape', defaultPrevented: false } as KeyboardEvent);
+  core.ctxs.get('core')!.ctx.ui.guard('demo.w', () => '저장하지 않았어요');
+
+  listeners.get('quit.request')!({ ask: false });
+  await vi.waitFor(() => expect(invoked.map(([ch]) => ch)).toContain('app.quit'));
+  expect(core.windows.asking.get()).toBeNull();
+  expect(invoked.map(([ch]) => ch)).not.toContain('app.quitWait');
+  expect(closed).toEqual([]);
+});
+
 it('ask는 정한 글과 단추로 묻고 창이 보이지 않으면 묻지 않고 false. confirmLeave도 글과 단추를 바꾼다', async () => {
   const { core } = await boot([]);
   const ui = core.ctxs.get('core')!.ctx.ui;
@@ -330,7 +370,7 @@ it('ask는 정한 글과 단추로 묻고 창이 보이지 않으면 묻지 않�
   expect(core.windows.asking.get()).toMatchObject({ id: 'demo.w', text: '지울까요?', ok: '지우기', cancel: '취소' });
   core.windows.asking.get()!.answer(true);
   expect(await asked).toBe(true);
-  ui.guard('demo.w', () => '캐릭터를 저장하지 않았어요. 나갈까요?');
+  ui.guard('demo.w', () => '캐릭터를 저장하지 않았어요.');
   const leave = ui.confirmLeave('demo.w', { text: '캐릭터를 저장하지 않았어요. 바꿀까요?', ok: '바꾸기' });
   expect(core.windows.asking.get()).toMatchObject({ text: '캐릭터를 저장하지 않았어요. 바꿀까요?', ok: '바꾸기', cancel: '계속하기' });
   core.windows.asking.get()!.answer(false);

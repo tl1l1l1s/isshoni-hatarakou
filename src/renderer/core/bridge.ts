@@ -35,6 +35,7 @@ export function memoryBridge(): Bridge {
     'log.write': ({ level, scope, message }) => console[level](`[${scope}] ${message}`),
     'shell.openLogFolder': () => undefined,
     'app.quit': () => undefined,
+    'app.quitWait': () => undefined,
     'autostart.get': () => autoStart,
     'autostart.set': ({ on }) => void (autoStart = on),
     'display.list': () => [{ id: 1, primary: true, chosen: true }],

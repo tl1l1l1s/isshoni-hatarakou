@@ -17,7 +17,7 @@ export default function AccountTab({ ctx, windowId, code: showCode = true, focus
   const typed = useRef(name);
   typed.current = name;
   useEffect(
-    () => (windowId ? ctx.ui.guard(windowId, () => (typed.current.trim() !== ctx.self.name() ? '닉네임을 저장하지 않았어요. 나갈까요?' : null)) : undefined),
+    () => (windowId ? ctx.ui.guard(windowId, () => (typed.current.trim() !== ctx.self.name() ? '닉네임을 저장하지 않았어요.' : null)) : undefined),
     [ctx, windowId],
   );
 

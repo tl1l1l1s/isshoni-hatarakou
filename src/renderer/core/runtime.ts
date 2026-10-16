@@ -164,6 +164,7 @@ export class CoreRuntime {
       this.activitySubs.forEach((fn) => fn(s));
     });
     deps.bridge.on('lifecycle', (e) => this.onLifecycle(e));
+    deps.bridge.on('quit.request', ({ ask }) => void this.quit({ ask }));
     deps.bridge.on('notify.click', ({ id }) => {
       const fn = this.notifyClicks.get(id);
       this.notifyClicks.delete(id);
@@ -603,7 +604,8 @@ export class CoreRuntime {
 
   /** 모듈에 먼저 알려 모듈이 고친 값까지 함께 저장되게 한다 */
   private onLifecycle(e: LifecycleEvent) {
-    if (e.type === 'shutdown') return void this.quit();
+    // OS를 끌 때(Mac)는 기다릴 수 없어서 묻지 않는다
+    if (e.type === 'shutdown') return void this.quit({ ask: false });
     this.lifecycleSubs.forEach((fn) => fn(e));
     // 잠금과 절전은 출처를 나눈다. 잠근 채 절전했다 깨어나도 잠금을 풀 때까지 자리비움이다
     if (e.type === 'suspend' || e.type === 'lock') {
@@ -617,17 +619,46 @@ export class CoreRuntime {
   }
 
   private quitting = false;
-  /** 모듈에 shutdown을 알리고 저장한 뒤 끝낸다. 메뉴와 트레이 종료가 모두 여기를 지난다.
-   *  signOut이면 앱을 끝내지 않고 로그인만 지운 뒤 신원 단계부터 다시 시작한다. 이 PC의 파일은 남는다 (ACC-05 연결 해제) */
-  async quit(opts: { signOut?: boolean } = {}): Promise<void> {
-    if (this.quitting) return;
+  private askingQuit = false;
+  /** 저장하지 않은 편집을 묻고(ask, 기본 켬) 모듈에 shutdown을 알려 저장한 뒤 끝낸다. ▼ 메뉴, 런처 창 닫기, 트레이 종료가 모두 여기를 지난다.
+   *  계속하기를 누르면 false다. signOut이면 묻지 않고 앱을 끝내지 않고 로그인만 지운 뒤 신원 단계부터 다시 시작한다. 이 PC의 파일은 남는다 (ACC-05 연결 해제) */
+  async quit(opts: { signOut?: boolean; ask?: boolean } = {}): Promise<boolean> {
+    if (this.quitting) return true;
+    if (!opts.signOut && opts.ask !== false && !(await this.confirmQuit())) return this.quitting;
+    // 묻는 사이 로그오프로 끝내기 시작했다
+    if (this.quitting) return true;
     this.quitting = true;
+    this.windows.leaveAll();
     this.lifecycleSubs.forEach((fn) => fn({ type: 'shutdown' }));
     await this.flush().catch(() => undefined);
     await this.session.leave().catch(() => undefined);
-    if (!opts.signOut) return void (await this.deps.bridge.invoke('app.quit', {}));
+    if (!opts.signOut) {
+      await this.deps.bridge.invoke('app.quit', {});
+      return true;
+    }
     await this.deps.server.identity.signOut().catch(() => undefined);
     await this.deps.bridge.invoke('stage.reload', {});
+    return true;
+  }
+
+  /** 앱을 끝내도 되는지. 저장하지 않은 편집이 있으면 숨긴 화면을 다시 띄우고 그 창마다 묻는다. 메인에는 고를 때까지 기다리라고 알린다 */
+  private async confirmQuit(): Promise<boolean> {
+    if (!this.windows.unsaved()) return true;
+    void this.deps.bridge.invoke('app.quitWait', {});
+    // 묻는 중에 트레이 종료를 또 누르면 기다리라고만 다시 알린다
+    if (this.askingQuit) return false;
+    this.askingQuit = true;
+    try {
+      if (this.displayMode.get() === 'hidden') this.setDisplayMode(this.savedMode());
+      return await this.windows.confirmAll();
+    } finally {
+      this.askingQuit = false;
+    }
+  }
+
+  /** 업데이트 알림의 다시 시작. 종료처럼 먼저 묻고 메인이 설치 프로그램을 띄운 뒤 묻지 않고 끝낸다 */
+  async restartToUpdate(): Promise<void> {
+    if (await this.confirmQuit()) await this.deps.bridge.invoke('update.install', {});
   }
 
   async flush() {
@@ -677,6 +708,7 @@ export class CoreRuntime {
       // 떠날지 묻는 중이면 ESC는 계속하기다
       const ask = this.windows.asking.get();
       if (ask?.id === w.id) return ask.answer(false);
+      if (this.registry.windows.get(w.id)?.decl.closeOnEsc === false) return;
       this.windows.requestClose(w.id);
       return;
     }

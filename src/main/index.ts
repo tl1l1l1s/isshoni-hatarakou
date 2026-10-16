@@ -14,6 +14,7 @@ import { initLog, mainStatus } from './log';
 import { osName, platform } from './platform';
 import { registerScheme, serveApp } from './protocol';
 import { createStore } from './store';
+import { quitWithoutAsking, watchQuit } from './quit';
 import { createTray } from './tray';
 import { startUpdater } from './updater';
 import { checkCover, createStage, dragging, getRects, getStage, place, send, setVisible, toggle, useStore } from './windows/manager';
@@ -48,15 +49,8 @@ function boot(): void {
   app.on('activate', () => setVisible(true));
   // 트레이 앱이라 창이 모두 닫혀도(스테이지를 다시 만드는 중에도) 끝내지 않는다
   app.on('window-all-closed', () => {});
-  // 종료 전에 렌더러에 shutdown을 보내 모듈이 저장하게 한다. 렌더러가 app.quit을 다시 부르거나 1.5초가 지나면 끝낸다
-  let shutdownSent = false;
-  app.on('before-quit', (e) => {
-    if (shutdownSent || !getStage()) return;
-    e.preventDefault();
-    shutdownSent = true;
-    send('lifecycle', { type: 'shutdown' });
-    setTimeout(() => app.quit(), 1500);
-  });
+  // 종료 전에 렌더러가 저장하지 않은 편집을 묻고 모듈이 저장하게 한다. 렌더러가 app.quit을 다시 부르거나 1.5초 안에 묻지 않으면 끝낸다
+  watchQuit();
   app.on('will-quit', () => {
     log.info('끝냄');
     store.flush();
@@ -70,9 +64,9 @@ function boot(): void {
   // Windows 로그오프. session-end 처리기에서 돌아가면 Windows가 언제든 프로세스를 끝내므로 IPC를 기다릴 수 없다.
   // 렌더러는 바뀐 값을 바로 보내고 메인이 들고 있으므로(store) 앞선 확인 단계(query-session-end)에서 트레이 종료와 같은 길로
   // 끝내기 시작해 모듈이 shutdown에 저장하는 값까지 받고 session-end에서는 들고 있는 것을 동기로 쓰고 바로 끝낸다.
-  // 창마다 오므로 shutdown은 한 번만 보낸다
+  // 기다릴 수 없으므로 저장하지 않은 편집은 묻지 않는다
   app.on('browser-window-created', (_e, w) => {
-    w.on('query-session-end', () => void (shutdownSent || app.quit()));
+    w.on('query-session-end', () => quitWithoutAsking());
     w.on('session-end', () => {
       store.flush();
       // app.exit은 will-quit 없이 끝나므로 정상 종료 표시를 여기서 지운다

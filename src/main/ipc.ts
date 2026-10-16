@@ -10,6 +10,7 @@ import { ackReports, pendingReports, report, setCrashConfig, skippedLine } from 
 import { logDir, writeDiagnose } from './log';
 import { getJson, postJson } from './net';
 import { osName, platform, selfAppKey, panelMaterial } from './platform';
+import { quitNow, quitWithoutAsking, waitQuit } from './quit';
 import { getFrameOrigins, setFrameOrigins } from './protocol';
 import type { Store } from './store';
 import { installUpdate, updateState } from './updater';
@@ -84,7 +85,8 @@ export function registerIpc(store: Store): void {
       ({ level, scope, message }) => log[level](`[${scope}] ${message.slice(0, 4000)}`),
     ],
     'shell.openLogFolder': [none, () => void shell.openPath(logDir())],
-    'app.quit': [none, () => app.quit()],
+    'app.quit': [none, quitNow],
+    'app.quitWait': [none, waitQuit],
     'autostart.get': [none, () => platform.autoStart.get()],
     'autostart.set': [on, ({ on }) => platform.autoStart.set(on)],
     'display.list': [none, listDisplays],
@@ -104,7 +106,7 @@ export function registerIpc(store: Store): void {
         ]),
     ],
     'update.state': [none, updateState],
-    'update.install': [none, () => void installUpdate()],
+    'update.install': [none, () => quitWithoutAsking(() => void installUpdate())],
     'stage.setVisible': [z.object({ visible: z.boolean() }), ({ visible }) => setVisible(visible)],
     'stage.coverHide': [on, ({ on }) => setCoverHide(on)],
     'stage.reload': [none, reloadStage],

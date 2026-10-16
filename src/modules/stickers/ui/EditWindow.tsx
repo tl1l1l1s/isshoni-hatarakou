@@ -40,9 +40,9 @@ export default function EditWindow({ ctx }: { ctx: Ctx }) {
   unsaved.current = () => {
     const drawn = !!pad && padDirty.current();
     const deco = JSON.stringify(edit) !== JSON.stringify(editOf(base));
-    return drawn && deco ? '그린 그림과 꾸미기를 저장하지 않았어요. 나갈까요?'
-      : drawn ? '그린 그림을 저장하지 않았어요. 나갈까요?'
-      : deco ? '꾸미기를 저장하지 않았어요. 나갈까요?'
+    return drawn && deco ? '그린 그림과 꾸미기를 저장하지 않았어요.'
+      : drawn ? '그린 그림을 저장하지 않았어요.'
+      : deco ? '꾸미기를 저장하지 않았어요.'
       : null;
   };
 

@@ -60,7 +60,7 @@ export default function WardrobeWindow({ ctx }: { ctx: Ctx }) {
   // 저장하지 않은 그림이나 고른 값이 있으면 ESC, 창 닫기 단추, 슬롯 바꾸기 전에 묻는다
   const unsaved = useRef<() => boolean>(() => false);
   unsaved.current = () => edit.open.dirty() || edit.closed.dirty() || JSON.stringify(draft) !== JSON.stringify(w.appearance());
-  useEffect(() => ctx.ui.guard(WIN, () => (unsaved.current() ? '캐릭터를 저장하지 않았어요. 나갈까요?' : null)), [ctx]);
+  useEffect(() => ctx.ui.guard(WIN, () => (unsaved.current() ? '캐릭터를 저장하지 않았어요.' : null)), [ctx]);
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);

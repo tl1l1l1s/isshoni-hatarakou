@@ -115,6 +115,27 @@ export class WindowClient {
     void this.confirm(id).then((leave) => leave && this.close(id));
   }
 
+  /** 저장하지 않은 일이 있는 창이 있는지 (앱 끝내기) */
+  unsaved(): boolean {
+    return this.open.get().some((w) => this.question(w.id) !== null);
+  }
+
+  /** 앱을 끝내기 전에 저장하지 않은 일이 있는 창마다 그 창을 맨 앞에 띄우고 묻는다. 하나라도 계속하기를 누르면 false */
+  async confirmAll(): Promise<boolean> {
+    for (const w of this.open.get()) {
+      const text = this.question(w.id);
+      if (!text) continue;
+      await this.bridge.invoke('win.show', { name: nameOf(w.id), user: true });
+      if (!(await this.confirm(w.id, { text: `${text} 종료할까요?`, ok: '종료' }))) return false;
+    }
+    return true;
+  }
+
+  /** 끝내기로 정했다. 남은 창은 닫힐 때 다시 묻지 않는다 */
+  leaveAll(): void {
+    for (const w of this.open.get()) this.leaving.add(w.win);
+  }
+
   /** ctx.ui.guard */
   guard(id: string, check: () => string | null): Dispose {
     let set = this.guards.get(id);
@@ -123,11 +144,11 @@ export class WindowClient {
     return () => void set.delete(check);
   }
 
-  /** 떠나도 되는지. 물을 글이 있으면 그 창 안에 묻고 나가기를 누르면 true. q로 글과 단추 이름을 바꾼다 */
+  /** 떠나도 되는지. 저장하지 않은 것이 있으면 그 글에 나갈까요?를 붙여 그 창 안에 묻고 나가기를 누르면 true. q로 글과 단추 이름을 바꾼다 */
   confirm(id: string, q: Partial<AskQuestion> = {}): Promise<boolean> {
     const text = this.question(id);
     if (!text || !this.live(id)) return Promise.resolve(true);
-    return this.ask(id, { text: q.text ?? text, ok: q.ok ?? '나가기', cancel: q.cancel ?? '계속하기' });
+    return this.ask(id, { text: q.text ?? `${text} 나갈까요?`, ok: q.ok ?? '나가기', cancel: q.cancel ?? '계속하기' });
   }
 
   /** ctx.ui.ask. 창이 보이지 않으면 묻지 않고 false */

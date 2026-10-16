@@ -1,5 +1,5 @@
 // 스테이지 창과 패널 창 (10.4). 스테이지는 투명하고 좌석 영역 크기이며 포커스를 받지 않는다
-import { app, BrowserWindow, globalShortcut, screen } from 'electron';
+import { BrowserWindow, globalShortcut, screen } from 'electron';
 import log from 'electron-log/main';
 import { join } from 'node:path';
 import type { CoreEventMap, CoreInvokeMap, Rect } from '../../preload/api';
@@ -104,7 +104,8 @@ function visible(b: Bounds | undefined): b is Bounds {
   return b.x >= wa.x - b.width / 2 && b.y >= wa.y && b.x + b.width / 2 <= wa.x + wa.width && b.y + 40 <= wa.y + wa.height;
 }
 
-app.on('before-quit', () => (quitting = true));
+/** 종료가 정해졌다 (quit.ts). 이 뒤로는 패널 닫기를 막지 않고 keepAlive 패널도 닫고 스테이지를 다시 만들지 않는다 */
+export const setQuitting = () => void (quitting = true);
 
 export const getStage = () => stage;
 export const getRects = () => rects;
