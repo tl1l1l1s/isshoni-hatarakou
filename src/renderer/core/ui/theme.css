@@ -1,3 +1,13 @@
+/* Windows 10 이모지 글꼴에 없는 Emoji 13.0 이후 이모지만 남긴 Noto Color Emoji 2.057 부분 집합 (NFR-22, ADR 0046).
+   범위는 글꼴의 cmap 그대로다. 새 이모지가 든 묶음(피부색, ZWJ)이 이 글꼴로 넘어와도 그리도록 앞쪽 옛 코드포인트도 넣었다 */
+@font-face {
+  font-family: 'Isshoni Emoji';
+  src: url('./fonts/emoji-fallback.woff2') format('woff2');
+  unicode-range: U+200D, U+26A7, U+1F3F3, U+1F3FB-1F3FF, U+1F468-1F469, U+1F6D6-1F6D9, U+1F6DC-1F6DF, U+1F6FB-1F6FC, U+1F7F0, U+1F90C,
+    U+1F972, U+1F977-1F979, U+1F9A3-1F9A4, U+1F9AB-1F9AD, U+1F9CB-1F9CC, U+1F9D1, U+1FA74-1FA77, U+1FA7B-1FA7C, U+1FA83-1FA8F,
+    U+1FA96-1FAC6, U+1FAC8, U+1FACC-1FADD, U+1FADF-1FAEB, U+1FAEF-1FAFA;
+}
+
 /* 디자인 토큰 (10.11 UI). 팔레트 층이 의미 층에 값을 준다. 모노톤과 유리 재질을 쓴다 */
 :root {
   /* 팔레트: 무채색 */
@@ -46,9 +56,9 @@
   --plate-bg: var(--chip-bg); --plate-fg: var(--chip-fg);
   --state-online: #34c759; --state-away: #a1a1a6; --state-busy: #ff453a;
 
-  /* 한국어 글꼴 다음에 OS별 컬러 이모지 글꼴을 둔다 (NFR-22) */
+  /* 한국어 글꼴 다음에 OS별 컬러 이모지 글꼴을 두고 OS 글꼴에 없는 이모지는 앱에 넣은 글꼴로 그린다 (NFR-22) */
   font-family: system-ui, 'Segoe UI Variable Text', 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR',
-    'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+    'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Isshoni Emoji', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 @media (prefers-color-scheme: dark) {

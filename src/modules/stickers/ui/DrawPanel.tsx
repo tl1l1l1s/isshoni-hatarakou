@@ -9,6 +9,8 @@ const INKS: Array<[string, string]> = [['#222222', '검정'], ['#ffffff', '흰�
 const FULL: Rect = { x: 0, y: 0, w: SIZE, h: SIZE };
 /** 칠판 자리. 회색 테두리의 가로로 긴 흰 판 (AVT-10) */
 const BOARD: Rect = { x: 16, y: 96, w: SIZE - 32, h: 320 };
+/** 칠판 글씨. 이모지는 OS 이모지 글꼴로 그리고 OS 글꼴에 없는 이모지는 앱에 넣은 글꼴로 그린다 (NFR-22, theme.css) */
+const boardFont = (size: number) => `bold ${size}px sans-serif, 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Isshoni Emoji'`;
 
 type G = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
@@ -25,10 +27,10 @@ function drawBoard(g: G, text: string) {
   const lines = boardLines(text);
   if (!lines.length) return;
   let size = 72;
-  g.font = `bold ${size}px sans-serif`;
+  g.font = boardFont(size);
   const widest = Math.max(...lines.map((l) => g.measureText(l).width));
   if (widest > w - 60) size = Math.floor((size * (w - 60)) / widest);
-  g.font = `bold ${size}px sans-serif`;
+  g.font = boardFont(size);
   g.fillStyle = '#222222';
   g.textAlign = 'center';
   g.textBaseline = 'middle';
@@ -101,6 +103,13 @@ export default function DrawPanel({ ctx, board, under, dirty, onDone, onCancel }
     if (g) paint(g, true);
   };
   useEffect(redraw);
+  // 이 창 문서는 앱 이모지 글꼴을 칠판 글씨에 처음 쓸 때 불러온다. 캔버스는 글꼴을 다 불러와도 다시 그리지 않아서 그때 다시 그린다
+  useEffect(() => {
+    const fonts = pad.current?.ownerDocument.fonts;
+    const again = () => setVersion((n) => n + 1);
+    fonts?.addEventListener('loadingdone', again);
+    return () => fonts?.removeEventListener('loadingdone', again);
+  }, []);
 
   const at = (e: PointerEvent<HTMLCanvasElement>): Pt => {
     const r = e.currentTarget.getBoundingClientRect();
