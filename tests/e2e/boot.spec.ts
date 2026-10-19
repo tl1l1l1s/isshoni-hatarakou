@@ -31,6 +31,9 @@ test('첫 버전 흐름이 처음부터 끝까지 동작한다', async () => {
   // 런처 (SCR-02)
   const launcher = await windowTitled(app, 'Isshoni Hatarakou');
   await expect(launcher.getByText('시작하기')).toBeVisible();
+  // 앱에 넣은 이모지 글꼴(NFR-22)은 부팅 때 불러온다. CSP나 빌드가 글꼴을 막으면 여기서 드러난다
+  const emojiFont = () => stage.evaluate(() => [...document.fonts].filter((f) => f.family.replace(/"/g, '') === 'Isshoni Emoji').map((f) => f.status));
+  expect(await emojiFont()).toEqual(['loaded']);
   await launcher.waitForTimeout(300);
   await launcher.screenshot({ path: 'test-results/launcher.png' });
   await launcher.getByText('시작하기').click();

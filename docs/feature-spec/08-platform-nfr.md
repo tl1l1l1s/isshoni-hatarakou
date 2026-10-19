@@ -307,9 +307,11 @@ PC에서 하는 일은 PC 밖으로 나가지 않고 서버 데이터는 권한�
 
 글자와 이모지가 Windows와 Mac에서 빈 네모 없이 보여야 합니다.
 
-- 글꼴은 앱에 넣지 않고 OS 글꼴을 씁니다. 글꼴 순서는 system-ui, Segoe UI, Apple SD Gothic Neo, 맑은 고딕, Noto Sans KR이고 그 뒤에 OS별 컬러 이모지 글꼴(Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji)이 옵니다.
-- 채팅 이모티콘은 👍, 👏, 😂 같은 기본 이모지 12개이고 모두 Windows 10 기본 이모지 글꼴에도 있는 이모지입니다.
-- 이모지 그림을 앱에 넣지 않으므로 이모지 모양은 OS마다 다릅니다.
+- 글자는 OS 글꼴로 그립니다. 글꼴 순서는 system-ui, Segoe UI, Apple SD Gothic Neo, 맑은 고딕, Noto Sans KR이고 그 뒤에 OS별 컬러 이모지 글꼴(Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji)이 옵니다.
+- OS 이모지 글꼴에 없는 이모지는 앱에 넣은 이모지 글꼴로 그립니다. 이 글꼴은 Windows 10의 Segoe UI Emoji에 없는 Emoji 13.0 이후 이모지만 남긴 Noto Color Emoji 부분 집합이고 OS 이모지 글꼴 다음 순서에 둡니다. 그래서 그 이모지가 있는 Mac과 Windows 11에서는 OS 글꼴로 그립니다(ADR 0046).
+- 채팅 이모티콘은 👍, 👏, 😂 같은 기본 이모지 12개이고 모두 Windows 10 기본 이모지 글꼴에도 있는 이모지입니다. 앱 문구에도 Windows 10 이모지 글꼴에 없는 이모지를 쓰지 않습니다.
+- 이모지 모양은 OS마다 다릅니다. Windows 10에서는 새 이모지만 Noto 모양으로 보입니다.
+- 창 제목, 마우스를 올리면 뜨는 설명, OS 알림은 OS가 직접 그려서 앱에 넣은 글꼴을 쓰지 못합니다. Windows 10에서는 이곳의 새 이모지가 빈 네모로 보입니다.
 
 ### NFR-23 에셋 출처와 이용 조건
 
@@ -317,9 +319,10 @@ PC에서 하는 일은 PC 밖으로 나가지 않고 서버 데이터는 권한�
 |---|
 | P0 |
 
-앱에 들어가는 그림과 소리는 모두 직접 만든 것이고 출처를 에셋 목록에 기록합니다.
+앱에 들어가는 그림과 소리는 이모지 글꼴 하나를 빼고 모두 직접 만든 것이고 출처를 에셋 목록에 기록합니다.
 
 - 저장소에는 그림 파일과 소리 파일이 없습니다. 기본 몸과 책상은 코드로 그린 자체 제작 그림이고 `src/modules/wardrobe/assets.json`에 id, 출처 파일, `license`를 적습니다.
+- 직접 만들지 않은 에셋은 이모지 글꼴 하나입니다(NFR-22). `src/renderer/core/ui/fonts/emoji-fallback.woff2`는 Noto Color Emoji 2.057(SIL OFL 1.1)의 부분 집합입니다. 저작권 표시와 라이선스 원문을 같은 폴더의 `OFL.txt`에 두고 설치 폴더의 `resources`에도 `LICENSE.noto-color-emoji.txt`로 넣습니다. 받은 주소와 만드는 명령은 ADR 0046에 적습니다.
 - 채팅 알림음과 백색소음은 소리 파일 없이 WebAudio로 합성합니다.
 - 트레이 아이콘은 코드로 그린 임시 원이고 그림이 정해지면 그 그림으로 바꿉니다(9.1 결정 7).
 - 얼굴 그림과 아이템 그림은 사용자가 직접 넣는 그림이라 앱에 들어 있지 않습니다. 음악도 앱에 넣지 않고 YouTube 삽입 플레이어(`youtube-nocookie.com`)로 재생합니다.
