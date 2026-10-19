@@ -52,9 +52,10 @@ export const win: Omit<Platform, 'idleSeconds' | 'cursorPoint'> = {
       resizable: false,
     },
     afterCreate: (w) => w.setAlwaysOnTop(true, 'screen-saver'),
-    // 불투명도가 255보다 낮은 창은 Chromium이 아래 창을 가리는 창으로 세지 않는다. GPU 합성이 꺼져 있으면 건너뛴다
+    // 불투명도가 255보다 낮은 창은 Chromium이 아래 창을 가리는 창으로 세지 않는다. GPU 합성이 꺼져 있으면 켜고 끌 때 모두 건너뛴다.
+    // setOpacity(1)도 SetLayeredWindowAttributes를 걸어서 하드웨어 가속을 끈 Chromium이 투명 창을 그리지 못한다
     setOpacity252: (w, on) => {
-      if (on && !app.getGPUFeatureStatus().gpu_compositing.startsWith('enabled')) return;
+      if (!app.getGPUFeatureStatus().gpu_compositing.startsWith('enabled')) return;
       w.setOpacity(on ? 252 / 255 : 1);
     },
   },
