@@ -411,7 +411,7 @@ export function createStage(): void {
       overrideBrowserWindowOptions: { title, width, height, x, y, resizable, useContentSize: true, show: false, ...panelMaterial },
     };
   });
-  // Windows 기본 메뉴 막대와 그 단축키(Ctrl+R, Ctrl+W)를 패널에서 빼고 패널 안의 링크로 창을 열거나 이동하지 못하게 한다
+  // 패널 안의 링크로 창을 열거나 이동하지 못하게 한다. Windows 기본 메뉴는 앱을 켤 때 뺀다 (index.ts)
   win.webContents.on('did-create-window', (child, { frameName }) => {
     child.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     child.webContents.on('will-navigate', (e) => e.preventDefault());
@@ -433,7 +433,6 @@ export function createStage(): void {
     const keepAlive = p?.keepAlive === true;
     prepared.delete(frameName);
     panels.set(frameName, child);
-    child.removeMenu();
     // 맨 위에 보이기만 하고 키보드 포커스는 사용자가 누르거나 키를 쳐서 연 창에만 준다. 모듈이 저절로 연 창(친구 신청, 자리 안내)은
     // 그림을 그리는 중인 앱의 키보드를 가져가지 않는다
     raise(child);

@@ -62,4 +62,4 @@ Preconditions:
 - 메인의 `close()`는 사용자가 닫기 단추를 누른 것과 같다. 플레이리스트는 숨기기만 하고 렌더러의 `window.close()`는 실제로 닫는다.
 - Ctrl+Alt+H는 Playwright가 누를 수 없다. 메인에서 `globalShortcut.isRegistered('Control+Alt+H')`가 true인지만 본다.
 - 이 하네스로 다른 앱 뒤에 창이 남는 문제, Windows 로그오프 메시지, 실제 시작 앱 값, 트레이 왼쪽 클릭은 확인할 수 없다. `docs/checklists/windows-m0.md`의 항목으로 보고한다.
-- 이 Mac에서 켜면 Dock 아이콘이 없고 앱 메뉴와 편집 메뉴만 있다. `Menu.getApplicationMenu().items.map((i) => i.role)`이 `['appmenu', 'editmenu']`다.
+- 이 Mac에서 켜면 Dock 아이콘이 없고 앱 메뉴와 편집 메뉴만 있다. `Menu.getApplicationMenu().items.map((i) => i.role)`이 `['appmenu', 'editmenu']`다. Windows에서는 `Menu.getApplicationMenu()`가 null이라 기능 창에 메뉴 막대와 그 단축키가 없고 창 내용은 모듈이 정한 크기 그대로다. 런처의 `innerWidth`와 `innerHeight`가 380과 600인지와 Windows에서 앱 메뉴가 없는지는 `tests/e2e/windows-smoke.spec.ts`에서 확인한다.

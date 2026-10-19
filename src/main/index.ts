@@ -85,6 +85,10 @@ function boot(): void {
       // 트레이 앱이라 Dock에서도 뺀다
       Menu.setApplicationMenu(Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' }]));
       app.dock?.hide();
+    } else {
+      // Windows 기본 메뉴가 있으면 창마다 메뉴 막대가 붙어 그만큼 창이 커지고 removeMenu로 메뉴를 떼어도 창이 줄지 않아 패널 내용이 메뉴 막대 높이만큼 커진다.
+      // 창을 만들기 전에 메뉴와 그 단축키(Ctrl+R, Ctrl+W)를 뺀다
+      Menu.setApplicationMenu(null);
     }
     serveApp(store);
     registerIpc(store);
