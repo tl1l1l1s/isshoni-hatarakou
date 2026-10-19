@@ -51,6 +51,14 @@ export const win: Omit<Platform, 'idleSeconds' | 'cursorPoint'> = {
       hasShadow: false,
       resizable: false,
     },
+    // 숨겼다 다시 보인 창은 Electron이 입력을 받는 자식 창(Chrome_RenderWidgetHostHWND)을 숨긴 채로 둔다(backgroundThrottling: false,
+    // electron/electron#54694). 그러면 포커스를 받지 않는 스테이지에서 왼쪽 클릭과 끌기가 먹지 않는다. 그 창은 크기가 바뀔 때만 다시 보이므로 폭을 1px 줄였다 되돌린다.
+    // shortcut: 다시 보일 때마다 크기 바뀜 이벤트가 두 번 더 난다, electron/electron#54695가 들어간 Electron으로 올리면 지운다
+    afterShow: (w) => {
+      const b = w.getBounds();
+      w.setBounds({ ...b, width: b.width - 1 });
+      w.setBounds(b);
+    },
     afterCreate: (w) => w.setAlwaysOnTop(true, 'screen-saver'),
     // 불투명도가 255보다 낮은 창은 Chromium이 아래 창을 가리는 창으로 세지 않는다. GPU 합성이 꺼져 있으면 건너뛴다
     setOpacity252: (w, on) => {

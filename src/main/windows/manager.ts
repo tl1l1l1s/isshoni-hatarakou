@@ -288,10 +288,19 @@ const shown = () => !hidden && !(covered && coverHide && !revealed);
 function applyStage(): void {
   const v = shown();
   if (stage) {
+    const was = stage.isVisible();
     if (v) stage.showInactive();
     else stage.hide();
+    if (v && !was) afterReshow();
   }
   send('stage.visibility', { visible: v });
+}
+
+/** 숨겼거나 최소화한 스테이지가 다시 보인 뒤. 배율 125%나 150%에서는 OS별 처리가 크기를 바꿨다 되돌릴 때 반올림으로 어긋날 수 있어 원래 자리에 다시 놓는다 */
+function afterReshow(): void {
+  if (!stage) return;
+  platform.overlay.afterShow(stage);
+  place();
 }
 
 /** 설정 화면 탭의 전체 화면 앱 위에서 숨기기 */
@@ -368,6 +377,8 @@ export function createStage(): void {
     const { width, height } = win.getContentBounds();
     send('stage.resized', { width, height });
   });
+  // OS가 최소화했다 되돌린 스테이지도 숨겼다 다시 보인 창과 같다
+  win.on('restore', afterReshow);
   platform.overlay.afterCreate(win);
   applyOpacity();
   win.setIgnoreMouseEvents(true);
