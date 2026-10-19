@@ -60,6 +60,7 @@ Preconditions:
 - Playwright 클릭도 사용자 입력이다. 저절로 연 창을 보려면 마지막 클릭 뒤 5초를 넘겨 기다리고 창 안 클릭의 사용자 활성화도 끝나야 한다. 다른 앱을 앞에 두는 검사는 사용자의 터미널이 다시 앞으로 올 수 있으니 앞 앱이 이 앱(`com.github.Electron`)이 아닌지로 본다.
 - Mac에서 실행 화면 캐릭터를 누르면 앱이 앞으로 오는 것은 알려진 문제다(Electron 44의 `type: 'panel'`). `osclick.ts`의 참고 항목이 본다.
 - 메인의 `close()`는 사용자가 닫기 단추를 누른 것과 같다. 플레이리스트는 숨기기만 하고 렌더러의 `window.close()`는 실제로 닫는다.
+- 가짜 플랫폼은 창 불투명도를 바꾸지 않는다. 그래서 하드웨어 가속을 끈 Windows에서 실행 화면이 그려지는지는 Mac 화면으로 판정하지 않고 `src/main/platform/win/opacity.test.ts`와 Windows 점검표로 확인한다.
 - Ctrl+Alt+H는 Playwright가 누를 수 없다. 메인에서 `globalShortcut.isRegistered('Control+Alt+H')`가 true인지만 본다.
 - 이 하네스로 다른 앱 뒤에 창이 남는 문제, Windows 로그오프 메시지, 실제 시작 앱 값, 트레이 왼쪽 클릭은 확인할 수 없다. `docs/checklists/windows-m0.md`의 항목으로 보고한다.
 - 이 Mac에서 켜면 Dock 아이콘이 없고 앱 메뉴와 편집 메뉴만 있다. `Menu.getApplicationMenu().items.map((i) => i.role)`이 `['appmenu', 'editmenu']`다.
