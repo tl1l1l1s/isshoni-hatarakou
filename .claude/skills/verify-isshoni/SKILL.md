@@ -95,7 +95,7 @@ Playwright `_electron` API로 조작한다. `verify()` 본문이 받는 `Session
 
 - `verify(name, body, options?)`는 앱을 켜고 `body`를 실행한 뒤 정리한다.
 - `menu(s, item, title)`은 ▼ 메뉴 항목을 눌러 열린 창을 돌려준다.
-- `windowTitled(app, title)`은 제목으로 창을 찾는다. 5초 안에 없으면 예외를 던진다.
+- `windowTitled(app, title)`은 제목으로 창을 찾는다. 20초 안에 없으면 그때 열린 창의 제목을 담아 예외를 던진다. CI의 Windows 러너는 앱을 켜는 데 5초를 넘기기도 한다.
 - `doctor()`는 문제 목록을 돌려준다. 빈 배열이면 정상이다.
 - `measure.ts`는 내보내는 것 없이 실행만 한다. Measure 절을 본다.
 - `evidenceRoot`는 증거 폴더의 상위 경로다.
