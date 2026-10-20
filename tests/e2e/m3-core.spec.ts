@@ -5,9 +5,10 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+/** 스테이지(첫 창)를 뺀 창 가운데 제목이 같은 창. 느린 러너라 20초까지 기다린다 */
 async function windowTitled(app: ElectronApplication, title: string): Promise<Page> {
-  for (let i = 0; i < 50; i++) {
-    for (const w of app.windows().slice(1)) if (!w.isClosed() && (await w.title()) === title) return w;
+  for (let i = 0; i < 200; i++) {
+    for (const w of app.windows().slice(1)) if (!w.isClosed() && (await w.title().catch(() => '')) === title) return w;
     await new Promise((r) => setTimeout(r, 100));
   }
   throw new Error(`${title} 창이 열리지 않았습니다`);

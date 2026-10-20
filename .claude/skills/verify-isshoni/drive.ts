@@ -28,13 +28,15 @@ export interface Session {
   shot(page: Page, name: string): Promise<void>;
 }
 
-/** 스테이지를 뺀 창 가운데 제목이 같은 창 */
+/** 스테이지를 뺀 창 가운데 제목이 같은 창. CI의 Windows 러너는 앱을 켜는 데 5초를 넘기기도 해서 20초까지 기다린다 */
 export async function windowTitled(app: ElectronApplication, title: string): Promise<Page> {
-  for (let i = 0; i < 50; i++) {
-    for (const w of app.windows().slice(1)) if (!w.isClosed() && (await w.title()) === title) return w;
+  for (let i = 0; i < 200; i++) {
+    for (const w of app.windows().slice(1)) if (!w.isClosed() && (await w.title().catch(() => '')) === title) return w;
     await new Promise((r) => setTimeout(r, 100));
   }
-  throw new Error(`${title} 창이 열리지 않았습니다`);
+  // CI는 하네스 증거 폴더를 올리지 않으므로 그때 열린 창의 제목을 오류에 남긴다
+  const open = await Promise.all(app.windows().map((w) => w.title().catch(() => '?')));
+  throw new Error(`${title} 창이 열리지 않았습니다 (열린 창 ${JSON.stringify(open)})`);
 }
 
 /** 실행 화면의 ▼ 메뉴에서 항목을 눌러 열린 창 */
@@ -82,7 +84,10 @@ export async function verify(name: string, body: (s: Session) => Promise<void>, 
     app.windows().forEach(watch);
     const stage = await app.firstWindow();
     watch(stage);
-    const launcher = await windowTitled(app, 'Isshoni Hatarakou');
+    // 런처가 뜨지 않으면 부팅 중 콘솔 오류를 함께 남긴다. errors.json은 CI에서 올라가지 않는다
+    const launcher = await windowTitled(app, 'Isshoni Hatarakou').catch((e: Error) => {
+      throw new Error(`${e.message} 콘솔 오류 ${JSON.stringify(errors)}`);
+    });
     return { app, stage, launcher };
   };
   let failed = false;
