@@ -48,6 +48,7 @@ export const mac: Omit<Platform, 'idleSeconds' | 'cursorPoint'> = {
       enableLargerThanScreen: true,
     },
     afterCreate: (w) => w.setAlwaysOnTop(true, 'screen-saver'),
+    afterShow: () => {},
     // Windows 전용 우회라 Mac에서는 바꾸지 않는다
     setOpacity252: () => {},
   },

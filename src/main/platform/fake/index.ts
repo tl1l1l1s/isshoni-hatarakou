@@ -12,6 +12,8 @@ export class FakePlatform implements Platform {
   bounds: Rectangle | null = null;
   pens = new Set<AppKey>();
   autoStartOn = false;
+  /** 숨긴 스테이지가 다시 보인 횟수 (overlay.afterShow) */
+  reshown = 0;
 
   activeWindow = {
     foreground: async () => ({ appKey: this.app, unknownReason: this.app ? null : this.unknownReason, ...(this.bounds && { bounds: this.bounds }) }),
@@ -19,7 +21,7 @@ export class FakePlatform implements Platform {
   penApps = { user: new Set<AppKey>(), isPen: (k: AppKey) => this.pens.has(k) || this.penApps.user.has(k) };
   autoStart = { get: () => this.autoStartOn, set: (on: boolean) => void (this.autoStartOn = on) };
   // Mac에서 시험할 때도 스테이지 위쪽이 작업 영역 위로 나가도록 Mac 구현처럼 enableLargerThanScreen을 켠다
-  overlay = { options: { frame: false, transparent: true, skipTaskbar: true, focusable: false, hasShadow: false, enableLargerThanScreen: true }, afterCreate: () => {}, setOpacity252: () => {} };
+  overlay = { options: { frame: false, transparent: true, skipTaskbar: true, focusable: false, hasShadow: false, enableLargerThanScreen: true }, afterCreate: () => {}, afterShow: () => void this.reshown++, setOpacity252: () => {} };
   idleSeconds = () => this.idle;
   cursorPoint = () => this.cursor;
 }

@@ -26,6 +26,8 @@ export interface Overlay {
   /** 스테이지 창 옵션. webPreferences와 크기는 창 관리자가 더한다 */
   options: BrowserWindowConstructorOptions;
   afterCreate(win: BrowserWindow): void;
+  /** 숨겼거나 최소화한 스테이지가 다시 보인 뒤. 필요 없는 OS는 아무것도 하지 않는다 */
+  afterShow(win: BrowserWindow): void;
   /** 영상 겹침 우회: 불투명도 252 (NFR-04). 지원하지 않는 OS는 아무것도 하지 않는다 */
   setOpacity252(win: BrowserWindow, on: boolean): void;
 }

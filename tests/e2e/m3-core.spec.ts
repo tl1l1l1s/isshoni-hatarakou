@@ -166,6 +166,11 @@ test('M3 코어 계약이 앱에서 동작한다', async () => {
   await expect.poll(stageVisible).toBe(false);
   await mode('normal');
   await expect.poll(stageVisible).toBe(true);
+  // 숨겼다 다시 보일 때만 OS별 처리(Windows는 입력을 받는 자식 창을 다시 보이기)를 한 번 부른다. 보이는 동안 다시 보이기를 불러도 부르지 않는다
+  const reshown = () => app.evaluate(() => (globalThis as unknown as { fakePlatform: { reshown: number } }).fakePlatform.reshown);
+  expect(await reshown()).toBe(1);
+  await stage.evaluate(() => (window as unknown as { bridge: { invoke(c: string, a: unknown): Promise<unknown> } }).bridge.invoke('stage.setVisible', { visible: true }));
+  expect(await reshown()).toBe(1);
 
   // 한 계정 한 기기 (ACC-12, SCR-08): 다른 기기가 가져가면 방에서 나오고 여기서 계속 쓰기로 되찾는다
   await stage.evaluate(() => {

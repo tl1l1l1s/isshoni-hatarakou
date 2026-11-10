@@ -22,6 +22,14 @@ import { checkCover, createStage, dragging, getRects, getStage, place, send, set
 registerScheme();
 // 앱 글은 한국어뿐이다. OS 언어가 영어여도 날짜 칸이 연 월 일 순서로 보이고 숫자와 날짜 형식이 한국어를 따른다 (ADR 0032)
 app.commandLine.appendSwitch('lang', 'ko');
+// Windows의 창 가림 계산을 끈다. 켜 두면 화면 잠금과 모니터 꺼짐 때 Chromium이 스테이지를 가려진 창으로 보고 입력을 받는 자식 창을 숨긴 뒤
+// 다시 보이지 않아 스테이지가 왼쪽 클릭을 받지 않는다(overlay.afterShow와 같은 문제, ADR 0047). 모든 창이 backgroundThrottling: false라 가림 계산으로 아끼는 것이 없다.
+// appendSwitch는 앞서 넣은 값(Playwright 시험이 넣는 목록)을 덮어쓰므로 이어 붙인다.
+// shortcut: Chromium 기능 이름을 직접 쓰는 우회다, electron/electron#54695가 들어간 Electron으로 올리면 afterShow와 함께 지운다
+if (osName === 'win') {
+  const off = app.commandLine.getSwitchValue('disable-features');
+  app.commandLine.appendSwitch('disable-features', [off, 'CalculateNativeWinOcclusion'].filter(Boolean).join(','));
+}
 
 // 데이터 폴더를 지금 이름에 고정한다. productName을 바꿔도 설정, 저장 파일, 로그인이 그대로 남는다 (ADR 0024).
 // 시험은 --user-data-dir로 따로 준다. 단일 실행 잠금도 이 폴더에 생기므로 잠금보다 먼저 한다

@@ -11,7 +11,7 @@
 - `os-notify`는 OS 알림이 소리 없이 뜨는 것이다. 소리는 앱의 알림음이 설정과 회사원 모드를 따라 낸다.
 - `m9-double`은 같은 창을 빠르게 두 번 열어도 창이 하나만 열리는 것이다.
 - `o10-offscreen`은 숨긴 플레이리스트 창이 화면 밖에 있으면 다시 열 때 작업 영역 안으로 오는 것이다.
-- `stage-hide`는 화면 숨기기 동안 커서 위치를 읽지 않고 다시 보일 때 함께 숨긴 창을 맨 위로 올리는 것이다 (SET-03).
+- `stage-hide`는 화면 숨기기 동안 커서 위치를 읽지 않고 다시 보일 때 함께 숨긴 창을 맨 위로 올리는 것이다 (SET-03). 다시 보인 실행 화면은 숨기기 전처럼 왼쪽 클릭과 끌기를 받는다. Windows에서 그러지 못하던 문제(ADR 0047)를 막으려고 숨겼던 실행 화면이 다시 보일 때 OS별 처리를 한 번 한다.
 - `o7-autostart`는 일반 탭 `PC를 켤 때 자동 실행`이 OS 값을 따르는 것이다 (SET-01).
 - `esc-release`는 대상 고르기 중 스테이지가 죽거나 10초가 지나면 전역 ESC가 풀리는 것이다.
 - `m11-logoff`는 로그오프 확인 단계에서 바로 전에 바꾼 설정을 저장하고 앱이 끝나는 것이다.
@@ -41,7 +41,7 @@ Preconditions:
 - **저절로 연 창.** 메인에서 `BrowserWindow.prototype.focus`를 감싸 제목을 모은다. 실행 화면이나 창을 마지막으로 누른 뒤 5.5초를 기다리고 `const w = core.registry.windows.get('friends.main')`과 `await core.windows.show(w.decl, w.ctx)`로 모듈이 저절로 열 때처럼 연다. `친구` 창이 보이고 `isVisible()`이 true지만 focus 기록에 `친구`가 없다. 실행 전에 `osascript -e 'tell application "Finder" to activate'`로 다른 앱을 앞에 두면 `lsappinfo front`의 번들 ID가 `com.github.Electron`으로 바뀌지 않는다. 같은 세션에서 ▼ 메뉴로 연 `설정`은 focus 기록에 들어간다.
 - **두 번 열기.** 스테이지에서 `window.open`을 세는 함수로 감싼 뒤 `const w = core.registry.windows.get('status.pick')`과 `await Promise.all([core.windows.show(w.decl, w.ctx), core.windows.show(w.decl, w.ctx)])`를 실행한다. `window.open`은 한 번 불리고 `상태 고르기` 창은 하나다. 사용자가 이만큼 빠르게 누를 수 없어서 코어 함수를 직접 부른다.
 - **화면 밖 플레이어.** `await menu(s, '플레이리스트', '플레이리스트')` 뒤 메인에서 그 창의 `close()`와 `setBounds({ x: -6000, y: -6000 })`을 부른다. 창은 숨겨진 채로 남는다. 메뉴로 다시 열면 기록에 `플레이리스트:center`가 있고 창이 보이며 위치가 `screen.getDisplayMatching(b).workArea` 안이다.
-- **화면 숨기기.** `fakePlatform`의 `cursor`를 읽을 때마다 세는 getter로 바꾼다. 보이는 동안 0.5초에 10번쯤 읽는다. 포커스 기록과 설정 창을 열고 회사원 모드의 `숨기기` 칩을 누르면 스테이지와 두 창의 `isVisible()`이 false이고 0.5초 동안 한 번도 읽지 않는다. `await s.stage.evaluate(() => window.bridge.invoke('stage.setVisible', { visible: true }))`로 다시 띄우면 세 창이 보이고 `moveTop` 기록에 `설정`과 `포커스 기록`이 있으며 다시 읽기 시작한다.
+- **화면 숨기기.** `fakePlatform`의 `cursor`를 읽을 때마다 세는 getter로 바꾼다. 보이는 동안 0.5초에 10번쯤 읽는다. 포커스 기록과 설정 창을 열고 회사원 모드의 `숨기기` 칩을 누르면 스테이지와 두 창의 `isVisible()`이 false이고 0.5초 동안 한 번도 읽지 않는다. `await s.stage.evaluate(() => window.bridge.invoke('stage.setVisible', { visible: true }))`로 다시 띄우면 세 창이 보이고 `moveTop` 기록에 `설정`과 `포커스 기록`이 있으며 다시 읽기 시작한다. 다시 보일 때 메인의 `globalThis.fakePlatform.reshown`이 1 늘고 이미 보이는 동안 `stage.setVisible`을 한 번 더 불러도 늘지 않는다.
 - **자동 실행.** 설정 창 `일반` 탭의 `PC를 켤 때 자동 실행`을 체크하면 `fakePlatform.autoStartOn`이 true가 되고 다시 연 설정 창에서도 체크되어 있다. `fakePlatform.autoStartOn = false`로 OS에서 끈 상태를 만들고 `bridge.invoke('stage.reload', {})`로 다시 시작한 뒤 런처에서 시작하기를 누르면 체크가 풀려 있다.
 - **ESC 풀기.** 방 `devdev`에 들어가 `void core.pickTarget(20_000)`으로 고르기를 시작한다. 실행 화면에 `누구에게 할지 캐릭터를 눌러 주세요`가 뜨고 `globalShortcut.isRegistered('Escape')`가 true다. 메인에서 스테이지의 `webContents.forcefullyCrashRenderer()`를 부르면 5초 안에 false가 된다. 새 세션에서 `bridge.invoke('pick.escape', { on: true })`만 부르면 10초쯤 뒤 false가 된다.
 - **로그오프.** 설정 창 화면 탭의 `테마`를 `dark`로 고른다. `s.stage.evaluate(() => window.bridge.invoke('store.read', { path: 'settings.json' }))`가 `modules.core.values.theme`에 `dark`를 주면 메인이 값을 들고 있는 것이다. 이때 미리 읽어 둔 `app.getPath('userData')`의 `settings.json`에는 아직 `"dark"`가 없다. 바로 메인에서 모든 창에 `w.emit('query-session-end', { preventDefault() {}, reasons: ['logoff'] })`를 낸다. 앱 프로세스가 1초 안에 끝나고 파일에 `"dark"`가 있다. 새 세션에서 같은 순서로 테마를 고른 뒤 확인 단계 없이 첫 창에 `w.emit('session-end', { reasons: ['logoff'] })`만 내도 앱이 바로 끝나고 파일에 `"dark"`가 있다.
@@ -57,6 +57,7 @@ Preconditions:
 - 로그오프와 `session-end` 확인은 앱이 스스로 끝난다. 끝난 뒤에는 `s.app.evaluate`를 부를 수 없으니 데이터 폴더 경로를 먼저 읽어 둔다. `session-end`를 내는 `evaluate`는 앱이 끝나면서 실패하므로 `.catch`로 삼킨다.
 - 기능 창은 모두 포커스를 받는 창이다. 포커스를 받지 않는 창은 실행 화면과 효과 창뿐이고 가짜 플랫폼의 실행 화면도 `isFocusable()`이 false다.
 - Windows 제목 표시줄의 ×와 끌기는 이 하네스로 누를 수 없다. 메인의 `close()`는 같은 닫기 경로가 막히지 않았는지만 보여 준다. 실제 ×와 끌기는 `docs/checklists/windows-m0.md`로 확인한다.
+- 숨겼다 다시 보인 실행 화면이 Windows에서 왼쪽 클릭을 받지 않던 문제는 Chromium 안쪽 창 상태라 이 하네스로 드러나지 않는다. 하네스는 `fakePlatform.reshown`으로 처리가 불렸는지만 보고 실제 클릭은 Windows PC에서 확인한다.
 - Playwright 클릭도 사용자 입력이다. 저절로 연 창을 보려면 마지막 클릭 뒤 5초를 넘겨 기다리고 창 안 클릭의 사용자 활성화도 끝나야 한다. 다른 앱을 앞에 두는 검사는 사용자의 터미널이 다시 앞으로 올 수 있으니 앞 앱이 이 앱(`com.github.Electron`)이 아닌지로 본다.
 - Mac에서 실행 화면 캐릭터를 누르면 앱이 앞으로 오는 것은 알려진 문제다(Electron 44의 `type: 'panel'`). `osclick.ts`의 참고 항목이 본다.
 - 메인의 `close()`는 사용자가 닫기 단추를 누른 것과 같다. 플레이리스트는 숨기기만 하고 렌더러의 `window.close()`는 실제로 닫는다.
