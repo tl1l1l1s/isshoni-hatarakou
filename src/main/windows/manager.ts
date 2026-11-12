@@ -1,5 +1,5 @@
 // 스테이지 창과 패널 창 (10.4). 스테이지는 투명하고 좌석 영역 크기이며 포커스를 받지 않는다
-import { BrowserWindow, globalShortcut, screen } from 'electron';
+import { app, BrowserWindow, globalShortcut, screen } from 'electron';
 import log from 'electron-log/main';
 import { join } from 'node:path';
 import type { CoreEventMap, CoreInvokeMap, Rect } from '../../preload/api';
@@ -91,6 +91,8 @@ export function chooseDisplay(id: number): void {
 const OPACITY_252_ENV = process.env.ISSHONI_OPACITY_252 === '1';
 let opacity252 = false;
 const applyOpacity = () => stage && platform.overlay.setOpacity252(stage, opacity252 || OPACITY_252_ENV);
+// getGPUFeatureStatus는 GPU 정보가 오기 전에는 GPU 합성을 꺼짐으로 알려서 어댑터가 건너뛴다. 정보가 오면 지금 값을 다시 적용한다
+app.on('gpu-info-update', applyOpacity);
 export function setOpacity252(on: boolean): void {
   opacity252 = on;
   applyOpacity();
