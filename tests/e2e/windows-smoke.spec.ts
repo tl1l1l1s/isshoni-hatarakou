@@ -72,6 +72,10 @@ test.afterAll(async () => {
 
 test('런처가 뜨고 내 정보 화면을 열었다 닫는다', async () => {
   await expect(launcher.getByText('시작하기')).toBeVisible();
+  // 패널 내용은 모듈이 정한 크기 그대로다. Windows 기본 메뉴를 창마다 removeMenu로 떼던 때는 내용이 메뉴 막대 높이만큼 더 높았다.
+  // 메뉴를 다시 붙이면 창만 커지고 내용 크기는 그대로라서 Windows에서는 앱 메뉴가 없는지도 본다
+  expect(await launcher.evaluate(() => [innerWidth, innerHeight])).toEqual([380, 600]);
+  if (process.platform === 'win32') expect(await app.evaluate(({ Menu }) => Menu.getApplicationMenu() === null)).toBe(true);
   await expect(launcher.getByText('이름 없음').first()).toBeVisible();
   await shot(launcher, 'launcher');
   await launcher.getByRole('button', { name: '내 정보' }).click();
