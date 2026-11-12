@@ -59,6 +59,7 @@ Preconditions:
 - 상태칩 알약에도 상태 글이 보인다. 말풍선은 `s.stage.locator('div[class*="bubble"]', { hasText: 글 })`로 찾는다.
 - 화면 공유 깜빡임 줄이기는 가짜 플랫폼에서 불투명도를 바꾸지 않는다. 화면 변화는 Windows에서만 볼 수 있다.
 - 전체 화면 숨기기는 500ms 활동 샘플로 앞 창을 보므로 바꾼 뒤 결과를 `expect.poll`로 기다린다. 패널을 연 뒤에는 `BrowserWindow.getAllWindows()[0]`이 스테이지가 아닐 수 있으니 스테이지는 `s.app.browserWindow(s.stage)`로 잡는다. 실제 영상, 게임, 클립 스튜디오 전체 화면은 Windows 점검표로 본다.
+- 가짜 플랫폼에서는 `fakePlatform.app = 'win:explorer.exe'`와 `fakePlatform.bounds = d`를 넣으면 스테이지가 숨는다. 실제 Windows에서는 바탕화면 클릭, Win+D, 작업 보기에서 숨지 않으니 이 결과로 판정하지 않는다. 그 동작은 `src/main/platform/win/foreground.test.ts`와 Windows 점검표로 확인한다.
 - 일반 탭의 대화하기 묶음에 있는 `채팅 글자 크기`는 [대화하기](./chat.md)에서 다룬다.
 
 ## 작업 앱 안내 확인

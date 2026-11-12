@@ -3,7 +3,8 @@
 import type { BrowserWindow, BrowserWindowConstructorOptions, Point, Rectangle } from 'electron';
 import type { AppKey } from '@shared/appkey';
 
-/** 앞에 있는 앱. 창 제목은 읽지도 돌려주지도 않는다. bounds는 앞 창의 화면 영역(DIP)이고 전체 화면 앱을 알아볼 때만 쓴다 */
+/** 앞에 있는 앱. 창 제목은 읽지도 돌려주지도 않는다. bounds는 앞 창의 화면 영역(DIP)이고 전체 화면 앱을 알아볼 때만 쓴다.
+ *  전체 화면 앱으로 보지 않을 창(Windows 바탕화면)은 adapter가 bounds를 비운다 */
 export interface Foreground { appKey: AppKey | null; unknownReason: string | null; bounds?: Rectangle }
 
 export interface ActiveWindow {

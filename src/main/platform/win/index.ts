@@ -14,6 +14,10 @@ const PEN_APPS = new Set<AppKey>(
 // 읽기와 쓰기에 같은 객체를 써야 켜짐으로 읽힌다
 const LOGIN_ITEM = { path: process.execPath, args: [] as string[] };
 
+// 바탕화면(Win+D, 빈 가상 데스크톱)과 작업 보기는 모니터를 꽉 채우는 explorer.exe 창이지만 전체 화면 앱이 아니다. 영역을 넘기지 않아 캐릭터가 숨지 않게 한다.
+// shortcut: 파일 탐색기 전체 화면(F11)도 함께 빠진다, 그 위에서도 숨겨야 하면 창 클래스로 바탕화면만 고른다
+const SHELL = winAppKey('explorer.exe');
+
 export const win: Omit<Platform, 'idleSeconds' | 'cursorPoint'> = {
   activeWindow: {
     async foreground() {
@@ -24,7 +28,8 @@ export const win: Omit<Platform, 'idleSeconds' | 'cursorPoint'> = {
         const bounds = w && (screen.screenToDipRect?.(null, w.bounds) ?? w.bounds);
         // 관리자 권한 창처럼 경로를 못 읽으면 이유가 있는 알 수 없음으로 둔다
         if (!w?.owner.path) return { appKey: null, unknownReason: 'elevated-or-unknown', ...(bounds && { bounds }) };
-        return { appKey: winAppKey(w.owner.path), unknownReason: null, ...(bounds && { bounds }) };
+        const appKey = winAppKey(w.owner.path);
+        return { appKey, unknownReason: null, ...(bounds && appKey !== SHELL && { bounds }) };
       } catch {
         return { appKey: null, unknownReason: 'error' };
       }
