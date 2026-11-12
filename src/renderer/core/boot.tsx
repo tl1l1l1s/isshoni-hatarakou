@@ -33,6 +33,9 @@ export async function boot(root: HTMLElement): Promise<void> {
     root.textContent = '앱 파일이 서로 맞지 않아요. 앱을 다시 설치해 주세요.';
     return;
   }
+  // 앱에 넣은 이모지 글꼴(theme.css)을 화면을 그리기 전에 불러온다. 글꼴을 불러오기 전에 그린 글자는 불러온 뒤에도 빈 네모로 남을 수 있다.
+  // unicode-range 글꼴은 범위 안의 글자를 넘겨야 불러온다 (🫧)
+  const emojiFont = document.fonts.load('16px "Isshoni Emoji"', '\u{1FAE7}').catch((e: unknown) => reportError(bridge, 'renderer.font', e));
   // 외부 출처가 메인의 CSP와 다르면 메인이 저장하고 스테이지를 다시 읽는다. 모듈을 켜기 전에 확인한다
   if (await syncFrameOrigins(bridge, modules).catch(() => false)) return;
   const info = await bridge.invoke('app.info', {});
@@ -74,6 +77,7 @@ export async function boot(root: HTMLElement): Promise<void> {
   // 방 코드만 알면 방에 들어올 수 있어서 디스코드로 가는 자동 오류 보고 로그에 남기지 않는다
   core.session.onChange((code, reason) => core.log('info', 'room', code ? '들어감' : `나옴${reason ? ` ${reason}` : ''}`));
 
+  await emojiFont;
   createRoot(root).render(
     <>
       {/* 실행 화면이 렌더 오류로 비면 앱이 보이지 않으므로 다시 읽는다. 켜자마자 다시 깨지면 되풀이하지 않고 보고만 한다 */}

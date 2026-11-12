@@ -19,6 +19,7 @@
 - `panel-guard`는 기능 창 하나가 렌더 오류로 깨지면 그 창에만 `이 창에 문제가 생겼어요. 닫고 다시 열어 주세요.`와 `닫기`가 보이고 실행 화면과 다른 창은 그대로인 것이다. 실행 화면이 깨지면 오류를 보고하고 스테이지를 다시 읽는다.
 - `app-quit`은 `메뉴 ▼` 맨 아래 `종료`, 트레이 메뉴 종료, 런처 창 ×가 앱을 끄는 것이다. 저장하지 않은 편집이 있는 창이 있으면 화면을 숨겼어도 다시 띄워 그 창에 `종료`와 `계속하기`로 묻고 `계속하기`면 끄지 않는다. 런처는 `Escape`로 닫히지 않는다 (ADR 0042).
 - `toast-where`는 알림이 방금 누르거나 키를 친 창(기능 창이나 런처) 위쪽에 뜨고 그 창이 바로 닫히면 런처 화면에서는 런처에 뜨고 실행 화면에서는 실행 화면에 뜨는 것이다. 한 번에 두 개까지 보인다.
+- `emoji-font`는 OS 이모지 글꼴에 없는 새 이모지(🫧, 🪄 같은 Emoji 13.0 이후 이모지)를 앱에 넣은 글꼴로 그려 이름표와 창 글자에 빈 네모가 생기지 않는 것이다 (NFR-22). Mac과 Windows 11처럼 OS 글꼴에 그 이모지가 있으면 OS 글꼴이 그린다.
 
 ## How to get to it (user POV)
 
@@ -63,10 +64,12 @@ Preconditions:
 - **창이 작업 영역에 맞는지.** 위와 같이 `screen`을 바꾸되 `workArea`를 `{ x: 0, y: 33, width: 853, height: 432 }`(1280x720 150%)로 두고 `getDisplayMatching`도 같은 모니터를 돌려주게 한다. `메뉴 ▼`를 누르면 메뉴의 `clientHeight`가 160 이상(다섯 줄)이고 `offsetWidth - clientWidth`가 6이라 스크롤 막대가 보인다. `스티커 사진`, `캐릭터 만들기`, `대화하기`(방 안), `설정`, « 런처로의 런처 창은 메인의 `getBounds()`가 작업 영역 안이고 `촬영 시작`, `저장`, `보내기` 단추 아래 끝이 그 창의 `innerHeight` 안이다.
 - **종료 (app-quit).** 시작하기 뒤 `menu(s, '설정', '설정')`로 연 설정 창의 `계정` 탭에서 `getByLabel('닉네임')`에 글을 넣고 저장하지 않는다. 스테이지에서 `core.setDisplayMode('hidden')`로 화면을 숨긴다(트레이 숨기기와 같은 결과라 보고에 적는다). 트레이 메뉴는 누를 수 없으니 트레이 종료와 같은 길인 메인의 `app.quit()`을 `s.app.evaluate(({ app }) => void setTimeout(() => app.quit(), 0))`로 부른다. 설정 창이 다시 보이고 그 창에 `alertdialog` `닉네임을 저장하지 않았어요. 종료할까요?`와 `button "종료"`, `button "계속하기"`가 있다. 2.5초가 지나도 프로세스가 살아 있다. `계속하기`를 누르면 질문이 사라지고 닉네임 칸 글이 그대로다. `메뉴 ▼` 맨 아래 `button "종료"`를 누르면 다시 묻고 `종료`를 누르면 프로세스가 1초 안에 끝난다(`s.app.process()`의 `exit`).
 - **런처 닫기 (app-quit).** 새 세션의 런처에서 `s.launcher.keyboard.press('Escape')`를 눌러도 런처가 열려 있다. 런처의 `설정`으로 연 설정 창에 저장하지 않은 닉네임을 두고 메인에서 런처 창을 `close()`(제목 표시줄 ×와 같다)하면 설정 창에서 묻는다. `계속하기`를 누르면 `windowTitled(s.app, 'Isshoni Hatarakou')`로 런처가 다시 열린다. 닉네임을 `저장`한 뒤 런처를 `close()`하면 묻지 않고 프로세스가 1초 안에 끝난다.
+- **새 이모지 (emoji-font).** 시작하기 뒤 설정 창 `계정` 탭의 `getByLabel('닉네임')`에 `테스트🫧🪄`를 넣고 `저장`을 누르면 실행 화면 이름표에 `테스트🫧🪄`가 보인다. 실행 화면의 `[...document.fonts]` 가운데 family가 `Isshoni Emoji`인 글꼴은 `status`가 `loaded`다. 실제로 그린 글꼴은 CDP로 읽는다. `const cdp = await s.app.context().newCDPSession(s.stage)`로 `DOM.enable`과 `CSS.enable`을 부르고 `DOM.getDocument`, `DOM.querySelector`로 이름표 요소를 찾아 `CSS.getPlatformFontsForNode`를 부른다. Mac에서는 🫧🪄를 `Apple Color Emoji`가 그린다. 이 Mac(macOS 26.6.2)의 Apple Color Emoji에는 U+1FADD가 없어서 닉네임에 `테스트\u{1FADD}`를 넣으면 실제 글꼴 순서로 앱 글꼴을 볼 수 있다. 이름표에서 그 글자는 `familyName`이 `Noto Color Emoji`이고 `isCustomFont`가 true이며 화면에는 초록 피클 그림이 보인다.
 - **증거.** 단계마다 `s.shot`으로 런처와 실행 화면을 남긴다.
 
 ## Gotchas
 
+- Mac에서도 OS 이모지 글꼴에 없는 이모지는 앱에 넣은 글꼴이 그린다. 어떤 이모지가 OS 글꼴에 없는지는 macOS 판마다 다르다. Windows 10에서는 Windows PC에서 같은 CDP 방법으로 이름표를 읽어 새 이모지가 `Noto Color Emoji`, 옛 이모지가 `Segoe UI Emoji`로 나오는지 본다.
 - 런처에도 `캐릭터 만들기`, `설정` 버튼이 있다. 메뉴 항목과 이름이 같으니 어느 창의 버튼을 누르는지 `s.launcher`와 `s.stage`로 구분한다. 방 창은 런처 버튼이 `방 만들기 / 참여하기`(방에 있으면 `방 정보`)이고 메뉴 항목과 창 제목은 `워킹룸`이다.
 - 메뉴 칩의 접근 가능한 이름은 `메뉴 ▼`이다. 찾을 때는 `button[title="메뉴"]`를 쓴다. `내 메뉴` 버튼은 내 이름표이고 같은 메뉴를 연다. 내 캐릭터를 누르는 `내 캐릭터 쓰다듬기`는 메뉴를 열지 않는다.
 - 흐린 메뉴 항목은 `aria-disabled`라서 Playwright `click()`이 누를 수 없다고 보고 기다리다 시간이 지난다. `menu()`도 같다. 혼자 모드에서 누를 때는 `click({ force: true })`를 쓰고 항목 이름 뒤에 `방에서만`이 붙으니 `/^대화하기/`처럼 찾는다.

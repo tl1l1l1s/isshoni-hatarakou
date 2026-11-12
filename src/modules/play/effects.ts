@@ -120,7 +120,7 @@ export const effects: EffectDecl[] = [
       const px = TEXT_SIZES[d.size];
       const top = Math.round(s.height * 0.05 + a.rand() * (s.height * 0.9 - px));
       const at = still(s) ? 'left:0;width:100%;text-align:center' : 'left:0';
-      const t = el(s, 'div', `${at};top:${top}px;white-space:nowrap;font:700 ${px}px/1.2 system-ui,sans-serif;color:${d.color ?? '#fff'};text-shadow:0 0 3px #000,0 0 1px #000,1px 1px 0 #000`);
+      const t = el(s, 'div', `${at};top:${top}px;white-space:nowrap;font-weight:700;font-size:${px}px;line-height:1.2;color:${d.color ?? '#fff'};text-shadow:0 0 3px #000,0 0 1px #000,1px 1px 0 #000`);
       t.textContent = d.text;
       if (still(s)) return animate(t, [{ opacity: 0 }, { opacity: 1, offset: 0.1 }, { opacity: 1, offset: 0.9 }, { opacity: 0 }], { duration: TEXT_MS });
       return animate(t, [{ transform: `translateX(${s.width}px)` }, { transform: 'translateX(-100%)' }], { duration: TEXT_MS });
